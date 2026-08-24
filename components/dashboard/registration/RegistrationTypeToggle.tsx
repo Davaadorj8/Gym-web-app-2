@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 import { UseFormReturn } from 'react-hook-form';
 import { User, Building2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { RegistrationFormData } from '@/src/features/registration/types';
+import { RegistrationFormData } from '@/features/registration/types';
 
 interface RegistrationTypeToggleProps {
   form: UseFormReturn<RegistrationFormData>;

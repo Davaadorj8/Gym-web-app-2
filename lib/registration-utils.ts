@@ -1,5 +1,5 @@
 import { BuiltPlan, GymMember } from '@/lib/types';
-import { RegistrationFormData } from '@/src/features/registration/types';
+import { RegistrationFormData } from '@/features/registration/types';
 
 export const DURATION_OPTIONS = [
   { labelEn: '1 Mo', labelMn: '1 Сар', multiplier: 1 },
