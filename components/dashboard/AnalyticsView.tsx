@@ -12,6 +12,17 @@ import {
   Clock,
   CheckCircle2,
 } from 'lucide-react';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  Cell,
+  PieChart,
+  Pie,
+} from 'recharts';
 import { GymMember, CategoryTarget, AuthUser, BuiltPlan } from '@/lib/types';
 import { Card, Badge, Input } from '@/components/ui';
 import { useDashboard } from '@/lib/orchestration';
@@ -63,9 +74,9 @@ export default function AnalyticsView({
   }, [members]);
 
   const retentionRate = useMemo(() => {
-    if (members.length === 0) return '100.0%';
-    const pct = (activeMembersCount / members.length) * 100;
-    return `${pct.toFixed(1)}%`;
+    if (members.length === 0) return '0%';
+    const pct = Math.round((activeMembersCount / members.length) * 100);
+    return `${pct}%`;
   }, [members, activeMembersCount]);
 
   // Weekly Check-in Distribution via domain service
@@ -120,29 +131,26 @@ export default function AnalyticsView({
     });
   }, [allExtensionLogs, searchMemberQuery, selectedCategoryFilter, selectedPeriodFilter]);
 
-  // Max value helper for bar charts
-  const maxWeekly = Math.max(...weeklyDistribution.map((d) => d.count), 4);
-  const maxRevenue = Math.max(...revenueByPlan.map((d) => d.revenue), 120);
-  const maxPlanCount = Math.max(...membersByPlanTier.map((d) => d.count), 4);
-  const maxCatCount = Math.max(
-    categoryBreakdown.under18.count,
-    categoryBreakdown.over18.count,
-    categoryBreakdown.organization.count,
-    4
-  );
-  const maxPeriodCount = Math.max(
-    periodBreakdown.m1.count,
-    periodBreakdown.m3.count,
-    periodBreakdown.m6.count,
-    periodBreakdown.m12.count,
-    4
-  );
+  // Category & Period Chart Data arrays for Recharts
+  const categoryChartData = useMemo(() => [
+    { name: 'Under 18', count: categoryBreakdown.under18.count, revenue: categoryBreakdown.under18.revenue, fill: '#3b82f6' },
+    { name: 'Over 18', count: categoryBreakdown.over18.count, revenue: categoryBreakdown.over18.revenue, fill: '#6366f1' },
+    { name: 'Organization', count: categoryBreakdown.organization.count, revenue: categoryBreakdown.organization.revenue, fill: '#10b981' },
+  ], [categoryBreakdown]);
+
+  const periodChartData = useMemo(() => [
+    { name: '1 Mo', count: periodBreakdown.m1.count, pct: periodBreakdown.m1.pct, fill: '#38bdf8' },
+    { name: '3 Mo', count: periodBreakdown.m3.count, pct: periodBreakdown.m3.pct, fill: '#60a5fa' },
+    { name: '6 Mo', count: periodBreakdown.m6.count, pct: periodBreakdown.m6.pct, fill: '#818cf8' },
+    { name: '12 Mo', count: periodBreakdown.m12.count, pct: periodBreakdown.m12.pct, fill: '#a78bfa' },
+    { name: 'Other', count: periodBreakdown.other.count, pct: periodBreakdown.other.pct, fill: '#94a3b8' },
+  ], [periodBreakdown]);
 
   return (
-    <div id="analytics-view-root" className="space-y-6 pb-12">
-      {/* ================= TOP 3 SUMMARY METRICS ================= */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Metric 1 */}
+    <div id="analytics-view-root" className="space-y-8 pb-16">
+      {/* ================= SECTION 1: TOP KPI STATS ================= */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        {/* Metric 1: Total Membership Value (or Active Roster) */}
         {isAdmin ? (
           <Card
             id="metric-total-membership-value"
@@ -238,7 +246,7 @@ export default function AnalyticsView({
         </Card>
       </div>
 
-      {/* ================= SECTION 2: CHARTS ROW ================= */}
+      {/* ================= SECTION 2: CHARTS ROW (RECHARTS INTEGRATION) ================= */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Chart 1: Weekly Check-in Distribution */}
         <Card
@@ -254,37 +262,37 @@ export default function AnalyticsView({
             </p>
           </div>
 
-          <div className="pt-6 pb-2">
-            <div className="h-44 flex items-end justify-between gap-3 border-b border-border px-2 relative">
-              <div className="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-10">
-                <div className="border-b border-foreground w-full"></div>
-                <div className="border-b border-foreground w-full"></div>
-                <div className="border-b border-foreground w-full"></div>
-                <div className="border-b border-foreground w-full"></div>
-              </div>
-
-              {weeklyDistribution.map((item) => {
-                const heightPct = Math.min(100, Math.max(8, (item.count / maxWeekly) * 100));
-                const hasValue = item.count > 0;
-                return (
-                  <div key={item.day} className="flex-1 flex flex-col items-center gap-2 z-10">
-                    <div className="w-full flex justify-center items-end h-36">
-                      <div
-                        style={{ height: `${heightPct}%` }}
-                        className={`w-full max-w-[36px] rounded-t-md transition-all duration-500 ${
-                          hasValue
-                            ? 'bg-primary shadow-sm shadow-primary/30'
-                            : 'bg-muted'
-                        }`}
-                      />
-                    </div>
-                    <span className="text-[11px] font-mono text-muted-foreground font-bold">
-                      {item.day}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
+          <div className="h-56 w-full pt-4">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={weeklyDistribution} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <XAxis
+                  dataKey="day"
+                  tickLine={false}
+                  axisLine={{ stroke: 'var(--border)' }}
+                  tick={{ fill: 'var(--muted-foreground)', fontSize: 11, fontFamily: 'monospace' }}
+                />
+                <YAxis
+                  allowDecimals={false}
+                  tickLine={false}
+                  axisLine={{ stroke: 'var(--border)' }}
+                  tick={{ fill: 'var(--muted-foreground)', fontSize: 11, fontFamily: 'monospace' }}
+                />
+                <Tooltip
+                  cursor={{ fill: 'rgba(255, 255, 255, 0.05)' }}
+                  contentStyle={{
+                    backgroundColor: 'var(--card)',
+                    borderColor: 'var(--border)',
+                    borderRadius: '0.75rem',
+                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                    color: 'var(--foreground)',
+                    fontFamily: 'monospace',
+                    fontSize: '12px',
+                  }}
+                  formatter={(value: any) => [`${value} Check-ins`, 'Activity']}
+                />
+                <Bar dataKey="count" fill="var(--primary)" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </Card>
 
@@ -302,59 +310,66 @@ export default function AnalyticsView({
             </p>
           </div>
 
-          <div className="pt-6 pb-2">
-            <div className="h-44 flex items-end justify-between gap-4 border-b border-border px-4 relative">
-              <div className="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-10">
-                <div className="border-b border-foreground w-full"></div>
-                <div className="border-b border-foreground w-full"></div>
-                <div className="border-b border-foreground w-full"></div>
-                <div className="border-b border-foreground w-full"></div>
-              </div>
-
-              {isAdmin
-                ? revenueByPlan.map((item) => {
-                    const heightPct = Math.min(100, Math.max(6, (item.revenue / maxRevenue) * 100));
-                    const hasValue = item.revenue > 0;
-                    return (
-                      <div key={item.fullName} className="flex-1 flex flex-col items-center gap-2 z-10">
-                        <div className="w-full flex justify-center items-end h-36">
-                          <div
-                            style={{ height: `${heightPct}%` }}
-                            className={`w-full max-w-[64px] rounded-t-md transition-all duration-500 ${
-                              hasValue
-                                ? 'bg-sky-400 shadow-sm shadow-sky-400/30'
-                                : 'bg-muted'
-                            }`}
-                          />
-                        </div>
-                        <span className="text-[10px] font-mono text-muted-foreground font-bold truncate max-w-[70px] text-center" title={item.fullName}>
-                          {item.plan}
-                        </span>
-                      </div>
-                    );
-                  })
-                : membersByPlanTier.map((item) => {
-                    const heightPct = Math.min(100, Math.max(6, (item.count / maxPlanCount) * 100));
-                    const hasValue = item.count > 0;
-                    return (
-                      <div key={item.fullName} className="flex-1 flex flex-col items-center gap-2 z-10">
-                        <div className="w-full flex justify-center items-end h-36">
-                          <div
-                            style={{ height: `${heightPct}%` }}
-                            className={`w-full max-w-[64px] rounded-t-md transition-all duration-500 ${
-                              hasValue
-                                ? 'bg-sky-400 shadow-sm shadow-sky-400/30'
-                                : 'bg-muted'
-                            }`}
-                          />
-                        </div>
-                        <span className="text-[10px] font-mono text-muted-foreground font-bold truncate max-w-[70px] text-center" title={`${item.fullName} (${item.count} athletes)`}>
-                          {item.plan}
-                        </span>
-                      </div>
-                    );
-                  })}
-            </div>
+          <div className="h-56 w-full pt-4">
+            <ResponsiveContainer width="100%" height="100%">
+              {isAdmin ? (
+                <BarChart data={revenueByPlan} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                  <XAxis
+                    dataKey="plan"
+                    tickLine={false}
+                    axisLine={{ stroke: 'var(--border)' }}
+                    tick={{ fill: 'var(--muted-foreground)', fontSize: 10, fontFamily: 'monospace' }}
+                  />
+                  <YAxis
+                    tickLine={false}
+                    axisLine={{ stroke: 'var(--border)' }}
+                    tick={{ fill: 'var(--muted-foreground)', fontSize: 10, fontFamily: 'monospace' }}
+                    tickFormatter={(val) => `$${val}`}
+                  />
+                  <Tooltip
+                    cursor={{ fill: 'rgba(255, 255, 255, 0.05)' }}
+                    contentStyle={{
+                      backgroundColor: 'var(--card)',
+                      borderColor: 'var(--border)',
+                      borderRadius: '0.75rem',
+                      color: 'var(--foreground)',
+                      fontFamily: 'monospace',
+                      fontSize: '12px',
+                    }}
+                    formatter={(value: any) => [`$${value}`, 'Revenue']}
+                  />
+                  <Bar dataKey="revenue" fill="#38bdf8" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              ) : (
+                <BarChart data={membersByPlanTier} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <XAxis
+                    dataKey="plan"
+                    tickLine={false}
+                    axisLine={{ stroke: 'var(--border)' }}
+                    tick={{ fill: 'var(--muted-foreground)', fontSize: 10, fontFamily: 'monospace' }}
+                  />
+                  <YAxis
+                    allowDecimals={false}
+                    tickLine={false}
+                    axisLine={{ stroke: 'var(--border)' }}
+                    tick={{ fill: 'var(--muted-foreground)', fontSize: 10, fontFamily: 'monospace' }}
+                  />
+                  <Tooltip
+                    cursor={{ fill: 'rgba(255, 255, 255, 0.05)' }}
+                    contentStyle={{
+                      backgroundColor: 'var(--card)',
+                      borderColor: 'var(--border)',
+                      borderRadius: '0.75rem',
+                      color: 'var(--foreground)',
+                      fontFamily: 'monospace',
+                      fontSize: '12px',
+                    }}
+                    formatter={(value: any) => [`${value} Athletes`, 'Enrolled']}
+                  />
+                  <Bar dataKey="count" fill="#38bdf8" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              )}
+            </ResponsiveContainer>
           </div>
         </Card>
       </div>
@@ -464,9 +479,9 @@ export default function AnalyticsView({
           </div>
         </div>
 
-        {/* 2 Breakdown Charts: Extensions by Category & Period */}
+        {/* 2 Breakdown Charts: Extensions by Category & Period (Recharts) */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-2">
-          {/* Subchart 1 */}
+          {/* Subchart 1: Extensions by Category */}
           <div className="bg-background border border-border rounded-2xl p-5 space-y-4">
             <div className="flex items-center justify-between">
               <div>
@@ -482,54 +497,40 @@ export default function AnalyticsView({
               </Badge>
             </div>
 
-            <div className="h-36 flex items-end justify-between gap-4 border-b border-border px-6">
-              <div className="flex-1 flex flex-col items-center gap-2">
-                <div className="w-full flex justify-center items-end h-28">
-                  <div
-                    style={{
-                      height: `${Math.max(6, (categoryBreakdown.under18.count / maxCatCount) * 100)}%`,
-                    }}
-                    className={`w-full max-w-[48px] rounded-t-md transition-all ${
-                      categoryBreakdown.under18.count > 0 ? 'bg-primary' : 'bg-muted'
-                    }`}
+            <div className="h-44 w-full pt-2">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={categoryChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <XAxis
+                    dataKey="name"
+                    tickLine={false}
+                    axisLine={{ stroke: 'var(--border)' }}
+                    tick={{ fill: 'var(--muted-foreground)', fontSize: 11, fontFamily: 'monospace' }}
                   />
-                </div>
-                <span className="text-[10px] font-mono text-muted-foreground font-bold text-center">
-                  Under 18
-                </span>
-              </div>
-
-              <div className="flex-1 flex flex-col items-center gap-2">
-                <div className="w-full flex justify-center items-end h-28">
-                  <div
-                    style={{
-                      height: `${Math.max(6, (categoryBreakdown.over18.count / maxCatCount) * 100)}%`,
-                    }}
-                    className={`w-full max-w-[48px] rounded-t-md transition-all ${
-                      categoryBreakdown.over18.count > 0 ? 'bg-primary shadow-sm shadow-primary/20' : 'bg-muted'
-                    }`}
+                  <YAxis
+                    allowDecimals={false}
+                    tickLine={false}
+                    axisLine={{ stroke: 'var(--border)' }}
+                    tick={{ fill: 'var(--muted-foreground)', fontSize: 11, fontFamily: 'monospace' }}
                   />
-                </div>
-                <span className="text-[10px] font-mono text-muted-foreground font-bold text-center">
-                  Over 18
-                </span>
-              </div>
-
-              <div className="flex-1 flex flex-col items-center gap-2">
-                <div className="w-full flex justify-center items-end h-28">
-                  <div
-                    style={{
-                      height: `${Math.max(6, (categoryBreakdown.organization.count / maxCatCount) * 100)}%`,
+                  <Tooltip
+                    cursor={{ fill: 'rgba(255, 255, 255, 0.05)' }}
+                    contentStyle={{
+                      backgroundColor: 'var(--card)',
+                      borderColor: 'var(--border)',
+                      borderRadius: '0.75rem',
+                      color: 'var(--foreground)',
+                      fontFamily: 'monospace',
+                      fontSize: '12px',
                     }}
-                    className={`w-full max-w-[48px] rounded-t-md transition-all ${
-                      categoryBreakdown.organization.count > 0 ? 'bg-primary' : 'bg-muted'
-                    }`}
+                    formatter={(value: any) => [`${value} Extensions`, 'Count']}
                   />
-                </div>
-                <span className="text-[10px] font-mono text-muted-foreground font-bold text-center">
-                  Organization
-                </span>
-              </div>
+                  <Bar dataKey="count" radius={[6, 6, 0, 0]}>
+                    {categoryChartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.fill} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
             </div>
 
             <div className="grid grid-cols-3 gap-2 pt-1 text-center">
@@ -575,7 +576,7 @@ export default function AnalyticsView({
             </div>
           </div>
 
-          {/* Subchart 2 */}
+          {/* Subchart 2: Extensions by Period */}
           <div className="bg-background border border-border rounded-2xl p-5 space-y-4">
             <div className="flex items-center justify-between">
               <div>
@@ -591,32 +592,40 @@ export default function AnalyticsView({
               </Badge>
             </div>
 
-            <div className="h-36 flex items-end justify-between gap-3 border-b border-border px-4">
-              {[
-                { label: '1 Mo', count: periodBreakdown.m1.count },
-                { label: '3 Mo', count: periodBreakdown.m3.count },
-                { label: '6 Mo', count: periodBreakdown.m6.count },
-                { label: '12 Mo', count: periodBreakdown.m12.count },
-                { label: 'Other', count: periodBreakdown.other.count },
-              ].map((p) => {
-                const heightPct = Math.max(6, (p.count / maxPeriodCount) * 100);
-                const hasValue = p.count > 0;
-                return (
-                  <div key={p.label} className="flex-1 flex flex-col items-center gap-2">
-                    <div className="w-full flex justify-center items-end h-28">
-                      <div
-                        style={{ height: `${heightPct}%` }}
-                        className={`w-full max-w-[36px] rounded-t-md transition-all ${
-                          hasValue ? 'bg-sky-400 shadow-sm shadow-sky-400/20' : 'bg-muted'
-                        }`}
-                      />
-                    </div>
-                    <span className="text-[10px] font-mono text-muted-foreground font-bold text-center">
-                      {p.label}
-                    </span>
-                  </div>
-                );
-              })}
+            <div className="h-44 w-full pt-2">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={periodChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <XAxis
+                    dataKey="name"
+                    tickLine={false}
+                    axisLine={{ stroke: 'var(--border)' }}
+                    tick={{ fill: 'var(--muted-foreground)', fontSize: 11, fontFamily: 'monospace' }}
+                  />
+                  <YAxis
+                    allowDecimals={false}
+                    tickLine={false}
+                    axisLine={{ stroke: 'var(--border)' }}
+                    tick={{ fill: 'var(--muted-foreground)', fontSize: 11, fontFamily: 'monospace' }}
+                  />
+                  <Tooltip
+                    cursor={{ fill: 'rgba(255, 255, 255, 0.05)' }}
+                    contentStyle={{
+                      backgroundColor: 'var(--card)',
+                      borderColor: 'var(--border)',
+                      borderRadius: '0.75rem',
+                      color: 'var(--foreground)',
+                      fontFamily: 'monospace',
+                      fontSize: '12px',
+                    }}
+                    formatter={(value: any) => [`${value} Extensions`, 'Duration Count']}
+                  />
+                  <Bar dataKey="count" radius={[6, 6, 0, 0]}>
+                    {periodChartData.map((entry, index) => (
+                      <Cell key={`period-${index}`} fill={entry.fill} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
             </div>
 
             <div className="grid grid-cols-4 gap-2 pt-1 text-center">
