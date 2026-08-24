@@ -111,11 +111,15 @@ export interface LockerLog {
   staffRole?: UserRole;
 }
 
-export const DEFAULT_BUILT_PLANS: BuiltPlan[] = [];
+// MOCK_ Prefixed In-Memory Dataset Definitions (Pre-real-data state)
+export const MOCK_BUILT_PLANS: BuiltPlan[] = [];
+export const MOCK_GYM_MEMBERS: GymMember[] = [];
+export const MOCK_LOCKER_LOGS: LockerLog[] = [];
+export const MOCK_STAFF_ACCOUNTS: StaffAccount[] = [];
 
-export const INITIAL_GYM_MEMBERS: GymMember[] = [];
-
-export const INITIAL_LOCKER_LOGS: LockerLog[] = [];
-
-export const INITIAL_STAFF_ACCOUNTS: StaffAccount[] = [];
+// Aliases for backward compatibility
+export const DEFAULT_BUILT_PLANS = MOCK_BUILT_PLANS;
+export const INITIAL_GYM_MEMBERS = MOCK_GYM_MEMBERS;
+export const INITIAL_LOCKER_LOGS = MOCK_LOCKER_LOGS;
+export const INITIAL_STAFF_ACCOUNTS = MOCK_STAFF_ACCOUNTS;
 

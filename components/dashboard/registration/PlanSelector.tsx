@@ -16,7 +16,7 @@ import {
 import { cn } from '@/lib/utils';
 import { BuiltPlan, CategoryTarget } from '@/lib/types';
 import { Card, Badge, Button } from '@/components/ui';
-import { RegistrationFormData } from '@/src/features/registration/types';
+import { RegistrationFormData } from '@/features/registration';
 import {
   calculateExpirationDate,
   formatDateForDisplay,

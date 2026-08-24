@@ -29,7 +29,7 @@ import {
 import {
   RegistrationFormData,
   createDefaultMember,
-} from '@/src/features/registration/types';
+} from '@/features/registration';
 
 interface OrganizationFormProps {
   form: UseFormReturn<RegistrationFormData>;

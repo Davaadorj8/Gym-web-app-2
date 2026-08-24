@@ -1,7 +1,7 @@
 import GitHub from "next-auth/providers/github";
 
 export const authConfig = {
-  secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || "development_auth_secret_minimum_32_characters_long_key",
+  secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
   session: { strategy: "jwt" as const },
   providers: [GitHub],
   pages: {

@@ -1,18 +1,48 @@
 'use client';
 
 import React from 'react';
+import dynamic from 'next/dynamic';
 import { useAppLocale } from '@/components/I18nProvider';
-import { Zap, Menu, X } from 'lucide-react';
+import { Zap, Menu, X, Loader2 } from 'lucide-react';
 import Sidebar from '@/components/dashboard/Sidebar';
-import RegistrationView from '@/components/dashboard/RegistrationView';
-import InventoryView from '@/components/dashboard/InventoryView';
-import CheckInDeskView from '@/components/dashboard/CheckInDeskView';
-import LockerUsageView from '@/components/dashboard/LockerUsageView';
-import MemberDirectoryView from '@/components/dashboard/MemberDirectoryView';
-import AnalyticsView from '@/components/dashboard/AnalyticsView';
-import StaffApprovalsView from '@/components/dashboard/StaffApprovalsView';
 import { useDashboard } from '@/lib/orchestration';
 import { AuthUser, UserRole } from '@/lib/types';
+
+const ViewLoadingSkeleton = () => (
+  <div className="w-full h-96 flex flex-col items-center justify-center gap-3 text-muted-foreground animate-pulse">
+    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+    <span className="text-sm font-medium">Loading view...</span>
+  </div>
+);
+
+const RegistrationView = dynamic(
+  () => import('@/components/dashboard/RegistrationView'),
+  { loading: () => <ViewLoadingSkeleton /> }
+);
+const InventoryView = dynamic(
+  () => import('@/components/dashboard/InventoryView'),
+  { loading: () => <ViewLoadingSkeleton /> }
+);
+const CheckInDeskView = dynamic(
+  () => import('@/components/dashboard/CheckInDeskView'),
+  { loading: () => <ViewLoadingSkeleton /> }
+);
+const LockerUsageView = dynamic(
+  () => import('@/components/dashboard/LockerUsageView'),
+  { loading: () => <ViewLoadingSkeleton /> }
+);
+const MemberDirectoryView = dynamic(
+  () => import('@/components/dashboard/MemberDirectoryView'),
+  { loading: () => <ViewLoadingSkeleton /> }
+);
+const AnalyticsView = dynamic(
+  () => import('@/components/dashboard/AnalyticsView'),
+  { loading: () => <ViewLoadingSkeleton /> }
+);
+const StaffApprovalsView = dynamic(
+  () => import('@/components/dashboard/StaffApprovalsView'),
+  { loading: () => <ViewLoadingSkeleton /> }
+);
 
 interface DashboardShellProps {
   currentUser?: AuthUser;

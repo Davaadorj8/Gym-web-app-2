@@ -21,7 +21,7 @@ import {
   FormControl,
   FormMessage,
 } from '@/components/ui';
-import { RegistrationFormData } from '@/src/features/registration/types';
+import { RegistrationFormData } from '@/features/registration';
 
 interface IndividualFormProps {
   form: UseFormReturn<RegistrationFormData>;

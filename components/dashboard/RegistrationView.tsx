@@ -12,7 +12,7 @@ import {
   RegistrationSchema,
   RegistrationFormData,
   getDefaultRegistrationValues,
-} from '@/src/features/registration/types';
+} from '@/features/registration';
 import {
   RegistrationTypeToggle,
   IndividualForm,

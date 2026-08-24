@@ -1,6 +1,6 @@
 "use server";
 
-import { signIn, signOut } from "@/src/auth";
+import { signIn, signOut } from "@/auth";
 import { createSafeAction } from "@/lib/actions/safeAction";
 import { LoginSchema } from "../types";
 
