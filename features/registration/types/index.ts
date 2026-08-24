@@ -58,10 +58,18 @@ export const createDefaultMember = (idSuffix?: string): MemberFormData => ({
   medicalNotes: '',
 });
 
-export const getDefaultRegistrationValues = (initialPlanId = ''): RegistrationFormData => ({
-  registrationType: 'individual',
-  member: createDefaultMember('init'),
-  selectedPlanId: initialPlanId,
-  durationMultiplier: 1,
-  paymentMethod: 'Card',
-});
+export const getDefaultRegistrationValues = (initialPlanId = ''): RegistrationFormData =>
+  ({
+    registrationType: 'individual',
+    member: createDefaultMember('init'),
+    orgName: '',
+    orgTaxId: '',
+    orgLeadName: '',
+    orgLeadEmail: '',
+    orgLeadPhone: '',
+    orgAddress: '',
+    orgMembers: [createDefaultMember('org-1')],
+    selectedPlanId: initialPlanId,
+    durationMultiplier: 1,
+    paymentMethod: 'Card',
+  } as unknown as RegistrationFormData);

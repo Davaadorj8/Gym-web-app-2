@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 import { UseFormReturn } from 'react-hook-form';
 import { User, Building2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { RegistrationFormData } from '@/features/registration/types';
+import { RegistrationFormData, createDefaultMember } from '@/features/registration';
 
 interface RegistrationTypeToggleProps {
   form: UseFormReturn<RegistrationFormData>;
@@ -17,6 +17,23 @@ export function RegistrationTypeToggle({ form }: RegistrationTypeToggleProps) {
 
   const handleToggle = (type: 'individual' | 'organization') => {
     form.setValue('registrationType', type, { shouldValidate: true });
+    if (type === 'organization') {
+      const curMembers = form.getValues('orgMembers' as any);
+      if (!curMembers || !Array.isArray(curMembers) || curMembers.length === 0) {
+        form.setValue('orgMembers' as any, [createDefaultMember('org-1')]);
+      }
+      if (form.getValues('orgName' as any) === undefined) form.setValue('orgName' as any, '');
+      if (form.getValues('orgTaxId' as any) === undefined) form.setValue('orgTaxId' as any, '');
+      if (form.getValues('orgLeadName' as any) === undefined) form.setValue('orgLeadName' as any, '');
+      if (form.getValues('orgLeadEmail' as any) === undefined) form.setValue('orgLeadEmail' as any, '');
+      if (form.getValues('orgLeadPhone' as any) === undefined) form.setValue('orgLeadPhone' as any, '');
+      if (form.getValues('orgAddress' as any) === undefined) form.setValue('orgAddress' as any, '');
+    } else {
+      const curMember = form.getValues('member' as any);
+      if (!curMember) {
+        form.setValue('member' as any, createDefaultMember('init'));
+      }
+    }
   };
 
   return (
