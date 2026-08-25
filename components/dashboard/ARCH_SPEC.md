@@ -38,3 +38,4 @@
 ## 6. Maintenance Log
 - 2026-08-25: Initialized directory specification per Master System Instructions.
 - 2026-08-25: Switched dynamic imports in DashboardShell to direct component imports to eliminate Turbopack runtime chunk loading errors.
+- 2026-08-25: Updated brand title display to Arche.fitness in Sidebar and DashboardShell.

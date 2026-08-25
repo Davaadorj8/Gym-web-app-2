@@ -56,7 +56,7 @@ export default function DashboardShell({
           <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center">
             <Zap className="w-4 h-4 text-primary-foreground fill-primary-foreground" strokeWidth={2.5} />
           </div>
-          <span className="font-extrabold text-sm text-foreground">Arche Gym</span>
+          <span className="font-extrabold text-sm text-foreground">Arche.fitness</span>
         </div>
         <div className="flex items-center gap-2">
           <button

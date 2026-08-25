@@ -86,7 +86,7 @@ export default function Sidebar({
           </div>
           <div className="flex flex-col">
             <span className="text-foreground font-extrabold text-base tracking-tight leading-tight">
-              Arche Gym
+              Arche.fitness
             </span>
             <span className="text-[9px] font-bold tracking-[0.18em] text-muted-foreground uppercase font-mono leading-tight">
               {t('brandManagement')}
