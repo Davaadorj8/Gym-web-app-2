@@ -17,6 +17,8 @@ export const messages = {
     Sidebar: {
       brandManagement: 'IRONPULSE MANAGEMENT',
       checkInMember: 'Check In Member',
+      collapseSidebar: 'Collapse Sidebar',
+      expandSidebar: 'Expand Sidebar',
       navDashboard: 'Dashboard',
       navCheckInDesk: 'Check-in Desk',
       navLockerUsage: 'Locker Usage',
@@ -377,6 +379,8 @@ export const messages = {
     Sidebar: {
       brandManagement: 'IRONPULSE УДИРДЛАГА',
       checkInMember: 'Ирц бүртгэх',
+      collapseSidebar: 'Цэс хураах',
+      expandSidebar: 'Цэс дэлгэх',
       navDashboard: 'Хяналтын самбар',
       navCheckInDesk: 'Ирц бүртгэл & Шүүгээ',
       navLockerUsage: 'Шүүгээний ашиглалт',

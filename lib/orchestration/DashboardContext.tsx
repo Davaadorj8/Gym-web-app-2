@@ -31,6 +31,7 @@ export interface DashboardContextValue {
   currentUser: AuthUser;
   activeTab: string;
   mobileMenuOpen: boolean;
+  sidebarCollapsed: boolean;
   members: GymMember[];
   plans: BuiltPlan[];
   lockerLogs: LockerLog[];
@@ -42,6 +43,8 @@ export interface DashboardContextValue {
   // Setters / UI Actions
   setActiveTab: (tab: string) => void;
   setMobileMenuOpen: (open: boolean) => void;
+  setSidebarCollapsed: (collapsed: boolean | ((prev: boolean) => boolean)) => void;
+  toggleSidebar: () => void;
   setStatusMessage: (msg: string | null) => void;
   login: (identifier: string, password?: string, loginRole?: UserRole, locale?: string) => void;
   logout: () => void;
@@ -112,8 +115,13 @@ export function DashboardProvider({
   const [currentUser, setCurrentUser] = useState<AuthUser>(initialUser);
   const [activeTab, setActiveTab] = useState<string>('directory');
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+
+  const toggleSidebar = useCallback(() => {
+    setSidebarCollapsed((prev) => !prev);
+  }, []);
 
   // Core domain data collections
   const [members, setMembers] = useState<GymMember[]>(initialMembers);
@@ -441,6 +449,7 @@ export function DashboardProvider({
       currentUser,
       activeTab,
       mobileMenuOpen,
+      sidebarCollapsed,
       members,
       plans,
       lockerLogs,
@@ -450,6 +459,8 @@ export function DashboardProvider({
       statusMessage,
       setActiveTab,
       setMobileMenuOpen,
+      setSidebarCollapsed,
+      toggleSidebar,
       setStatusMessage,
       login,
       logout,
@@ -473,6 +484,7 @@ export function DashboardProvider({
       currentUser,
       activeTab,
       mobileMenuOpen,
+      sidebarCollapsed,
       members,
       plans,
       lockerLogs,
@@ -480,6 +492,7 @@ export function DashboardProvider({
       totalLockers,
       isLoading,
       statusMessage,
+      toggleSidebar,
       login,
       logout,
       switchRole,

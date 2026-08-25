@@ -21,6 +21,8 @@ interface DashboardShellProps {
   setActiveTab?: (tab: string) => void;
   mobileMenuOpen?: boolean;
   setMobileMenuOpen?: (open: boolean) => void;
+  sidebarCollapsed?: boolean;
+  onToggleSidebar?: () => void;
   onLogout?: () => void;
   onSwitchRole?: (role: UserRole) => void;
 }
@@ -31,6 +33,8 @@ export default function DashboardShell({
   setActiveTab: propSetActiveTab,
   mobileMenuOpen: propMobileMenuOpen,
   setMobileMenuOpen: propSetMobileMenuOpen,
+  sidebarCollapsed: propSidebarCollapsed,
+  onToggleSidebar: propOnToggleSidebar,
   onLogout: propOnLogout,
   onSwitchRole: propOnSwitchRole,
 }: DashboardShellProps = {}) {
@@ -40,6 +44,8 @@ export default function DashboardShell({
   const setActiveTab = propSetActiveTab ?? dashboard.setActiveTab;
   const mobileMenuOpen = propMobileMenuOpen ?? dashboard.mobileMenuOpen;
   const setMobileMenuOpen = propSetMobileMenuOpen ?? dashboard.setMobileMenuOpen;
+  const sidebarCollapsed = propSidebarCollapsed ?? dashboard.sidebarCollapsed;
+  const onToggleSidebar = propOnToggleSidebar ?? dashboard.toggleSidebar;
   const onLogout = propOnLogout ?? dashboard.logout;
   const onSwitchRole = propOnSwitchRole ?? dashboard.switchRole;
 
@@ -113,6 +119,8 @@ export default function DashboardShell({
           onCheckInClick={() => setActiveTab('checkin-desk')}
           currentUser={currentUser}
           onSwitchRole={onSwitchRole}
+          isCollapsed={sidebarCollapsed}
+          onToggleCollapse={onToggleSidebar}
         />
       </div>
 

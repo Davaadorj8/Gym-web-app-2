@@ -16,6 +16,8 @@ import {
   LogOut,
   Globe,
   ArrowLeftRight,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AuthUser, UserRole } from '@/lib/types';
@@ -29,6 +31,8 @@ interface SidebarProps {
   onCheckInClick?: () => void;
   currentUser?: AuthUser;
   onSwitchRole?: (role: UserRole) => void;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
 export default function Sidebar({
@@ -38,6 +42,8 @@ export default function Sidebar({
   onCheckInClick,
   currentUser: propCurrentUser,
   onSwitchRole: propOnSwitchRole,
+  isCollapsed: propIsCollapsed,
+  onToggleCollapse: propOnToggleCollapse,
 }: SidebarProps) {
   const dashboard = useDashboard();
   const activeTab = propActiveTab ?? dashboard.activeTab;
@@ -45,6 +51,8 @@ export default function Sidebar({
   const onLogout = propOnLogout ?? dashboard.logout;
   const currentUser = propCurrentUser ?? dashboard.currentUser;
   const onSwitchRole = propOnSwitchRole ?? dashboard.switchRole;
+  const isCollapsed = propIsCollapsed ?? dashboard.sidebarCollapsed;
+  const onToggleCollapse = propOnToggleCollapse ?? dashboard.toggleSidebar;
 
   const t = useTranslations('Sidebar');
   const { locale, setLocale } = useAppLocale();
@@ -72,26 +80,59 @@ export default function Sidebar({
   return (
     <aside
       id="sidebar-container"
-      className="w-64 bg-background border-r border-border flex flex-col justify-between shrink-0 min-h-screen text-muted-foreground select-none z-20"
+      className={cn(
+        'bg-background border-r border-border flex flex-col justify-between shrink-0 min-h-screen text-muted-foreground select-none z-20 transition-all duration-300 ease-in-out',
+        isCollapsed ? 'w-[76px]' : 'w-64'
+      )}
     >
       {/* Top Header & Navigation */}
-      <div className="p-4 sm:p-5 flex flex-col gap-5">
-        {/* Brand Header */}
-        <div id="sidebar-brand" className="flex items-center gap-3 px-1">
-          <div
-            id="sidebar-logo"
-            className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20 shrink-0"
+      <div className={cn('flex flex-col gap-4', isCollapsed ? 'p-3' : 'p-4 sm:p-5')}>
+        {/* Brand Header & Toggle */}
+        <div
+          id="sidebar-brand"
+          className={cn(
+            'flex items-center justify-between',
+            isCollapsed ? 'flex-col gap-3 px-0' : 'px-1'
+          )}
+        >
+          <div className="flex items-center gap-3 overflow-hidden">
+            <div
+              id="sidebar-logo"
+              className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20 shrink-0"
+              title="Arche.fitness"
+            >
+              <Zap className="w-5 h-5 text-primary-foreground fill-primary-foreground" strokeWidth={2.5} />
+            </div>
+            {!isCollapsed && (
+              <div className="flex flex-col min-w-0 transition-opacity duration-200">
+                <span className="text-foreground font-extrabold text-base tracking-tight leading-tight truncate">
+                  Arche.fitness
+                </span>
+                <span className="text-[9px] font-bold tracking-[0.18em] text-muted-foreground uppercase font-mono leading-tight truncate">
+                  {t('brandManagement')}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Desktop Toggle Button */}
+          <button
+            id="btn-toggle-sidebar"
+            type="button"
+            onClick={onToggleCollapse}
+            title={isCollapsed ? t('expandSidebar') : t('collapseSidebar')}
+            aria-label={isCollapsed ? t('expandSidebar') : t('collapseSidebar')}
+            className={cn(
+              'p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-all cursor-pointer flex items-center justify-center shrink-0',
+              isCollapsed && 'w-8 h-8'
+            )}
           >
-            <Zap className="w-5 h-5 text-primary-foreground fill-primary-foreground" strokeWidth={2.5} />
-          </div>
-          <div className="flex flex-col">
-            <span className="text-foreground font-extrabold text-base tracking-tight leading-tight">
-              Arche.fitness
-            </span>
-            <span className="text-[9px] font-bold tracking-[0.18em] text-muted-foreground uppercase font-mono leading-tight">
-              {t('brandManagement')}
-            </span>
-          </div>
+            {isCollapsed ? (
+              <PanelLeftOpen className="w-4 h-4 text-primary" />
+            ) : (
+              <PanelLeftClose className="w-4 h-4" />
+            )}
+          </button>
         </div>
 
         {/* Check In Member Button */}
@@ -100,10 +141,16 @@ export default function Sidebar({
             id="btn-check-in-member"
             type="button"
             onClick={onCheckInClick || (() => setActiveTab('checkin-desk'))}
-            className="w-full bg-primary hover:opacity-90 active:scale-[0.99] text-primary-foreground font-extrabold text-xs py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-primary/20 transition-all cursor-pointer"
+            title={t('checkInMember')}
+            className={cn(
+              'bg-primary hover:opacity-90 active:scale-[0.99] text-primary-foreground font-extrabold rounded-xl flex items-center shadow-lg shadow-primary/20 transition-all cursor-pointer',
+              isCollapsed
+                ? 'w-10 h-10 mx-auto justify-center p-0'
+                : 'w-full text-xs py-3 px-4 justify-center gap-2'
+            )}
           >
-            <UserCheck className="w-4 h-4 text-primary-foreground stroke-[2.5]" />
-            <span>{t('checkInMember')}</span>
+            <UserCheck className="w-4 h-4 text-primary-foreground stroke-[2.5] shrink-0" />
+            {!isCollapsed && <span className="truncate">{t('checkInMember')}</span>}
           </button>
         )}
 
@@ -118,8 +165,12 @@ export default function Sidebar({
                 id={`nav-item-${item.id}`}
                 type="button"
                 onClick={() => setActiveTab(item.id)}
+                title={isCollapsed ? item.label : undefined}
                 className={cn(
-                  'w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer text-left',
+                  'flex items-center rounded-xl text-xs font-semibold transition-all cursor-pointer',
+                  isCollapsed
+                    ? 'w-10 h-10 mx-auto justify-center p-0'
+                    : 'w-full gap-3 px-3.5 py-2.5 text-left',
                   isActive
                     ? 'bg-muted text-primary border border-border shadow-sm'
                     : 'text-muted-foreground hover:text-foreground hover:bg-muted/50 border border-transparent'
@@ -132,7 +183,7 @@ export default function Sidebar({
                   )}
                   strokeWidth={isActive ? 2.2 : 1.8}
                 />
-                <span className="truncate">{item.label}</span>
+                {!isCollapsed && <span className="truncate">{item.label}</span>}
               </button>
             );
           })}
@@ -142,48 +193,83 @@ export default function Sidebar({
       {/* Bottom Section: Language switcher & User Info */}
       <div className="flex flex-col border-t border-border bg-card">
         {/* Language selector in sidebar */}
-        <div className="px-4 py-2.5 flex items-center justify-between border-b border-border/60">
-          <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-            <Globe className="w-3.5 h-3.5 text-primary" />
-            <span className="font-mono uppercase">{t('language')}</span>
-          </div>
+        <div
+          className={cn(
+            'flex items-center border-b border-border/60',
+            isCollapsed ? 'p-2 justify-center' : 'px-4 py-2.5 justify-between'
+          )}
+        >
+          {!isCollapsed && (
+            <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+              <Globe className="w-3.5 h-3.5 text-primary" />
+              <span className="font-mono uppercase">{t('language')}</span>
+            </div>
+          )}
           <div className="flex bg-background border border-border rounded-lg p-0.5">
             <button
               type="button"
-              onClick={() => setLocale('mn')}
+              onClick={() => setLocale(locale === 'mn' ? 'en' : 'mn')}
+              title={t('language')}
               className={cn(
                 'px-2 py-0.5 text-[10px] font-bold rounded font-mono transition-all cursor-pointer',
-                locale === 'mn'
+                isCollapsed
                   ? 'bg-primary text-primary-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
+                  : 'hidden'
               )}
             >
-              MN
+              {locale.toUpperCase()}
             </button>
-            <button
-              type="button"
-              onClick={() => setLocale('en')}
-              className={cn(
-                'px-2 py-0.5 text-[10px] font-bold rounded font-mono transition-all cursor-pointer',
-                locale === 'en'
-                  ? 'bg-primary text-primary-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              EN
-            </button>
+            {!isCollapsed && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setLocale('mn')}
+                  className={cn(
+                    'px-2 py-0.5 text-[10px] font-bold rounded font-mono transition-all cursor-pointer',
+                    locale === 'mn'
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  MN
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLocale('en')}
+                  className={cn(
+                    'px-2 py-0.5 text-[10px] font-bold rounded font-mono transition-all cursor-pointer',
+                    locale === 'en'
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  EN
+                </button>
+              </>
+            )}
           </div>
         </div>
 
         {/* User profile info & role switcher */}
         <div
           id="sidebar-user-footer"
-          className="p-3.5 flex flex-col gap-2.5"
+          className={cn('flex flex-col gap-2.5', isCollapsed ? 'p-2.5 items-center' : 'p-3.5')}
         >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5 overflow-hidden">
+          <div
+            className={cn(
+              'flex items-center',
+              isCollapsed ? 'flex-col gap-2 justify-center' : 'justify-between'
+            )}
+          >
+            <div
+              className={cn(
+                'flex items-center gap-2.5 overflow-hidden',
+                isCollapsed && 'justify-center'
+              )}
+            >
               <div
                 id="user-avatar-badge"
+                title={`${currentUser?.name || (isAdmin ? 'Admin' : 'Staff')} (${isAdmin ? t('admin') : t('staff')})`}
                 className={cn(
                   'w-8 h-8 rounded-full border flex items-center justify-center text-[11px] font-bold shrink-0',
                   isAdmin
@@ -193,27 +279,29 @@ export default function Sidebar({
               >
                 {isAdmin ? 'AD' : 'ST'}
               </div>
-              <div className="flex flex-col min-w-0">
-                <span className="text-xs font-bold text-foreground truncate leading-tight">
-                  {currentUser?.name || (isAdmin ? 'Admin' : 'Staff')}
-                </span>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <span
-                    className={cn(
-                      'w-1.5 h-1.5 rounded-full shrink-0',
-                      isAdmin ? 'bg-primary' : 'bg-sky-400'
-                    )}
-                  />
-                  <span
-                    className={cn(
-                      'text-[10px] font-mono font-bold uppercase tracking-wider',
-                      isAdmin ? 'text-primary' : 'text-sky-400'
-                    )}
-                  >
-                    {isAdmin ? t('admin') : t('staff')}
+              {!isCollapsed && (
+                <div className="flex flex-col min-w-0">
+                  <span className="text-xs font-bold text-foreground truncate leading-tight">
+                    {currentUser?.name || (isAdmin ? 'Admin' : 'Staff')}
                   </span>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span
+                      className={cn(
+                        'w-1.5 h-1.5 rounded-full shrink-0',
+                        isAdmin ? 'bg-primary' : 'bg-sky-400'
+                      )}
+                    />
+                    <span
+                      className={cn(
+                        'text-[10px] font-mono font-bold uppercase tracking-wider',
+                        isAdmin ? 'text-primary' : 'text-sky-400'
+                      )}
+                    >
+                      {isAdmin ? t('admin') : t('staff')}
+                    </span>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
             <button
@@ -221,7 +309,10 @@ export default function Sidebar({
               type="button"
               onClick={onLogout}
               title={t('signOut')}
-              className="p-2 text-muted-foreground hover:text-destructive hover:bg-muted rounded-lg transition-colors cursor-pointer shrink-0"
+              className={cn(
+                'text-muted-foreground hover:text-destructive hover:bg-muted rounded-lg transition-colors cursor-pointer shrink-0',
+                isCollapsed ? 'p-1.5' : 'p-2'
+              )}
             >
               <LogOut className="w-4 h-4" />
             </button>
@@ -229,39 +320,61 @@ export default function Sidebar({
 
           {/* Quick Role Switcher */}
           {onSwitchRole && (
-            <div className="flex items-center justify-between bg-background border border-border rounded-lg p-1">
-              <span className="text-[9px] font-mono text-muted-foreground pl-1.5 flex items-center gap-1">
-                <ArrowLeftRight className="w-2.5 h-2.5" />
-                <span>{t('role')}</span>
-              </span>
-              <div className="flex gap-1">
+            <div
+              className={cn(
+                'flex items-center bg-background border border-border rounded-lg p-1',
+                isCollapsed ? 'flex-col gap-1 w-full' : 'justify-between'
+              )}
+            >
+              {!isCollapsed ? (
+                <>
+                  <span className="text-[9px] font-mono text-muted-foreground pl-1.5 flex items-center gap-1">
+                    <ArrowLeftRight className="w-2.5 h-2.5" />
+                    <span>{t('role')}</span>
+                  </span>
+                  <div className="flex gap-1">
+                    <button
+                      id="btn-switch-role-admin"
+                      type="button"
+                      onClick={() => onSwitchRole('admin')}
+                      className={cn(
+                        'px-2 py-0.5 text-[10px] font-mono font-bold rounded transition-all cursor-pointer',
+                        isAdmin
+                          ? 'bg-primary text-primary-foreground shadow-xs'
+                          : 'text-muted-foreground hover:text-foreground'
+                      )}
+                    >
+                      {t('admin')}
+                    </button>
+                    <button
+                      id="btn-switch-role-staff"
+                      type="button"
+                      onClick={() => onSwitchRole('staff')}
+                      className={cn(
+                        'px-2 py-0.5 text-[10px] font-mono font-bold rounded transition-all cursor-pointer',
+                        !isAdmin
+                          ? 'bg-sky-400 text-black shadow-xs'
+                          : 'text-muted-foreground hover:text-foreground'
+                      )}
+                    >
+                      {t('staff')}
+                    </button>
+                  </div>
+                </>
+              ) : (
                 <button
-                  id="btn-switch-role-admin"
+                  id="btn-switch-role-toggle"
                   type="button"
-                  onClick={() => onSwitchRole('admin')}
+                  onClick={() => onSwitchRole(isAdmin ? 'staff' : 'admin')}
+                  title={`Switch to ${isAdmin ? 'Staff' : 'Admin'}`}
                   className={cn(
-                    'px-2 py-0.5 text-[10px] font-mono font-bold rounded transition-all cursor-pointer',
-                    isAdmin
-                      ? 'bg-primary text-primary-foreground shadow-xs'
-                      : 'text-muted-foreground hover:text-foreground'
+                    'w-full py-0.5 text-[9px] font-mono font-bold rounded text-center transition-all cursor-pointer',
+                    isAdmin ? 'text-primary' : 'text-sky-400'
                   )}
                 >
-                  {t('admin')}
+                  {isAdmin ? 'AD' : 'ST'}
                 </button>
-                <button
-                  id="btn-switch-role-staff"
-                  type="button"
-                  onClick={() => onSwitchRole('staff')}
-                  className={cn(
-                    'px-2 py-0.5 text-[10px] font-mono font-bold rounded transition-all cursor-pointer',
-                    !isAdmin
-                      ? 'bg-sky-400 text-black shadow-xs'
-                      : 'text-muted-foreground hover:text-foreground'
-                  )}
-                >
-                  {t('staff')}
-                </button>
-              </div>
+              )}
             </div>
           )}
         </div>
