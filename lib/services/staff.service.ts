@@ -58,7 +58,7 @@ export function hasStaffPermission(user: AuthUser | undefined | null, permission
       return lower.includes('dir') || lower.includes('member') || lower.includes('ext');
     }
     if (keyLower === 'inventory') {
-      return lower.includes('inv');
+      return false;
     }
     if (keyLower === 'analytics' || keyLower === 'dashboard') {
       return lower.includes('ana') || lower.includes('dash') || lower.includes('stat');

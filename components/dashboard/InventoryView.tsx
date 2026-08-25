@@ -142,6 +142,22 @@ export default function InventoryView({
     }
   };
 
+  if (!isAdmin) {
+    return (
+      <div id="inventory-access-denied" className="w-full py-12 flex flex-col items-center justify-center text-center space-y-4">
+        <div className="w-12 h-12 rounded-2xl bg-muted border border-border flex items-center justify-center text-muted-foreground">
+          <Lock className="w-6 h-6" />
+        </div>
+        <div className="space-y-1">
+          <h2 className="text-lg font-bold text-foreground">{t('adminOnly') || 'Admin Access Only'}</h2>
+          <p className="text-xs text-muted-foreground max-w-sm">
+            {t('inventoryAdminRestricted') || 'Inventory and plan configuration are restricted to Admin accounts.'}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div id="inventory-view-root" className="w-full space-y-6">
       {/* Toast Notification */}

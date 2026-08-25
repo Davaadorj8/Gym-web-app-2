@@ -63,7 +63,7 @@ export default function Sidebar({
   const isAdmin = currentUser?.role === 'admin';
 
   const visibleMenuItems = menuItems.filter((item) => {
-    if (item.id === 'approvals') {
+    if (item.id === 'approvals' || item.id === 'inventory') {
       return isAdmin;
     }
     return hasStaffPermission(currentUser, item.id);
