@@ -7,7 +7,9 @@ export interface InputProps
 }
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ className, type, icon, ...props }, ref) => {
+  ({ className, type, icon, value, ...props }, ref) => {
+    const inputValue = type === 'file' ? undefined : (value ?? '');
+
     if (icon) {
       return (
         <div className="relative flex items-center w-full">
@@ -21,6 +23,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
               className
             )}
             ref={ref}
+            value={inputValue}
             {...props}
           />
         </div>
@@ -35,6 +38,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           className
         )}
         ref={ref}
+        value={inputValue}
         {...props}
       />
     );

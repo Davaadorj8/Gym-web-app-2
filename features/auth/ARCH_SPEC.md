@@ -1,0 +1,36 @@
+# Directory Specification: features/auth
+
+## 1. Architectural Alignment
+- Layer Level: Level 3 (Business Feature)
+- Zachman Framework Cell: Who (Identity & Access) / Owner (Business Concept)
+- Domain Scope: Manages authentication flows, credential verification, session contracts, and auth UI state.
+
+## 2. Dependency Boundaries & Allowed Imports
+**Allowed Imports:**
+- @/components/ui/* (Level 1 Primitives)
+- @/components/* (Level 2 Shared Application Primitives)
+- @/lib/* (Shared Utilities)
+- @/lib/store/* (Typed Redux State)
+- @/lib/actions/* (Safe action wrappers)
+
+**Forbidden Imports:**
+- Internal files of OTHER features (e.g., features/members/actions/*)
+- Direct database instances (prisma or mock client) inside client components
+
+## 3. Public API Exports (index.ts)
+Only items listed below are exported for external consumption:
+- Components: LoginForm
+- Actions: loginAction, logoutAction
+- Schemas: LoginSchema
+- Types: LoginInput, AuthSessionUser
+
+## 4. State & Data Lifecycle
+- Server Data: Handled via NextAuth / Auth.js server actions and session token verification.
+- Client UI State: Form state managed via react-hook-form and Zod validation.
+
+## 5. Data Source Status
+- [x] Mock data layer (default in-memory credentials & Auth.js handlers)
+- [ ] Real Neon Postgres via Prisma (only after user explicitly enables per Section 12)
+
+## 6. Maintenance Log
+- 2026-08-25: Initialized directory specification per Master System Instructions.

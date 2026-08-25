@@ -1,17 +1,23 @@
-import { configureStore } from '@reduxjs/toolkit';
-import { TypedUseSelectorHook, useDispatch, useSelector } from 'react-redux';
-import uiReducer from './uiSlice';
+import { configureStore, combineSlices } from '@reduxjs/toolkit';
+import { TypedUseSelectorHook, useDispatch, useSelector, useStore } from 'react-redux';
+import { uiSlice } from './uiSlice';
 
-export const store = configureStore({
-  reducer: {
-    ui: uiReducer,
-  },
-  devTools: process.env.NODE_ENV !== 'production',
-});
+const rootReducer = combineSlices(uiSlice);
 
-export type RootState = ReturnType<typeof store.getState>;
-export type AppDispatch = typeof store.dispatch;
+export const makeStore = () => {
+  return configureStore({
+    reducer: rootReducer,
+    devTools: process.env.NODE_ENV !== 'production',
+  });
+};
+
+export type AppStore = ReturnType<typeof makeStore>;
+export type RootState = ReturnType<AppStore['getState']>;
+export type AppDispatch = AppStore['dispatch'];
 
 export const useAppDispatch: () => AppDispatch = useDispatch;
 export const useAppSelector: TypedUseSelectorHook<RootState> = useSelector;
+export const useAppStore: () => AppStore = useStore;
+
+export * from './StoreProvider';
 export * from './uiSlice';
