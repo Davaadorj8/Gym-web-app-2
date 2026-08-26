@@ -347,7 +347,7 @@ export const translations: Record<Language, Translations> = {
     // Block 3
     block3Title: '3. BLOCK 3 (DURATION & PRICING)',
     durationMonthsLabel: 'DURATION (MONTHS)',
-    priceUsdLabel: 'PRICE ($ USD)',
+    priceUsdLabel: 'PRICE (₮ MNT)',
     buildSavePlanBtn: '+ Build & Save Plan',
 
     // Active Inventory
@@ -537,7 +537,7 @@ export const translations: Record<Language, Translations> = {
     // Block 3
     block3Title: '3. ХУГАЦАА & ҮНЭ',
     durationMonthsLabel: 'ХУГАЦАА (САРААР)',
-    priceUsdLabel: 'ҮНЭ ($ USD)',
+    priceUsdLabel: 'ҮНЭ (₮ MNT)',
     buildSavePlanBtn: '+ Багц үүсгэж хадгалах',
 
     // Active Inventory

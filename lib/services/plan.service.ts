@@ -7,19 +7,19 @@ export const DEFAULT_PLAN_FALLBACKS: Record<
   over18: {
     titleEn: 'Adult Full Access Pass',
     titleMn: 'Насанд хүрэгчдийн бүрэн эрхт багц',
-    defaultPrice: 100,
+    defaultPrice: 150000,
     defaultMonths: 1,
   },
   under18: {
     titleEn: 'Under 18 Youth Pass',
     titleMn: '18-аас доош насны залуусын багц',
-    defaultPrice: 75,
+    defaultPrice: 100000,
     defaultMonths: 1,
   },
   organization: {
     titleEn: 'Corporate & Group Pass',
     titleMn: 'Байгууллага & хамт олны багц',
-    defaultPrice: 200,
+    defaultPrice: 300000,
     defaultMonths: 1,
   },
 };

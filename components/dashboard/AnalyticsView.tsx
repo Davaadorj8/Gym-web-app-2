@@ -26,6 +26,7 @@ import {
 import { GymMember, CategoryTarget, AuthUser, BuiltPlan } from '@/lib/types';
 import { Card, Badge, Input } from '@/components/ui';
 import { useDashboard } from '@/lib/orchestration';
+import { formatCurrency, CURRENCY_SYMBOL } from '@/lib/utils';
 import {
   calculateTotalMembershipValue,
   calculateWeeklyDistribution,
@@ -166,7 +167,7 @@ export default function AnalyticsView({
             </div>
             <div className="mt-3">
               <h2 className="text-3xl font-extrabold text-foreground tracking-tight">
-                ${totalMembershipValue.toLocaleString()}
+                {formatCurrency(totalMembershipValue)}
               </h2>
               <p className="text-xs font-mono font-bold text-primary mt-1">
                 {t('activeSubscriptions', { count: activeMembersCount })}
@@ -324,7 +325,7 @@ export default function AnalyticsView({
                     tickLine={false}
                     axisLine={{ stroke: 'var(--border)' }}
                     tick={{ fill: 'var(--muted-foreground)', fontSize: 10, fontFamily: 'monospace' }}
-                    tickFormatter={(val) => `$${val}`}
+                    tickFormatter={(val) => formatCurrency(Number(val))}
                   />
                   <Tooltip
                     cursor={{ fill: 'rgba(255, 255, 255, 0.05)' }}
@@ -336,7 +337,7 @@ export default function AnalyticsView({
                       fontFamily: 'monospace',
                       fontSize: '12px',
                     }}
-                    formatter={(value: any) => [`$${value}`, 'Revenue']}
+                    formatter={(value: any) => [formatCurrency(Number(value)), 'Revenue']}
                   />
                   <Bar dataKey="revenue" fill="#38bdf8" radius={[6, 6, 0, 0]} />
                 </BarChart>
@@ -440,7 +441,7 @@ export default function AnalyticsView({
                 <DollarSign className="w-4 h-4 text-purple-400" />
               </div>
               <h3 className="text-2xl font-extrabold text-foreground mt-2">
-                ${totalExtensionRevenue.toLocaleString()}
+                {formatCurrency(totalExtensionRevenue)}
               </h3>
               <p className="text-[11px] font-mono font-bold text-purple-400 mt-0.5">
                 {t('collectedFromExtensions')}
@@ -538,7 +539,7 @@ export default function AnalyticsView({
                 <p className="text-[10px] font-mono text-muted-foreground uppercase">Under 18</p>
                 <p className="text-base font-extrabold text-foreground font-mono mt-0.5">{categoryBreakdown.under18.count}</p>
                 {isAdmin ? (
-                  <p className="text-[10px] font-mono text-emerald-400 font-bold">${categoryBreakdown.under18.revenue}</p>
+                  <p className="text-[10px] font-mono text-emerald-400 font-bold">{formatCurrency(categoryBreakdown.under18.revenue)}</p>
                 ) : (
                   <p className="text-[10px] font-mono text-sky-400 font-bold">
                     {totalExtensionTransactions === 0
@@ -551,7 +552,7 @@ export default function AnalyticsView({
                 <p className="text-[10px] font-mono text-muted-foreground uppercase">Over 18</p>
                 <p className="text-base font-extrabold text-primary font-mono mt-0.5">{categoryBreakdown.over18.count}</p>
                 {isAdmin ? (
-                  <p className="text-[10px] font-mono text-emerald-400 font-bold">${categoryBreakdown.over18.revenue}</p>
+                  <p className="text-[10px] font-mono text-emerald-400 font-bold">{formatCurrency(categoryBreakdown.over18.revenue)}</p>
                 ) : (
                   <p className="text-[10px] font-mono text-sky-400 font-bold">
                     {totalExtensionTransactions === 0
@@ -564,7 +565,7 @@ export default function AnalyticsView({
                 <p className="text-[10px] font-mono text-muted-foreground uppercase">Organization</p>
                 <p className="text-base font-extrabold text-foreground font-mono mt-0.5">{categoryBreakdown.organization.count}</p>
                 {isAdmin ? (
-                  <p className="text-[10px] font-mono text-emerald-400 font-bold">${categoryBreakdown.organization.revenue}</p>
+                  <p className="text-[10px] font-mono text-emerald-400 font-bold">{formatCurrency(categoryBreakdown.organization.revenue)}</p>
                 ) : (
                   <p className="text-[10px] font-mono text-sky-400 font-bold">
                     {totalExtensionTransactions === 0
@@ -758,7 +759,7 @@ export default function AnalyticsView({
                       <td className="py-3 px-4 text-muted-foreground">
                         {isAdmin ? (
                           <>
-                            <span className="text-foreground font-bold mr-1">${log.feePaid}</span>
+                            <span className="text-foreground font-bold mr-1">{formatCurrency(log.feePaid)}</span>
                             <span className="text-muted-foreground text-[11px]">({log.paymentMethod})</span>
                           </>
                         ) : (

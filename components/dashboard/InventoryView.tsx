@@ -24,7 +24,7 @@ import { BuiltPlan, CategoryTarget, AuthUser } from '@/lib/types';
 import { Button, Badge, Toast } from '@/components/ui';
 import { useDashboard } from '@/lib/orchestration';
 import { getDefaultPlanTitle } from '@/lib/services';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency, CURRENCY_SYMBOL } from '@/lib/utils';
 
 export interface NutrientProduct {
   id: string;
@@ -495,13 +495,13 @@ export default function InventoryView({
                     </label>
                     <div className="relative">
                       <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground font-mono text-sm">
-                        $
+                        ₮
                       </span>
                       <input
                         id="input-price-usd"
                         type="number"
                         min="0"
-                        step="1"
+                        step="1000"
                         required
                         value={price}
                         onChange={(e) => setPrice(Number(e.target.value))}
@@ -590,9 +590,8 @@ export default function InventoryView({
                           {t('planPriceLabel') || 'Plan Price:'}
                         </span>
                         <div className="bg-[#070D1E] border border-border/80 rounded-lg px-3 py-1 flex items-center gap-1">
-                          <span className="text-xs text-muted-foreground font-mono">$</span>
                           <span className="text-sm font-extrabold text-[#D4FF00] font-mono">
-                            {plan.price}
+                            {formatCurrency(plan.price)}
                           </span>
                         </div>
                       </div>
@@ -753,8 +752,8 @@ export default function InventoryView({
                         <span className="text-muted-foreground">
                           Stock: <strong className="text-foreground">{item.stock}</strong>
                         </span>
-                        <div className="bg-muted/40 border border-border/60 rounded px-2 py-0.5 text-[#D4FF00] font-bold">
-                          ${item.price}
+                        <div className="bg-muted/40 border border-border/60 rounded px-2 py-0.5 text-[#D4FF00] font-bold font-mono">
+                          {formatCurrency(item.price)}
                         </div>
                       </div>
                     </div>
@@ -839,19 +838,24 @@ export default function InventoryView({
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <label className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase font-mono">
-                    Unit Price ($ USD)
+                    Unit Price (₮ MNT)
                   </label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.5"
-                    required
-                    value={nutrientForm.price}
-                    onChange={(e) =>
-                      setNutrientForm((f) => ({ ...f, price: Number(e.target.value) }))
-                    }
-                    className="w-full bg-[#070D1E] border border-border/80 focus:border-[#D4FF00] text-sm font-mono text-foreground rounded-xl px-3 py-2.5 outline-none"
-                  />
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-mono text-xs">
+                      ₮
+                    </span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="500"
+                      required
+                      value={nutrientForm.price}
+                      onChange={(e) =>
+                        setNutrientForm((f) => ({ ...f, price: Number(e.target.value) }))
+                      }
+                      className="w-full bg-[#070D1E] border border-border/80 focus:border-[#D4FF00] text-sm font-mono text-foreground rounded-xl pl-7 pr-3 py-2.5 outline-none"
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-1.5">

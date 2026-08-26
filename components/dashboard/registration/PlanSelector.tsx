@@ -13,7 +13,7 @@ import {
   Calendar,
   CreditCard,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 import { BuiltPlan, CategoryTarget } from '@/lib/types';
 import { Card, Badge, Button } from '@/components/ui';
 import { RegistrationFormData } from '@/features/registration';
@@ -184,7 +184,7 @@ export function PlanSelector({
 
                   <div className="flex items-center gap-2.5 shrink-0">
                     <span className="text-sm sm:text-base font-extrabold text-primary font-mono">
-                      ${plan.price}
+                      {formatCurrency(plan.price)}
                     </span>
                     {isSelected && (
                       <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center shrink-0">
@@ -296,7 +296,7 @@ export function PlanSelector({
               {durationMultiplier === 1 ? (isMn ? 'Сар' : 'Month') : (isMn ? 'Сар' : 'Months')}):
             </span>
             <span className="text-base font-extrabold text-foreground font-mono">
-              ${calculateRegistrationFee(activePlan, durationMultiplier)}
+              {formatCurrency(calculateRegistrationFee(activePlan, durationMultiplier))}
             </span>
           </div>
         </div>

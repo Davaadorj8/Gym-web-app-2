@@ -31,7 +31,7 @@ export function computeNewExpirationDate(currentExpDateStr?: string, monthsToAdd
 export function calculateExtensionFee(
   plan: BuiltPlan | undefined | null,
   monthsAdded: number,
-  fallbackMonthlyRate: number = 100
+  fallbackMonthlyRate: number = 150000
 ): number {
   if (!plan || !plan.price) {
     return monthsAdded * fallbackMonthlyRate;

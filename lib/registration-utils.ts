@@ -46,10 +46,10 @@ export function generateMemberId(prefix = 'IP', firstName?: string): string {
 export function calculateRegistrationFee(
   plan: BuiltPlan | null | undefined,
   multiplier: number
-): string {
-  if (!plan) return '0.00';
+): number {
+  if (!plan) return 0;
   const monthlyRate = plan.price / (plan.durationMonths || 1);
-  return (monthlyRate * multiplier).toFixed(2);
+  return Math.round(monthlyRate * multiplier);
 }
 
 /**
