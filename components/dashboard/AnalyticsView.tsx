@@ -20,8 +20,9 @@ import {
   Tooltip,
   ResponsiveContainer,
   Cell,
-  PieChart,
-  Pie,
+  AreaChart,
+  Area,
+  CartesianGrid,
 } from 'recharts';
 import { GymMember, CategoryTarget, AuthUser, BuiltPlan } from '@/lib/types';
 import { Card, Badge, Input } from '@/components/ui';
@@ -30,9 +31,9 @@ import { formatCurrency, CURRENCY_SYMBOL } from '@/lib/utils';
 import {
   calculateTotalMembershipValue,
   calculateWeeklyDistribution,
-  calculateRevenueByPlan,
   calculateMembersByPlanTier,
   aggregateExtensionMetrics,
+  calculateHourlyTraffic,
 } from '@/lib/services';
 
 interface AnalyticsViewProps {
@@ -86,9 +87,9 @@ export default function AnalyticsView({
   }, [members]);
 
   // Plan Revenue distribution via domain service
-  const revenueByPlan = useMemo(() => {
-    return calculateRevenueByPlan(members, plans);
-  }, [members, plans]);
+  const hourlyTraffic = useMemo(() => {
+    return calculateHourlyTraffic(members);
+  }, [members]);
 
   // Operational Plan Distribution via domain service
   const membersByPlanTier = useMemo(() => {
@@ -297,79 +298,64 @@ export default function AnalyticsView({
           </div>
         </Card>
 
-        {/* Chart 2: Revenue by Plan or Athletes by Plan Tier */}
+        {/* Chart 2: Hourly Members Traffic */}
         <Card
           id="card-revenue-by-plan"
           className="p-5 shadow-md space-y-4"
         >
           <div>
             <h3 className="text-sm font-bold text-foreground">
-              {isAdmin ? t('revenueByPlanTitle') : t('athletesByPlanTierTitle')}
+              {t('hourlyTrafficTitle', { defaultValue: 'Hourly Members Traffic' })}
             </h3>
             <p className="text-xs text-muted-foreground font-mono mt-0.5">
-              {isAdmin ? t('revenueByPlanSubtitle') : t('athletesByPlanTierSubtitle')}
+              {t('hourlyTrafficSubtitle', { defaultValue: 'Gym floor occupancy trends over 24 hours' })}
             </p>
           </div>
 
           <div className="h-56 w-full pt-4">
             <ResponsiveContainer width="100%" height="100%">
-              {isAdmin ? (
-                <BarChart data={revenueByPlan} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-                  <XAxis
-                    dataKey="plan"
-                    tickLine={false}
-                    axisLine={{ stroke: 'var(--border)' }}
-                    tick={{ fill: 'var(--muted-foreground)', fontSize: 10, fontFamily: 'monospace' }}
-                  />
-                  <YAxis
-                    tickLine={false}
-                    axisLine={{ stroke: 'var(--border)' }}
-                    tick={{ fill: 'var(--muted-foreground)', fontSize: 10, fontFamily: 'monospace' }}
-                    tickFormatter={(val) => formatCurrency(Number(val))}
-                  />
-                  <Tooltip
-                    cursor={{ fill: 'rgba(255, 255, 255, 0.05)' }}
-                    contentStyle={{
-                      backgroundColor: 'var(--card)',
-                      borderColor: 'var(--border)',
-                      borderRadius: '0.75rem',
-                      color: 'var(--foreground)',
-                      fontFamily: 'monospace',
-                      fontSize: '12px',
-                    }}
-                    formatter={(value: any) => [formatCurrency(Number(value)), 'Revenue']}
-                  />
-                  <Bar dataKey="revenue" fill="#38bdf8" radius={[6, 6, 0, 0]} />
-                </BarChart>
-              ) : (
-                <BarChart data={membersByPlanTier} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <XAxis
-                    dataKey="plan"
-                    tickLine={false}
-                    axisLine={{ stroke: 'var(--border)' }}
-                    tick={{ fill: 'var(--muted-foreground)', fontSize: 10, fontFamily: 'monospace' }}
-                  />
-                  <YAxis
-                    allowDecimals={false}
-                    tickLine={false}
-                    axisLine={{ stroke: 'var(--border)' }}
-                    tick={{ fill: 'var(--muted-foreground)', fontSize: 10, fontFamily: 'monospace' }}
-                  />
-                  <Tooltip
-                    cursor={{ fill: 'rgba(255, 255, 255, 0.05)' }}
-                    contentStyle={{
-                      backgroundColor: 'var(--card)',
-                      borderColor: 'var(--border)',
-                      borderRadius: '0.75rem',
-                      color: 'var(--foreground)',
-                      fontFamily: 'monospace',
-                      fontSize: '12px',
-                    }}
-                    formatter={(value: any) => [`${value} Athletes`, 'Enrolled']}
-                  />
-                  <Bar dataKey="count" fill="#38bdf8" radius={[6, 6, 0, 0]} />
-                </BarChart>
-              )}
+              <AreaChart data={hourlyTraffic} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="colorTraffic" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="var(--primary)" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+                <XAxis
+                  dataKey="hour"
+                  tickLine={false}
+                  axisLine={{ stroke: 'var(--border)' }}
+                  tick={{ fill: 'var(--muted-foreground)', fontSize: 10, fontFamily: 'monospace' }}
+                  interval={3}
+                />
+                <YAxis
+                  tickLine={false}
+                  axisLine={{ stroke: 'var(--border)' }}
+                  tick={{ fill: 'var(--muted-foreground)', fontSize: 10, fontFamily: 'monospace' }}
+                  allowDecimals={false}
+                />
+                <Tooltip
+                  cursor={{ stroke: 'var(--primary)', strokeWidth: 1 }}
+                  contentStyle={{
+                    backgroundColor: 'var(--card)',
+                    borderColor: 'var(--border)',
+                    borderRadius: '0.75rem',
+                    color: 'var(--foreground)',
+                    fontFamily: 'monospace',
+                    fontSize: '12px',
+                  }}
+                  formatter={(value: any) => [`${value} Members`, 'Occupancy']}
+                />
+                <Area 
+                  type="monotone" 
+                  dataKey="count" 
+                  stroke="var(--primary)" 
+                  fillOpacity={1} 
+                  fill="url(#colorTraffic)" 
+                  strokeWidth={2}
+                />
+              </AreaChart>
             </ResponsiveContainer>
           </div>
         </Card>

@@ -34,3 +34,4 @@ Only items listed below are exported for external consumption:
 
 ## 6. Maintenance Log
 - 2026-08-25: Initialized directory specification per Master System Instructions.
+- 2026-08-27: Implemented "Clean Dev Mock Approach" for authentication; configured `authorize` bypass in `auth.config.ts` to allow any credentials in development mode, ensuring smooth hydration and session testing on cloud preview domains.

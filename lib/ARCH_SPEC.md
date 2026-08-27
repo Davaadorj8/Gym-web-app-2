@@ -29,3 +29,4 @@
 
 ## 6. Maintenance Log
 - 2026-08-26: Updated pricing calculations and formatting to Mongolian Tugrik (₮ MNT), updated test suites to node environment, verified all unit tests passing.
+- 2026-08-27: Added translation keys for Hourly Members Traffic chart (`hourlyTrafficTitle`, `hourlyTrafficSubtitle`) to `messages.ts` for both English and Mongolian locales.

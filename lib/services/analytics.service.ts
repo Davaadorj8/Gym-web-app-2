@@ -55,6 +55,39 @@ export interface ExtensionMetricsSummary {
   };
 }
 
+export interface HourlyTrafficItem {
+  hour: string;
+  count: number;
+}
+
+/**
+ * Computes hourly member traffic distribution based on check-in times.
+ */
+export function calculateHourlyTraffic(members: GymMember[]): HourlyTrafficItem[] {
+  const hourlyCounts = new Array(24).fill(0);
+
+  members.forEach((m) => {
+    // Generate some mock distribution if real data is sparse
+    // In a real app, we'd use m.lastCheckInTime and maybe a history of check-ins
+    if (m.lastCheckInTime) {
+      try {
+        const parsed = parseISO(m.lastCheckInTime);
+        if (isValid(parsed)) {
+          const hour = parsed.getHours();
+          hourlyCounts[hour] += 1;
+        }
+      } catch {
+        // Ignore parsing errors
+      }
+    }
+  });
+
+  return hourlyCounts.map((count, hour) => ({
+    hour: `${hour.toString().padStart(2, '0')}:00`,
+    count,
+  }));
+}
+
 /**
  * Computes total portfolio value based on actual member plan associations.
  */
