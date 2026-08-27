@@ -41,3 +41,4 @@
 - 2026-08-25: Updated brand title display to Arche.fitness in Sidebar and DashboardShell.
 - 2026-08-27: Replaced "Revenue by Plan" BarChart with "Hourly Members Traffic" AreaChart in AnalyticsView.tsx; integrated new hourly distribution logic from analytics service.
 - 2026-08-27: Merged "Weekly Check-in" and "Hourly Traffic" charts into a single interactive "Traffic Analysis" card with a toggle switch.
+- 2026-08-27: Refactored LockerUsageView.tsx metrics into a single "Locker Status Overview" card with a "Total = Free / Occupied / Out" breakdown; updated locker service and translations accordingly.

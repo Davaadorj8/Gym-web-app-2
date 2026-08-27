@@ -53,6 +53,7 @@ export interface LockerOccupancyMetrics {
   totalLockers: number;
   occupiedCount: number;
   availableCount: number;
+  outOfServiceCount: number;
   occupancyRate: number;
 }
 
@@ -61,16 +62,18 @@ export interface LockerOccupancyMetrics {
  */
 export function calculateOccupancyMetrics(
   totalLockers: number = DEFAULT_LOCKER_CAPACITY,
-  occupiedCount: number
+  occupiedCount: number,
+  outOfServiceCount: number = 0
 ): LockerOccupancyMetrics {
   const effectiveTotal = Math.max(1, totalLockers || DEFAULT_LOCKER_CAPACITY);
-  const availableCount = Math.max(0, effectiveTotal - occupiedCount);
-  const occupancyRate = Math.min(100, Math.round((occupiedCount / effectiveTotal) * 100));
+  const availableCount = Math.max(0, effectiveTotal - occupiedCount - outOfServiceCount);
+  const occupancyRate = Math.min(100, Math.round((occupiedCount / (effectiveTotal - outOfServiceCount)) * 100)) || 0;
 
   return {
     totalLockers: effectiveTotal,
     occupiedCount,
     availableCount,
+    outOfServiceCount,
     occupancyRate,
   };
 }

@@ -50,10 +50,12 @@ export default function LockerUsageView({
   }, [members]);
 
   const metrics = useMemo(() => {
-    return calculateOccupancyMetrics(totalLockers, activeOccupants.length);
+    // For now, we'll assume 5 lockers are "Out of Service" for demo purposes if not specified
+    const outOfServiceCount = 0;
+    return calculateOccupancyMetrics(totalLockers, activeOccupants.length, outOfServiceCount);
   }, [totalLockers, activeOccupants.length]);
 
-  const { occupiedCount, availableCount, occupancyRate, totalLockers: effectiveTotalLockers } = metrics;
+  const { occupiedCount, availableCount, outOfServiceCount, occupancyRate, totalLockers: effectiveTotalLockers } = metrics;
 
   // Filtered Database Logs
   const filteredLogs = useMemo(() => {
@@ -109,106 +111,71 @@ export default function LockerUsageView({
         </div>
       </div>
 
-      {/* 4 Metric Summary Cards */}
-      <div
-        id="locker-metrics-grid"
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
+      {/* Merged Status Card */}
+      <Card
+        id="locker-status-overview"
+        className="p-6 shadow-xl relative overflow-hidden"
       >
-        {/* Metric 1: Occupied Lockers */}
-        <Card
-          id="metric-occupied-lockers"
-          className="p-5 shadow-lg relative overflow-hidden flex flex-col justify-between"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-mono font-bold tracking-wider text-muted-foreground uppercase">
-              {t('currentlyOccupied')}
-            </span>
-            <div className="w-7 h-7 rounded-lg bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400">
-              <Lock className="w-3.5 h-3.5" />
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="space-y-4 flex-1">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/30 flex items-center justify-center text-primary">
+                <Database className="w-5 h-5" />
+              </div>
+              <div className="space-y-0.5">
+                <h3 className="text-sm font-bold text-foreground uppercase tracking-tight">
+                  {t('lockerStatusOverview')}
+                </h3>
+                <p className="text-xs text-muted-foreground font-mono">
+                  {t('lockerStatusBreakdown', {
+                    total: effectiveTotalLockers,
+                    free: availableCount,
+                    occupied: occupiedCount,
+                    out: outOfServiceCount,
+                  })}
+                </p>
+              </div>
             </div>
-          </div>
-          <div className="mt-4">
-            <div className="text-3xl font-extrabold text-foreground font-mono tracking-tight">
-              {occupiedCount}
-            </div>
-            <p className="text-[11px] text-muted-foreground font-mono mt-1">
-              Currently assigned to active gym floor athletes
-            </p>
-          </div>
-        </Card>
 
-        {/* Metric 2: Available Lockers */}
-        <Card
-          id="metric-available-lockers"
-          className="p-5 shadow-lg relative overflow-hidden flex flex-col justify-between"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-mono font-bold tracking-wider text-muted-foreground uppercase">
-              {t('lockersAvailable')}
-            </span>
-            <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-              <Unlock className="w-3.5 h-3.5" />
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-2">
+              <div id="stat-total" className="space-y-1">
+                <span className="text-[10px] font-mono text-muted-foreground uppercase">{t('totalCapacity')}</span>
+                <p className="text-2xl font-black text-foreground font-mono">{effectiveTotalLockers}</p>
+              </div>
+              <div id="stat-free" className="space-y-1">
+                <span className="text-[10px] font-mono text-muted-foreground uppercase">{t('lockersAvailable')}</span>
+                <p className="text-2xl font-black text-emerald-400 font-mono">{availableCount}</p>
+              </div>
+              <div id="stat-occupied" className="space-y-1">
+                <span className="text-[10px] font-mono text-muted-foreground uppercase">{t('currentlyOccupied')}</span>
+                <p className="text-2xl font-black text-sky-400 font-mono">{occupiedCount}</p>
+              </div>
+              <div id="stat-out" className="space-y-1">
+                <span className="text-[10px] font-mono text-muted-foreground uppercase">{t('underService')}</span>
+                <p className="text-2xl font-black text-amber-500 font-mono">{outOfServiceCount}</p>
+              </div>
             </div>
           </div>
-          <div className="mt-4">
-            <div className="text-3xl font-extrabold text-emerald-400 font-mono tracking-tight">
-              {availableCount}
-            </div>
-            <p className="text-[11px] text-muted-foreground font-mono mt-1">
-              Ready for receptionist key issuance ({effectiveTotalLockers} total)
-            </p>
-          </div>
-        </Card>
 
-        {/* Metric 3: Occupancy Rate */}
-        <Card
-          id="metric-occupancy-rate"
-          className="p-5 shadow-lg relative overflow-hidden flex flex-col justify-between"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-mono font-bold tracking-wider text-muted-foreground uppercase">
-              {t('utilizationRate')}
-            </span>
-            <div className="w-7 h-7 rounded-lg bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400">
-              <Clock className="w-3.5 h-3.5" />
+          <div className="w-px h-24 bg-border hidden md:block mx-4" />
+
+          <div className="space-y-4 min-w-[200px]">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-mono text-muted-foreground uppercase">{t('utilizationRate')}</span>
+              <span className="text-sm font-black text-sky-400 font-mono">{occupancyRate}%</span>
             </div>
-          </div>
-          <div className="mt-4 space-y-2">
-            <div className="text-3xl font-extrabold text-sky-400 font-mono tracking-tight">
-              {occupancyRate}%
-            </div>
-            <div className="w-full bg-muted h-1.5 rounded-full overflow-hidden border border-border">
+            <div className="w-full bg-muted h-3 rounded-full overflow-hidden border border-border">
               <div
-                className="bg-sky-400 h-full rounded-full transition-all duration-500"
+                className="bg-sky-400 h-full rounded-full transition-all duration-1000"
                 style={{ width: `${occupancyRate}%` }}
               />
             </div>
-          </div>
-        </Card>
-
-        {/* Metric 4: Total Capacity */}
-        <Card
-          id="metric-total-db-logs"
-          className="p-5 shadow-lg relative overflow-hidden flex flex-col justify-between"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-mono font-bold tracking-wider text-muted-foreground uppercase">
-              {t('totalCapacity')}
-            </span>
-            <div className="w-7 h-7 rounded-lg bg-primary/10 border border-primary/30 flex items-center justify-center text-primary">
-              <Database className="w-3.5 h-3.5" />
-            </div>
-          </div>
-          <div className="mt-4">
-            <div className="text-3xl font-extrabold text-foreground font-mono tracking-tight">
-              {effectiveTotalLockers}
-            </div>
-            <p className="text-[11px] text-muted-foreground font-mono mt-1">
-              Total physical lockers configured
+            <p className="text-[10px] text-muted-foreground font-mono text-right">
+              Based on active key issuance
             </p>
           </div>
-        </Card>
-      </div>
+        </div>
+      </Card>
 
       {/* ================= Current Active Locker Occupants ================= */}
       <Card

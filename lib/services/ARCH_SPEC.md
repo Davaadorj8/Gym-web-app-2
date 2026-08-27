@@ -20,6 +20,7 @@
 - `calculateMembersByPlanTier`
 - `aggregateExtensionMetrics`
 - `calculateHourlyTraffic`
+- `calculateOccupancyMetrics`
 
 ## 4. State & Data Lifecycle
 - Services are pure functions or stateless logic providers that operate on data passed from repositories or components.
@@ -31,3 +32,4 @@
 ## 6. Maintenance Log
 - 2026-08-27: Initialized directory specification.
 - 2026-08-27: Added `calculateHourlyTraffic` to `analytics.service.ts` to compute 24-hour member occupancy distribution from check-in data.
+- 2026-08-27: Updated `calculateOccupancyMetrics` in `locker.service.ts` to support "Out of Service" locker tracking.
