@@ -118,11 +118,9 @@ export function calculateWeeklyDistribution(members: GymMember[]): WeeklyDistrib
           const jsDay = getDay(parsed); // 0 is Sunday, 1 is Monday...
           const dayIndex = (jsDay + 6) % 7; // Convert to Mon=0..Sun=6
           counts[dayIndex] += 1;
-        } else {
-          counts[5] += 1; // Fallback Saturday
         }
       } catch {
-        counts[5] += 1;
+        // Ignore invalid dates
       }
     }
   });

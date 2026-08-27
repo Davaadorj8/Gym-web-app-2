@@ -139,10 +139,10 @@ export default function AnalyticsView({
   }, [members]);
 
   const lockerMetrics = useMemo(() => {
-    const totalLockers = 120;
+    const totalLockers = dashboard.totalLockers;
     const outOfServiceCount = 0;
     return calculateOccupancyMetrics(totalLockers, activeOccupants.length, outOfServiceCount);
-  }, [activeOccupants.length]);
+  }, [dashboard.totalLockers, activeOccupants.length]);
 
   // Filtered Extension Audit Logs
   const filteredAuditLogs = useMemo(() => {
