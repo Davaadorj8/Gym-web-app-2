@@ -42,3 +42,5 @@
 - 2026-08-27: Replaced "Revenue by Plan" BarChart with "Hourly Members Traffic" AreaChart in AnalyticsView.tsx; integrated new hourly distribution logic from analytics service.
 - 2026-08-27: Merged "Weekly Check-in" and "Hourly Traffic" charts into a single interactive "Traffic Analysis" card with a toggle switch.
 - 2026-08-27: Refactored LockerUsageView.tsx metrics into a single "Locker Status Overview" card with a "Total = Free / Occupied / Out" breakdown; updated locker service and translations accordingly.
+- 2026-08-27: Restructured AnalyticsView.tsx into 5 switch tabs (Financial, Operational, Plan (Product), Locker, Members) with dedicated KPI strips, domain visualizations, product catalog table, locker floor status, and searchable extension audit logs. Added full EN/MN i18n support for tab titles and header subtitles.
+- 2026-08-27: Added missing translation keys for English and Mongolian locales under the Analytics namespace (`hourlyTrafficTitle`, `hourlyTrafficSubtitle`, `lockerStatusOverview`, `lockerStatusBreakdown`, `totalCapacity`, `lockersAvailable`, `currentlyOccupied`, `underService`, `utilizationRate`).
