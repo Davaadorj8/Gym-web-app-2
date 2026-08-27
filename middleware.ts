@@ -37,14 +37,7 @@ export default auth(async (req: any) => {
     }
   }
 
-  // 2. Auth.js Route Protection
-  const isProtectedRoute = req.nextUrl.pathname.startsWith("/dashboard");
-  const isLoggedIn = !!req.auth;
-
-  if (isProtectedRoute && !isLoggedIn) {
-    return NextResponse.redirect(new URL("/login", req.nextUrl));
-  }
-
+  // Auth logic is handled by the 'authorized' callback in authConfig
   return NextResponse.next();
 });
 

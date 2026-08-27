@@ -1,19 +1,45 @@
 "use client";
 
 import React, { useState } from "react";
-import { Lock, Mail, Loader2 } from "lucide-react";
+import { Lock, Mail, Loader2, AlertCircle } from "lucide-react";
+import { signIn } from "next-auth/react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { loginWithGitHub } from "../actions";
 
 export function LoginForm() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(searchParams.get("error") || "");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    // UI presentation interaction
-    setTimeout(() => setLoading(false), 800);
+    setError("");
+
+    try {
+      const res = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      });
+
+      if (res?.error) {
+        if (res.error === "CredentialsSignin") {
+          setError("Invalid email or password. (Note: Any credentials work in Development)");
+        } else {
+          setError(res.error);
+        }
+        setLoading(false);
+      } else {
+        window.location.href = "/dashboard";
+      }
+    } catch (err) {
+      setError("An unexpected error occurred. Please try again.");
+      setLoading(false);
+    }
   };
 
   return (
@@ -22,6 +48,13 @@ export function LoginForm() {
         <h2 className="text-2xl font-bold text-white tracking-tight">Welcome Back</h2>
         <p className="text-sm text-zinc-400 mt-1">Sign in to your dashboard to continue</p>
       </div>
+
+      {error && (
+        <div id="login-error-alert" className="mb-6 p-3 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-3 text-red-400 text-sm">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          <p>{error}</p>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
@@ -35,7 +68,7 @@ export function LoginForm() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@example.com"
+              placeholder="any@example.com"
               required
               className="w-full pl-10 pr-4 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-white text-sm focus:outline-none focus:border-amber-500 transition-colors"
             />
