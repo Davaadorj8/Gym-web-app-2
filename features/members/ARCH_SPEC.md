@@ -20,7 +20,7 @@
 
 ## 3. Public API Exports (index.ts)
 Only items listed below are exported for external consumption:
-- Actions: createMemberAction, updateMemberAction, checkInMemberAction, getMembersAction
+- Actions: registerMemberAction
 - Schemas: CanonicalMemberSchema, CreateMemberSchema, MemberStatusSchema, OccupancyStatusSchema, CategoryTargetSchema
 - Types: CanonicalMember, CreateMemberInput, MemberRecord
 
