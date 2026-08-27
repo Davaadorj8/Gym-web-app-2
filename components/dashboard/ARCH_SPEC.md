@@ -40,3 +40,4 @@
 - 2026-08-25: Switched dynamic imports in DashboardShell to direct component imports to eliminate Turbopack runtime chunk loading errors.
 - 2026-08-25: Updated brand title display to Arche.fitness in Sidebar and DashboardShell.
 - 2026-08-27: Replaced "Revenue by Plan" BarChart with "Hourly Members Traffic" AreaChart in AnalyticsView.tsx; integrated new hourly distribution logic from analytics service.
+- 2026-08-27: Merged "Weekly Check-in" and "Hourly Traffic" charts into a single interactive "Traffic Analysis" card with a toggle switch.

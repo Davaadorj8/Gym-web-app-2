@@ -27,7 +27,7 @@ import {
 import { GymMember, CategoryTarget, AuthUser, BuiltPlan } from '@/lib/types';
 import { Card, Badge, Input } from '@/components/ui';
 import { useDashboard } from '@/lib/orchestration';
-import { formatCurrency, CURRENCY_SYMBOL } from '@/lib/utils';
+import { formatCurrency, CURRENCY_SYMBOL, cn } from '@/lib/utils';
 import {
   calculateTotalMembershipValue,
   calculateWeeklyDistribution,
@@ -57,6 +57,7 @@ export default function AnalyticsView({
   const [searchMemberQuery, setSearchMemberQuery] = useState('');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<'all' | 'under18' | 'over18' | 'organization'>('all');
   const [selectedPeriodFilter, setSelectedPeriodFilter] = useState<'all' | '1' | '3' | '6' | '12' | 'other'>('all');
+  const [trafficViewMode, setTrafficViewMode] = useState<'weekly' | 'hourly'>('weekly');
 
   // Domain Calculations via Services
   const totalMembershipValue = useMemo(() => {
@@ -250,113 +251,127 @@ export default function AnalyticsView({
 
       {/* ================= SECTION 2: CHARTS ROW (RECHARTS INTEGRATION) ================= */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Chart 1: Weekly Check-in Distribution */}
+        {/* Chart 1: Traffic Analysis (Merged Weekly & Hourly) */}
         <Card
-          id="card-weekly-checkin-distribution"
-          className="p-5 shadow-md space-y-4"
+          id="card-traffic-analysis"
+          className="p-5 shadow-md space-y-4 lg:col-span-2"
         >
-          <div>
-            <h3 className="text-sm font-bold text-foreground">
-              {t('weeklyCheckInTitle')}
-            </h3>
-            <p className="text-xs text-muted-foreground font-mono mt-0.5">
-              {t('weeklyCheckInSubtitle')}
-            </p>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h3 className="text-sm font-bold text-foreground">
+                {t('trafficAnalysisTitle', { defaultValue: 'Traffic Analysis' })}
+              </h3>
+              <p className="text-xs text-muted-foreground font-mono mt-0.5">
+                {t('trafficAnalysisSubtitle', { defaultValue: 'Interactive trends for weekly activity and hourly occupancy' })}
+              </p>
+            </div>
+            
+            <div className="flex items-center gap-1 bg-muted/50 border border-border p-1 rounded-xl shrink-0 self-start sm:self-center">
+              <button
+                type="button"
+                onClick={() => setTrafficViewMode('weekly')}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg text-[10px] uppercase font-bold tracking-wider transition-all cursor-pointer",
+                  trafficViewMode === 'weekly' 
+                    ? "bg-background text-primary shadow-sm border border-border" 
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {t('weeklyTab', { defaultValue: 'Weekly' })}
+              </button>
+              <button
+                type="button"
+                onClick={() => setTrafficViewMode('hourly')}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg text-[10px] uppercase font-bold tracking-wider transition-all cursor-pointer",
+                  trafficViewMode === 'hourly' 
+                    ? "bg-background text-primary shadow-sm border border-border" 
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {t('hourlyTab', { defaultValue: 'Hourly' })}
+              </button>
+            </div>
           </div>
 
-          <div className="h-56 w-full pt-4">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={weeklyDistribution} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <XAxis
-                  dataKey="day"
-                  tickLine={false}
-                  axisLine={{ stroke: 'var(--border)' }}
-                  tick={{ fill: 'var(--muted-foreground)', fontSize: 11, fontFamily: 'monospace' }}
-                />
-                <YAxis
-                  allowDecimals={false}
-                  tickLine={false}
-                  axisLine={{ stroke: 'var(--border)' }}
-                  tick={{ fill: 'var(--muted-foreground)', fontSize: 11, fontFamily: 'monospace' }}
-                />
-                <Tooltip
-                  cursor={{ fill: 'rgba(255, 255, 255, 0.05)' }}
-                  contentStyle={{
-                    backgroundColor: 'var(--card)',
-                    borderColor: 'var(--border)',
-                    borderRadius: '0.75rem',
-                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-                    color: 'var(--foreground)',
-                    fontFamily: 'monospace',
-                    fontSize: '12px',
-                  }}
-                  formatter={(value: any) => [`${value} Check-ins`, 'Activity']}
-                />
-                <Bar dataKey="count" fill="var(--primary)" radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
-
-        {/* Chart 2: Hourly Members Traffic */}
-        <Card
-          id="card-revenue-by-plan"
-          className="p-5 shadow-md space-y-4"
-        >
-          <div>
-            <h3 className="text-sm font-bold text-foreground">
-              {t('hourlyTrafficTitle', { defaultValue: 'Hourly Members Traffic' })}
-            </h3>
-            <p className="text-xs text-muted-foreground font-mono mt-0.5">
-              {t('hourlyTrafficSubtitle', { defaultValue: 'Gym floor occupancy trends over 24 hours' })}
-            </p>
-          </div>
-
-          <div className="h-56 w-full pt-4">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={hourlyTraffic} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="colorTraffic" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="var(--primary)" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
-                <XAxis
-                  dataKey="hour"
-                  tickLine={false}
-                  axisLine={{ stroke: 'var(--border)' }}
-                  tick={{ fill: 'var(--muted-foreground)', fontSize: 10, fontFamily: 'monospace' }}
-                  interval={3}
-                />
-                <YAxis
-                  tickLine={false}
-                  axisLine={{ stroke: 'var(--border)' }}
-                  tick={{ fill: 'var(--muted-foreground)', fontSize: 10, fontFamily: 'monospace' }}
-                  allowDecimals={false}
-                />
-                <Tooltip
-                  cursor={{ stroke: 'var(--primary)', strokeWidth: 1 }}
-                  contentStyle={{
-                    backgroundColor: 'var(--card)',
-                    borderColor: 'var(--border)',
-                    borderRadius: '0.75rem',
-                    color: 'var(--foreground)',
-                    fontFamily: 'monospace',
-                    fontSize: '12px',
-                  }}
-                  formatter={(value: any) => [`${value} Members`, 'Occupancy']}
-                />
-                <Area 
-                  type="monotone" 
-                  dataKey="count" 
-                  stroke="var(--primary)" 
-                  fillOpacity={1} 
-                  fill="url(#colorTraffic)" 
-                  strokeWidth={2}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+          <div className="mt-4 h-64 w-full">
+            {trafficViewMode === 'weekly' ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={weeklyDistribution} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <XAxis
+                    dataKey="day"
+                    tickLine={false}
+                    axisLine={{ stroke: 'var(--border)' }}
+                    tick={{ fill: 'var(--muted-foreground)', fontSize: 11, fontFamily: 'monospace' }}
+                  />
+                  <YAxis
+                    allowDecimals={false}
+                    tickLine={false}
+                    axisLine={{ stroke: 'var(--border)' }}
+                    tick={{ fill: 'var(--muted-foreground)', fontSize: 11, fontFamily: 'monospace' }}
+                  />
+                  <Tooltip
+                    cursor={{ fill: 'rgba(255, 255, 255, 0.05)' }}
+                    contentStyle={{
+                      backgroundColor: 'var(--card)',
+                      borderColor: 'var(--border)',
+                      borderRadius: '0.75rem',
+                      boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                      color: 'var(--foreground)',
+                      fontFamily: 'monospace',
+                      fontSize: '12px',
+                    }}
+                    formatter={(value: any) => [`${value} Check-ins`, 'Activity']}
+                  />
+                  <Bar dataKey="count" fill="var(--primary)" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={hourlyTraffic} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorTraffic" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="var(--primary)" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+                  <XAxis
+                    dataKey="hour"
+                    tickLine={false}
+                    axisLine={{ stroke: 'var(--border)' }}
+                    tick={{ fill: 'var(--muted-foreground)', fontSize: 10, fontFamily: 'monospace' }}
+                    interval={3}
+                  />
+                  <YAxis
+                    tickLine={false}
+                    axisLine={{ stroke: 'var(--border)' }}
+                    tick={{ fill: 'var(--muted-foreground)', fontSize: 10, fontFamily: 'monospace' }}
+                    allowDecimals={false}
+                  />
+                  <Tooltip
+                    cursor={{ stroke: 'var(--primary)', strokeWidth: 1 }}
+                    contentStyle={{
+                      backgroundColor: 'var(--card)',
+                      borderColor: 'var(--border)',
+                      borderRadius: '0.75rem',
+                      color: 'var(--foreground)',
+                      fontFamily: 'monospace',
+                      fontSize: '12px',
+                    }}
+                    formatter={(value: any) => [`${value} Members`, 'Occupancy']}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="count" 
+                    stroke="var(--primary)" 
+                    fillOpacity={1} 
+                    fill="url(#colorTraffic)" 
+                    strokeWidth={2}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </Card>
       </div>
