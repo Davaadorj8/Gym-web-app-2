@@ -187,7 +187,34 @@ export default function CheckInDeskView({
               icon={<Search className="w-4 h-4" />}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  if (filteredMembers.length === 1) {
+                    const match = filteredMembers[0];
+                    setSelectedMemberId(match.id);
+                    if (match.occupancyStatus === 'Checked In') {
+                      handleCheckOutMember(match);
+                    } else {
+                      handleCheckInMember(match);
+                    }
+                  } else if (filteredMembers.length > 1) {
+                    const exactMatch = filteredMembers.find(
+                      (m) => m.id.toLowerCase() === searchQuery.trim().toLowerCase()
+                    );
+                    if (exactMatch) {
+                      setSelectedMemberId(exactMatch.id);
+                      if (exactMatch.occupancyStatus === 'Checked In') {
+                        handleCheckOutMember(exactMatch);
+                      } else {
+                        handleCheckInMember(exactMatch);
+                      }
+                    }
+                  }
+                }
+              }}
               placeholder={t('searchPlaceholder')}
+              autoFocus
             />
             {searchQuery && (
               <Button
@@ -288,15 +315,23 @@ export default function CheckInDeskView({
 
                       {/* Right: Status Pill & Action Button */}
                       <div className="flex flex-col items-end gap-2 shrink-0">
-                        {isCheckedIn ? (
-                          <Badge variant="success">{member.assignedLocker || 'In Gym'}</Badge>
-                        ) : isExpired ? (
-                          <Badge variant="destructive">Expired</Badge>
-                        ) : isSuspended ? (
-                          <Badge variant="warning">Suspended</Badge>
-                        ) : (
-                          <Badge variant="outline">Offsite</Badge>
-                        )}
+                        <div className="flex gap-1">
+                          {member.status === 'Pending' && (
+                            <Badge variant="warning" className="bg-amber-500/15 text-amber-500 border border-amber-500/30 font-bold uppercase tracking-wider text-[9px]">Payment Due</Badge>
+                          )}
+                          {member.assignedLocker && (
+                            <Badge variant="info" className="bg-blue-500/15 text-blue-400 border border-blue-500/30 font-bold uppercase tracking-wider text-[9px]">Locker {member.assignedLocker}</Badge>
+                          )}
+                          {isCheckedIn ? (
+                            <Badge variant="success">Checked In</Badge>
+                          ) : isExpired ? (
+                            <Badge variant="destructive">Expired</Badge>
+                          ) : isSuspended ? (
+                            <Badge variant="warning">Suspended</Badge>
+                          ) : (
+                            <Badge variant="outline">Offsite</Badge>
+                          )}
+                        </div>
 
                         <div>
                           {isCheckedIn ? (
@@ -308,7 +343,7 @@ export default function CheckInDeskView({
                                 e.stopPropagation();
                                 handleCheckOutMember(member);
                               }}
-                              className="h-8 text-xs"
+                              className="h-8 text-xs font-mono font-bold"
                             >
                               <LogOut className="w-3.5 h-3.5 mr-1" />
                               <span>{t('checkOutBtn')}</span>
@@ -316,17 +351,16 @@ export default function CheckInDeskView({
                           ) : (
                             <Button
                               id={`btn-checkin-${member.id}`}
-                              variant="primary"
+                              variant={isExpired || isSuspended ? "destructive" : "primary"}
                               size="sm"
-                              disabled={isExpired}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleCheckInMember(member);
                               }}
-                              className="h-8 text-xs"
+                              className="h-8 text-xs font-mono font-bold"
                             >
                               <UserCheck className="w-3.5 h-3.5 mr-1 stroke-[2.5]" />
-                              <span>{t('checkInBtn')}</span>
+                              <span>{isExpired || isSuspended ? "Override" : t('checkInBtn')}</span>
                             </Button>
                           )}
                         </div>
@@ -448,14 +482,17 @@ export default function CheckInDeskView({
                 ) : (
                   <Button
                     id="btn-profile-checkin"
-                    variant="primary"
+                    variant={activeMember.status === 'Expired' || activeMember.status === 'Suspended' ? 'destructive' : 'primary'}
                     size="lg"
-                    disabled={activeMember.status === 'Expired'}
                     onClick={() => handleCheckInMember(activeMember)}
                     className="flex-1"
                   >
                     <UserCheck className="w-4 h-4 mr-2 stroke-[2.5]" />
-                    <span>{t('checkInBtn')}</span>
+                    <span>
+                      {activeMember.status === 'Expired' || activeMember.status === 'Suspended'
+                        ? 'Emergency Override'
+                        : t('checkInBtn')}
+                    </span>
                   </Button>
                 )}
               </div>

@@ -92,6 +92,14 @@ export default function AnalyticsView({
   const [searchSalesQuery, setSearchSalesQuery] = useState('');
 
   // Domain Calculations via Services
+  const currentGymOccupancy = useMemo(() => {
+    return members.filter((m) => m.occupancyStatus === 'Checked In').length;
+  }, [members]);
+
+  const totalSupplementsRevenue = useMemo(() => {
+    return (dashboard.nutrientSales || []).reduce((acc, s) => acc + (s.totalPrice || 0), 0);
+  }, [dashboard.nutrientSales]);
+
   const totalMembershipValue = useMemo(() => {
     return calculateTotalMembershipValue(members, plans);
   }, [members, plans]);
@@ -444,6 +452,98 @@ export default function AnalyticsView({
             );
           })}
         </div>
+      </div>
+
+      {/* ================= HIGH-LEVEL METRICS SUMMARY CARDS ================= */}
+      <div id="analytics-summary-cards" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-in fade-in slide-in-from-top-3 duration-300">
+        {/* Card 1: Gym Occupancy */}
+        <Card id="stat-card-occupancy" className="p-5 flex items-center justify-between shadow-lg relative overflow-hidden group hover:border-primary/40 transition-all">
+          <div className="space-y-1.5 z-10">
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+              <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest font-bold">
+                Live Occupancy
+              </span>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-black text-foreground font-mono leading-none">
+                {currentGymOccupancy}
+              </span>
+              <span className="text-xs text-emerald-400 font-mono font-bold">
+                Checked In
+              </span>
+            </div>
+            <p className="text-[10px] text-muted-foreground font-mono">
+              Members currently active on floor
+            </p>
+          </div>
+          <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+            <Activity className="w-5 h-5" />
+          </div>
+        </Card>
+
+        {/* Card 2: Projected Monthly Revenue */}
+        <Card id="stat-card-financials" className="p-5 flex items-center justify-between shadow-lg relative overflow-hidden group hover:border-primary/40 transition-all">
+          <div className="space-y-1.5 z-10">
+            <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest block font-bold">
+              Projected Monthly Value
+            </span>
+            <div className="flex items-baseline gap-1">
+              <span className="text-2xl font-black text-[#D4FF00] font-mono leading-none">
+                {formatCurrency(totalMembershipValue)}
+              </span>
+            </div>
+            <p className="text-[10px] text-muted-foreground font-mono">
+              Active plan tier contracts sum
+            </p>
+          </div>
+          <div className="p-3 rounded-xl bg-[#D4FF00]/10 border border-[#D4FF00]/20 text-[#D4FF00]">
+            <DollarSign className="w-5 h-5" />
+          </div>
+        </Card>
+
+        {/* Card 3: Active Memberships */}
+        <Card id="stat-card-memberships" className="p-5 flex items-center justify-between shadow-lg relative overflow-hidden group hover:border-primary/40 transition-all">
+          <div className="space-y-1.5 z-10">
+            <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest block font-bold">
+              Active Memberships
+            </span>
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-black text-foreground font-mono leading-none">
+                {activeMembersCount}
+              </span>
+              <span className="text-xs text-muted-foreground font-mono">
+                / {members.length} total
+              </span>
+            </div>
+            <p className="text-[10px] text-muted-foreground font-mono">
+              Retention rate is at <strong className="text-sky-400 font-extrabold">{retentionRate}</strong>
+            </p>
+          </div>
+          <div className="p-3 rounded-xl bg-sky-500/10 border border-sky-500/20 text-sky-400">
+            <Users className="w-5 h-5" />
+          </div>
+        </Card>
+
+        {/* Card 4: Supplements Bar Sales */}
+        <Card id="stat-card-bar-sales" className="p-5 flex items-center justify-between shadow-lg relative overflow-hidden group hover:border-primary/40 transition-all">
+          <div className="space-y-1.5 z-10">
+            <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest block font-bold">
+              Supplemental Sales
+            </span>
+            <div className="flex items-baseline gap-1">
+              <span className="text-2xl font-black text-foreground font-mono leading-none">
+                {formatCurrency(totalSupplementsRevenue)}
+              </span>
+            </div>
+            <p className="text-[10px] text-muted-foreground font-mono">
+              Total Shake Bar and snack receipts
+            </p>
+          </div>
+          <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400">
+            <ShoppingBag className="w-5 h-5" />
+          </div>
+        </Card>
       </div>
 
       {/* ================= TAB 1: FINANCIAL ANALYTICS ================= */}

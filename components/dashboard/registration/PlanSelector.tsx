@@ -43,6 +43,9 @@ export function PlanSelector({
   const durationMultiplier = form.watch('durationMultiplier') || 1;
   const paymentMethod = form.watch('paymentMethod');
 
+  // Comparison toggle state for individual registrations
+  const [categoryFilter, setCategoryFilter] = React.useState<'all' | 'under18' | 'over18'>('all');
+
   // Filter plans based on registration mode
   const filteredPlans = useMemo(() => {
     if (registrationType === 'organization') {
@@ -50,6 +53,14 @@ export function PlanSelector({
     }
     return plans.filter((p) => p.categoryTarget !== 'organization');
   }, [plans, registrationType]);
+
+  const displayedPlans = useMemo(() => {
+    if (registrationType === 'organization') {
+      return filteredPlans;
+    }
+    if (categoryFilter === 'all') return filteredPlans;
+    return filteredPlans.filter((p) => p.categoryTarget === categoryFilter);
+  }, [filteredPlans, categoryFilter, registrationType]);
 
   // Ensure effective plan is valid
   const effectivePlanId = useMemo(() => {
@@ -124,7 +135,32 @@ export function PlanSelector({
           {t('sec2Subtitle')}
         </p>
 
-        {filteredPlans.length === 0 ? (
+        {/* Subscription Plan Comparison Toggle (Only for individual registrations) */}
+        {registrationType === 'individual' && (
+          <div className="flex bg-muted/60 border border-border p-1 rounded-xl mb-4 gap-1">
+            {[
+              { id: 'all', label: isMn ? 'Бүх ангилал' : 'All Categories' },
+              { id: 'over18', label: isMn ? 'Насанд хүрэгчид (18+)' : 'Adult (18+)' },
+              { id: 'under18', label: isMn ? 'Хүүхэд (<18)' : 'Youth (<18)' },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setCategoryFilter(tab.id as any)}
+                className={cn(
+                  "flex-1 text-center py-1.5 text-[10px] font-mono font-bold uppercase rounded-lg transition-all",
+                  categoryFilter === tab.id
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {displayedPlans.length === 0 ? (
           <div className="text-center py-6 border border-dashed border-border rounded-xl text-xs text-muted-foreground space-y-2">
             <p>{t('noPlansYet')}</p>
             {onNavigateToInventory && (
@@ -139,13 +175,16 @@ export function PlanSelector({
             )}
           </div>
         ) : (
-          <div className="space-y-3">
-            {filteredPlans.map((plan) => {
+          <div className="grid grid-cols-1 gap-3">
+            {displayedPlans.map((plan) => {
               const isSelected = effectivePlanId === plan.id;
               const displayTitle = isMn && plan.titleMn ? plan.titleMn : plan.title;
               const durationText = `${plan.durationMonths} ${
                 plan.durationMonths === 1 ? 'Month' : 'Months'
               }`;
+
+              // Determine if it is a best value or recommended plan
+              const isRecommended = plan.durationMonths >= 3 || plan.price > 120000;
 
               return (
                 <div
@@ -155,42 +194,63 @@ export function PlanSelector({
                     form.setValue('selectedPlanId', plan.id, { shouldValidate: true })
                   }
                   className={cn(
-                    'p-3.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between',
+                    'p-4 rounded-xl border transition-all cursor-pointer flex flex-col justify-between relative overflow-hidden',
                     isSelected
-                      ? 'bg-muted border-primary shadow-sm ring-1 ring-primary'
-                      : 'bg-input border-border hover:border-border hover:bg-muted/40'
+                      ? 'bg-primary/5 border-primary shadow-md ring-1 ring-primary'
+                      : 'bg-input border-border hover:border-primary/40 hover:bg-muted/40'
                   )}
                 >
-                  <div className="flex flex-col gap-1 min-w-0 pr-2">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <Badge variant={getCategoryBadgeVariant(plan.categoryTarget)}>
-                        {getCategoryBadgeLabel(plan.categoryTarget)}
-                      </Badge>
-                      <span className="text-xs sm:text-sm font-bold text-foreground tracking-wide truncate">
-                        {displayTitle}
-                      </span>
+                  {isRecommended && (
+                    <div className="absolute top-0 right-0 bg-primary text-primary-foreground text-[8px] font-mono font-extrabold px-2.5 py-1 rounded-bl-lg uppercase tracking-wider">
+                      Popular / Best Value
                     </div>
-                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-mono">
-                      <span>
-                        {t('defaultBase')}: {durationText}
+                  )}
+
+                  <div className="flex items-start justify-between">
+                    <div className="flex flex-col gap-1.5 min-w-0 pr-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge variant={getCategoryBadgeVariant(plan.categoryTarget)}>
+                          {getCategoryBadgeLabel(plan.categoryTarget)}
+                        </Badge>
+                        <h4 className="text-sm font-extrabold text-foreground tracking-wide truncate">
+                          {displayTitle}
+                        </h4>
+                      </div>
+
+                      <div className="space-y-1.5 text-xs text-muted-foreground mt-2">
+                        <div className="flex items-center gap-1.5">
+                          <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                          <span>Gym Entry Access: {durationText}</span>
+                        </div>
+                        {plan.specializedLessons && (
+                          <div className="flex items-center gap-1.5">
+                            <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                            <span className="text-primary font-bold truncate max-w-[240px]">
+                              {plan.specializedLessons}
+                            </span>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-1.5">
+                          <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                          <span>Locker Rooms & Shower Access Included</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col items-end gap-1 shrink-0 mt-1">
+                      <span className="text-xl font-extrabold text-primary font-mono tracking-tight">
+                        {formatCurrency(plan.price)}
                       </span>
-                      {plan.specializedLessons && (
-                        <span className="text-primary truncate max-w-[160px]">
-                          • {plan.specializedLessons}
-                        </span>
+                      <span className="text-[9px] text-muted-foreground uppercase font-mono font-bold">
+                        {plan.durationMonths === 1 ? 'Per Mo' : `For ${plan.durationMonths} Mos`}
+                      </span>
+                      
+                      {isSelected && (
+                        <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center shrink-0 mt-2">
+                          <Check className="w-3.5 h-3.5 text-primary-foreground stroke-[3]" />
+                        </div>
                       )}
                     </div>
-                  </div>
-
-                  <div className="flex items-center gap-2.5 shrink-0">
-                    <span className="text-sm sm:text-base font-extrabold text-primary font-mono">
-                      {formatCurrency(plan.price)}
-                    </span>
-                    {isSelected && (
-                      <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center shrink-0">
-                        <Check className="w-3.5 h-3.5 text-primary-foreground stroke-[3]" />
-                      </div>
-                    )}
                   </div>
                 </div>
               );

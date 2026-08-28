@@ -16,6 +16,7 @@ import { GymMember, LockerLog } from '@/lib/types';
 import { Button, Card, Badge, Input, TabsList, type TabItem } from '@/components/ui';
 import { useDashboard } from '@/lib/orchestration';
 import { calculateOccupancyMetrics } from '@/lib/services';
+import { cn } from '@/lib/utils';
 
 interface LockerUsageViewProps {
   members?: GymMember[];
@@ -42,12 +43,36 @@ export default function LockerUsageView({
   const [searchQuery, setSearchQuery] = useState('');
   const [logFilter, setLogFilter] = useState<'all' | 'occupied' | 'returns'>('all');
 
+  // Interactive Locker floor map selection state
+  const [selectedLockerNumber, setSelectedLockerNumber] = useState<string | null>(null);
+
   // Currently active occupants (Checked In members who have an assigned locker)
   const activeOccupants = useMemo(() => {
     return members.filter(
       (m) => m.occupancyStatus === 'Checked In' && m.assignedLocker
     );
   }, [members]);
+
+  // Comprehensive map list of all lockers with their computed statuses
+  const lockerList = useMemo(() => {
+    return Array.from({ length: totalLockers }, (_, i) => {
+      const numStr = String(i + 1).padStart(2, '0');
+      const lockerName = `Locker #${numStr}`;
+      
+      // Check if occupied
+      const occupant = activeOccupants.find(o => o.assignedLocker === lockerName);
+      
+      // Custom status
+      const customStatus = dashboard.lockerStatuses[lockerName] || 'available';
+
+      return {
+        name: lockerName,
+        shortName: `L${numStr}`,
+        occupant,
+        status: occupant ? 'occupied' : customStatus,
+      };
+    });
+  }, [totalLockers, activeOccupants, dashboard.lockerStatuses]);
 
   const metrics = useMemo(() => {
     return calculateOccupancyMetrics(totalLockers, activeOccupants.length, dashboard.lockerStatuses);
@@ -212,6 +237,161 @@ export default function LockerUsageView({
             </p>
           </div>
         </div>
+      </Card>
+
+      {/* ================= Locker Floor Map Visual Grid ================= */}
+      <Card id="card-locker-floor-map" className="p-6 shadow-xl space-y-4">
+        <div className="border-b border-border pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+              <h2 className="text-sm sm:text-base font-extrabold text-foreground uppercase tracking-wider font-mono">
+                Locker Bay Visual Floor Map
+              </h2>
+            </div>
+            <p className="text-xs text-muted-foreground font-mono">
+              Interactive structural grid of locker bays. Select a locker to edit status or view active key assignments.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2 text-[10px] font-mono">
+            <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> Available
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20">
+              <span className="w-1.5 h-1.5 rounded-full bg-sky-400" /> Occupied
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20">
+              <span className="w-1.5 h-1.5 rounded-full bg-purple-400" /> Clean
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-amber-500/10 text-amber-500 border border-amber-500/20">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" /> Repair
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-red-500/10 text-red-400 border border-red-500/20">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-500" /> Key Lost
+            </span>
+          </div>
+        </div>
+
+        {/* The Grid */}
+        <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-2.5">
+          {lockerList.map((locker) => {
+            let statusColor = "bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:border-emerald-500/60";
+            if (locker.status === 'occupied') {
+              statusColor = "bg-sky-500/10 text-sky-400 border-sky-500/30 hover:border-sky-500/60";
+            } else if (locker.status === 'clean') {
+              statusColor = "bg-purple-500/10 text-purple-400 border-purple-500/30 hover:border-purple-500/60";
+            } else if (locker.status === 'repair') {
+              statusColor = "bg-amber-500/10 text-amber-500 border-amber-500/30 hover:border-amber-500/60";
+            } else if (locker.status === 'key_lost') {
+              statusColor = "bg-red-500/10 text-red-400 border-red-500/30 hover:border-red-500/60";
+            } else if (locker.status === 'key_not_returned') {
+              statusColor = "bg-rose-500/10 text-rose-400 border-rose-500/30 hover:border-rose-500/60";
+            } else if (locker.status === 'inactive') {
+              statusColor = "bg-zinc-500/10 text-zinc-400 border-zinc-500/30 hover:border-zinc-500/60";
+            }
+
+            return (
+              <button
+                key={locker.name}
+                type="button"
+                onClick={() => setSelectedLockerNumber(locker.name)}
+                className={cn(
+                  "aspect-square p-2 border-2 rounded-xl flex flex-col items-center justify-between text-center transition-all cursor-pointer font-mono shadow-sm",
+                  statusColor,
+                  selectedLockerNumber === locker.name ? "ring-2 ring-primary scale-105" : ""
+                )}
+              >
+                <span className="text-[10px] font-bold text-muted-foreground uppercase">{locker.shortName}</span>
+                {locker.status === 'occupied' ? (
+                  <Lock className="w-4 h-4 text-sky-400" />
+                ) : locker.status === 'repair' ? (
+                  <Lock className="w-4 h-4 text-amber-500" />
+                ) : (
+                  <Unlock className="w-4 h-4" />
+                )}
+                <span className="text-[8px] font-extrabold uppercase tracking-widest leading-none truncate max-w-full">
+                  {locker.status === 'key_not_returned' ? 'Overdue' : locker.status}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Selected Locker Quick Control Panel */}
+        {selectedLockerNumber && (() => {
+          const selectedLockerObj = lockerList.find(l => l.name === selectedLockerNumber);
+          if (!selectedLockerObj) return null;
+
+          return (
+            <div className="bg-muted/40 border border-border p-4 rounded-xl space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-extrabold text-foreground font-mono uppercase tracking-wider">
+                    Quick Control: {selectedLockerNumber}
+                  </h3>
+                  <p className="text-[11px] text-muted-foreground font-mono">
+                    Current Status: <strong className="text-primary uppercase">{selectedLockerObj.status}</strong>
+                  </p>
+                </div>
+                <Button
+                  id="btn-close-locker-controls"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedLockerNumber(null)}
+                  className="h-7 text-xs"
+                >
+                  Close Controls
+                </Button>
+              </div>
+
+              {selectedLockerObj.occupant && (
+                <div className="bg-background border border-border p-3.5 rounded-xl flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400">
+                      <User className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-foreground">
+                        {selectedLockerObj.occupant.firstName} {selectedLockerObj.occupant.lastName}
+                      </h4>
+                      <p className="text-[10px] text-muted-foreground font-mono">
+                        Checked In at {selectedLockerObj.occupant.lastCheckInTime || 'Just now'}
+                      </p>
+                    </div>
+                  </div>
+                  <Badge variant="primary" className="font-mono">Active Occupant</Badge>
+                </div>
+              )}
+
+              <div className="flex flex-wrap gap-2 pt-1">
+                <span className="text-[10px] text-muted-foreground font-mono font-bold block w-full mb-1 uppercase">Set Custom Locker Status:</span>
+                {[
+                  { label: 'Available', value: 'available' as any },
+                  { label: 'Needs Clean', value: 'clean' as any },
+                  { label: 'Needs Repair', value: 'repair' as any },
+                  { label: 'Key Lost', value: 'key_lost' as any },
+                  { label: 'Key Overdue', value: 'key_not_returned' as any },
+                  { label: 'Set Inactive', value: 'inactive' as any },
+                ].map((act) => (
+                  <Button
+                    key={act.label}
+                    type="button"
+                    variant={selectedLockerObj.status === act.value ? 'primary' : 'outline'}
+                    size="sm"
+                    disabled={selectedLockerObj.status === 'occupied' && act.value !== 'available'}
+                    onClick={() => {
+                      dashboard.updateLockerStatus(selectedLockerNumber, act.value);
+                    }}
+                    className="h-8 text-xs font-mono font-bold"
+                  >
+                    {act.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
       </Card>
 
       {/* ================= Current Active Locker Occupants ================= */}

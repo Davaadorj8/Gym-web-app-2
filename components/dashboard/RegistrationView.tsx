@@ -132,6 +132,68 @@ export default function RegistrationView({
 
   return (
     <div id="registration-view-root" className="w-full text-foreground space-y-6">
+      {/* 3-Step Progress Indicator / Stepper */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-muted/40 border border-border/60 p-4 rounded-xl">
+        {[
+          {
+            stepNum: 1,
+            label: registrationType === 'individual' ? t('sec1Title') : t('sec1TitleOrg'),
+            isActive: true,
+            isDone: registrationType === 'individual'
+              ? !!(form.watch('member.firstName') && form.watch('member.lastName') && form.watch('member.email'))
+              : !!(form.watch('orgName') && form.watch('orgLeadName')),
+            desc: registrationType === 'individual' ? 'Athlete Profile' : 'Organization Hub',
+          },
+          {
+            stepNum: 2,
+            label: t('sec2Title'),
+            isActive: !!form.watch('selectedPlanId'),
+            isDone: !!form.watch('selectedPlanId'),
+            desc: 'Plan & Payment Method',
+          },
+          {
+            stepNum: 3,
+            label: '3. CAPTURE PHOTO',
+            isActive: !!form.watch('selectedPlanId'),
+            isDone: registrationType === 'individual'
+              ? !!form.watch('member.photo')
+              : (form.watch('orgMembers') || []).length > 0,
+            desc: 'Visual Verification Key',
+          },
+        ].map((step, idx) => (
+          <div
+            key={idx}
+            className={`flex items-start gap-3 p-3 rounded-lg border transition-all ${
+              step.isDone
+                ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-400'
+                : step.isActive
+                ? 'bg-primary/5 border-primary/20 text-primary'
+                : 'bg-background/20 border-border/40 text-muted-foreground'
+            }`}
+          >
+            <div
+              className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold font-mono shrink-0 ${
+                step.isDone
+                  ? 'bg-emerald-500 text-white shadow-md'
+                  : step.isActive
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'bg-muted text-muted-foreground border border-border'
+              }`}
+            >
+              {step.isDone ? '✓' : step.stepNum}
+            </div>
+            <div className="min-w-0">
+              <span className="block text-[11px] font-extrabold uppercase tracking-wider font-mono truncate">
+                {step.label.replace(/^\d+\.\s*/, '')}
+              </span>
+              <span className="block text-[10px] text-muted-foreground font-mono truncate mt-0.5">
+                {step.desc}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+
       <Form {...form}>
         <form
           onSubmit={form.handleSubmit(onSubmit)}
