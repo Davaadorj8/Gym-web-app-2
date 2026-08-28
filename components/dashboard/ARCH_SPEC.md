@@ -54,3 +54,4 @@
 - 2026-08-28: Optimized LockerUsageView with high-contrast `amber-400` status color mapping for legend badges, grid cells, and icons to meet WCAG AA standards.
 - 2026-08-28: Configured DashboardShell with active boundary resize listeners to auto-collapse the sidebar on tablet ranges (768px - 1024px) only on transition, preserving manual expansion preferences.
 - 2026-08-28: Redesigned the registration progress bar (`registration-stages-progress`) into a sticky, high-density, glassmorphic 4-stage stepper; cleared default payment pre-selection to enforce manual choice.
+- 2026-08-28: Integrated a beautiful, intuitive tab switcher into the staff core actions panel (`card-register-staff-form`), with Tab 1 for "Register New Staff Member" and Tab 2 for interactive "Notifications & Approval Requests" complete with live count badges, yes/no approvals, and system compliance logs.
