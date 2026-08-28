@@ -168,11 +168,12 @@ export default function RegistrationView({
               type="submit"
               variant="primary"
               size="lg"
-              disabled={isSubmitting || !form.formState.isValid}
+              loading={isSubmitting}
+              disabled={!form.formState.isValid}
               className="w-full h-12 text-sm shadow-xl shadow-primary/20"
             >
               <ShieldCheck className="w-4 h-4 mr-2 stroke-[2.5]" />
-              <span>{isSubmitting ? t('registeringState') : t('confirmRegisterBtn')}</span>
+              <span>{t('confirmRegisterBtn')}</span>
             </Button>
           </div>
         </form>
