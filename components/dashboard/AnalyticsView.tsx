@@ -85,10 +85,11 @@ export default function AnalyticsView({
   const [financialChartMode, setFinancialChartMode] = useState<'category' | 'period'>('category');
 
   // Nutrient Analytics Switchable Chart & Filter State
-  const [nutrientChartMode, setNutrientChartMode] = useState<'category' | 'valuation' | 'status' | 'expiry'>('category');
+  const [nutrientChartMode, setNutrientChartMode] = useState<'category' | 'valuation' | 'sales' | 'status' | 'expiry'>('category');
   const [searchNutrientQuery, setSearchNutrientQuery] = useState('');
   const [selectedNutrientCategoryFilter, setSelectedNutrientCategoryFilter] = useState<string>('all');
   const [selectedNutrientStatusFilter, setSelectedNutrientStatusFilter] = useState<'all' | 'in_stock' | 'low_stock' | 'out_of_stock' | 'expiring_soon' | 'expired'>('all');
+  const [searchSalesQuery, setSearchSalesQuery] = useState('');
 
   // Domain Calculations via Services
   const totalMembershipValue = useMemo(() => {
@@ -220,6 +221,7 @@ export default function AnalyticsView({
 
   // Nutrient Inventory Metrics & Chart Data
   const nutrients = dashboard.nutrients;
+  const nutrientSales = dashboard.nutrientSales || [];
 
   const nutrientMetrics = useMemo(() => {
     const totalProducts = nutrients.length;
@@ -228,6 +230,11 @@ export default function AnalyticsView({
     const lowStockCount = nutrients.filter((n) => n.stock > 0 && n.stock <= 5).length;
     const outOfStockCount = nutrients.filter((n) => n.stock === 0).length;
     const inStockCount = nutrients.filter((n) => n.stock > 5).length;
+
+    // Historical sales calculations (unit prices locked at sale time)
+    const totalSalesCount = nutrientSales.length;
+    const totalUnitsSold = nutrientSales.reduce((acc, s) => acc + s.quantity, 0);
+    const totalSalesRevenue = nutrientSales.reduce((acc, s) => acc + s.totalPrice, 0);
 
     let expiredCount = 0;
     let expiringSoonCount = 0;
@@ -240,30 +247,68 @@ export default function AnalyticsView({
       else if (st === 'fresh') freshCount++;
     });
 
-    const categoryMap: Record<string, { count: number; stock: number; totalValue: number }> = {
-      Supplements: { count: 0, stock: 0, totalValue: 0 },
-      Shakes: { count: 0, stock: 0, totalValue: 0 },
-      Beverages: { count: 0, stock: 0, totalValue: 0 },
-      Snacks: { count: 0, stock: 0, totalValue: 0 },
-      Vitamins: { count: 0, stock: 0, totalValue: 0 },
+    const categoryMap: Record<string, { count: number; stock: number; totalValue: number; salesRevenue: number }> = {
+      Supplements: { count: 0, stock: 0, totalValue: 0, salesRevenue: 0 },
+      Shakes: { count: 0, stock: 0, totalValue: 0, salesRevenue: 0 },
+      Beverages: { count: 0, stock: 0, totalValue: 0, salesRevenue: 0 },
+      Snacks: { count: 0, stock: 0, totalValue: 0, salesRevenue: 0 },
+      Vitamins: { count: 0, stock: 0, totalValue: 0, salesRevenue: 0 },
     };
 
     nutrients.forEach((n) => {
       const cat = n.category || 'Supplements';
       if (!categoryMap[cat]) {
-        categoryMap[cat] = { count: 0, stock: 0, totalValue: 0 };
+        categoryMap[cat] = { count: 0, stock: 0, totalValue: 0, salesRevenue: 0 };
       }
       categoryMap[cat].count += 1;
       categoryMap[cat].stock += n.stock || 0;
       categoryMap[cat].totalValue += (n.price || 0) * (n.stock || 0);
     });
 
+    nutrientSales.forEach((s) => {
+      const cat = s.category || 'Supplements';
+      if (!categoryMap[cat]) {
+        categoryMap[cat] = { count: 0, stock: 0, totalValue: 0, salesRevenue: 0 };
+      }
+      categoryMap[cat].salesRevenue += s.totalPrice || 0;
+    });
+
     const categoryChartData = [
-      { name: 'Supplements', stock: categoryMap['Supplements']?.stock || 0, totalValue: categoryMap['Supplements']?.totalValue || 0, fill: '#3b82f6' },
-      { name: 'Shakes', stock: categoryMap['Shakes']?.stock || 0, totalValue: categoryMap['Shakes']?.totalValue || 0, fill: '#10b981' },
-      { name: 'Beverages', stock: categoryMap['Beverages']?.stock || 0, totalValue: categoryMap['Beverages']?.totalValue || 0, fill: '#38bdf8' },
-      { name: 'Snacks', stock: categoryMap['Snacks']?.stock || 0, totalValue: categoryMap['Snacks']?.totalValue || 0, fill: '#f59e0b' },
-      { name: 'Vitamins', stock: categoryMap['Vitamins']?.stock || 0, totalValue: categoryMap['Vitamins']?.totalValue || 0, fill: '#a78bfa' },
+      {
+        name: 'Supplements',
+        stock: categoryMap['Supplements']?.stock || 0,
+        totalValue: categoryMap['Supplements']?.totalValue || 0,
+        salesRevenue: categoryMap['Supplements']?.salesRevenue || 0,
+        fill: '#3b82f6',
+      },
+      {
+        name: 'Shakes',
+        stock: categoryMap['Shakes']?.stock || 0,
+        totalValue: categoryMap['Shakes']?.totalValue || 0,
+        salesRevenue: categoryMap['Shakes']?.salesRevenue || 0,
+        fill: '#10b981',
+      },
+      {
+        name: 'Beverages',
+        stock: categoryMap['Beverages']?.stock || 0,
+        totalValue: categoryMap['Beverages']?.totalValue || 0,
+        salesRevenue: categoryMap['Beverages']?.salesRevenue || 0,
+        fill: '#38bdf8',
+      },
+      {
+        name: 'Snacks',
+        stock: categoryMap['Snacks']?.stock || 0,
+        totalValue: categoryMap['Snacks']?.totalValue || 0,
+        salesRevenue: categoryMap['Snacks']?.salesRevenue || 0,
+        fill: '#f59e0b',
+      },
+      {
+        name: 'Vitamins',
+        stock: categoryMap['Vitamins']?.stock || 0,
+        totalValue: categoryMap['Vitamins']?.totalValue || 0,
+        salesRevenue: categoryMap['Vitamins']?.salesRevenue || 0,
+        fill: '#a78bfa',
+      },
     ];
 
     const statusChartData = [
@@ -282,6 +327,9 @@ export default function AnalyticsView({
       totalProducts,
       totalStock,
       totalValue,
+      totalSalesCount,
+      totalUnitsSold,
+      totalSalesRevenue,
       inStockCount,
       lowStockCount,
       outOfStockCount,
@@ -293,7 +341,7 @@ export default function AnalyticsView({
       statusChartData,
       expiryChartData,
     };
-  }, [nutrients]);
+  }, [nutrients, nutrientSales]);
 
   const filteredNutrientList = useMemo(() => {
     return nutrients.filter((n) => {
@@ -323,6 +371,21 @@ export default function AnalyticsView({
       return matchesSearch && matchesCat && matchesStatus;
     });
   }, [nutrients, searchNutrientQuery, selectedNutrientCategoryFilter, selectedNutrientStatusFilter]);
+
+  const filteredSalesLogs = useMemo(() => {
+    return (dashboard.nutrientSales || []).filter((s) => {
+      const q = searchSalesQuery.toLowerCase();
+      const buyer = (s.buyerName || s.memberName || '').toLowerCase();
+      const staff = (s.staffName || s.staffLogged || '').toLowerCase();
+      return (
+        s.productName.toLowerCase().includes(q) ||
+        buyer.includes(q) ||
+        staff.includes(q) ||
+        (s.paymentMethod && s.paymentMethod.toLowerCase().includes(q)) ||
+        s.category.toLowerCase().includes(q)
+      );
+    });
+  }, [dashboard.nutrientSales, searchSalesQuery]);
 
   const tabs: { id: AnalyticsTab; label: string; icon: React.ElementType }[] = [
     { id: 'financial', label: t.has('tabFinancial') ? t('tabFinancial') : 'Financial', icon: DollarSign },
@@ -891,7 +954,7 @@ export default function AnalyticsView({
       {activeTab === 'nutrients' && (
         <div className="space-y-6">
           {/* Nutrient KPI Strip */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             <Card id="metric-nutrient-products" className="p-4 relative overflow-hidden shadow-sm">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-mono font-bold uppercase text-muted-foreground">
@@ -911,7 +974,7 @@ export default function AnalyticsView({
                 <Package className="w-4 h-4 text-sky-400" />
               </div>
               <h3 className="text-2xl font-extrabold text-foreground mt-2">{nutrientMetrics.totalStock} units</h3>
-              <p className="text-[11px] font-mono text-sky-400 mt-0.5">Available across categories</p>
+              <p className="text-[11px] font-mono text-sky-400 mt-0.5">Available in warehouse</p>
             </Card>
 
             <Card id="metric-nutrient-valuation" className="p-4 relative overflow-hidden shadow-sm">
@@ -922,13 +985,26 @@ export default function AnalyticsView({
                 <DollarSign className="w-4 h-4 text-emerald-400" />
               </div>
               <h3 className="text-2xl font-extrabold text-foreground mt-2">{formatCurrency(nutrientMetrics.totalValue)}</h3>
-              <p className="text-[11px] font-mono text-emerald-400 mt-0.5">Potential retail revenue</p>
+              <p className="text-[11px] font-mono text-emerald-400 mt-0.5">Current stock valuation</p>
+            </Card>
+
+            <Card id="metric-nutrient-sales" className="p-4 relative overflow-hidden shadow-sm border border-emerald-500/30 bg-emerald-500/5">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono font-bold uppercase text-emerald-400">
+                  Historical Sales Revenue
+                </span>
+                <DollarSign className="w-4 h-4 text-emerald-400" />
+              </div>
+              <h3 className="text-2xl font-extrabold text-emerald-400 mt-2">{formatCurrency(nutrientMetrics.totalSalesRevenue)}</h3>
+              <p className="text-[11px] font-mono text-emerald-300 mt-0.5">
+                {nutrientMetrics.totalUnitsSold} units ({nutrientMetrics.totalSalesCount} sales)
+              </p>
             </Card>
 
             <Card id="metric-nutrient-health" className="p-4 relative overflow-hidden shadow-sm">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-mono font-bold uppercase text-muted-foreground">
-                  Stock & Expiry Health
+                  Stock & Expiry Risk
                 </span>
                 <AlertTriangle className="w-4 h-4 text-amber-400" />
               </div>
@@ -937,7 +1013,7 @@ export default function AnalyticsView({
               </h3>
               <p className="text-[11px] font-mono text-amber-400 mt-0.5">
                 {nutrientMetrics.expiredCount > 0 ? `${nutrientMetrics.expiredCount} Expired • ` : ''}
-                {nutrientMetrics.expiringSoonCount} Expiring Soon • {nutrientMetrics.lowStockCount} Low Stock • {nutrientMetrics.outOfStockCount} Out
+                {nutrientMetrics.expiringSoonCount} Expiring Soon • {nutrientMetrics.lowStockCount} Low Stock
               </p>
             </Card>
           </div>
@@ -952,6 +1028,8 @@ export default function AnalyticsView({
                     ? 'Nutrient Stock Units by Category'
                     : nutrientChartMode === 'valuation'
                     ? 'Inventory Value by Category (₮ MNT)'
+                    : nutrientChartMode === 'sales'
+                    ? 'Historical Sales Revenue by Category (Locked Unit Prices)'
                     : nutrientChartMode === 'expiry'
                     ? 'Product Expiry Risk Distribution'
                     : 'Stock Health Distribution'}
@@ -961,6 +1039,8 @@ export default function AnalyticsView({
                     ? 'Supplements • Shakes • Beverages • Snacks • Vitamins'
                     : nutrientChartMode === 'valuation'
                     ? 'Total inventory asset valuation per product category'
+                    : nutrientChartMode === 'sales'
+                    ? 'Total sales revenue recorded with price locked at sale time'
                     : nutrientChartMode === 'expiry'
                     ? 'Fresh / Good • Expiring Soon (<30 days) • Expired'
                     : 'In Stock (>5 units) • Low Stock (1-5 units) • Out of Stock (0 units)'}
@@ -994,6 +1074,19 @@ export default function AnalyticsView({
                   )}
                 >
                   Asset Valuation
+                </button>
+                <button
+                  type="button"
+                  id="btn-switch-nutrient-sales"
+                  onClick={() => setNutrientChartMode('sales')}
+                  className={cn(
+                    'px-3 py-1.5 rounded-lg text-xs font-bold font-mono transition-all cursor-pointer',
+                    nutrientChartMode === 'sales'
+                      ? 'bg-background text-emerald-400 shadow-sm border border-emerald-500/30'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  Sales Revenue
                 </button>
                 <button
                   type="button"
@@ -1079,7 +1172,7 @@ export default function AnalyticsView({
                       tickLine={false}
                       axisLine={{ stroke: 'var(--border)' }}
                       tick={{ fill: 'var(--muted-foreground)', fontSize: 11, fontFamily: 'monospace' }}
-                      tickFormatter={(val) => (nutrientChartMode === 'valuation' ? `${(val / 1000000).toFixed(1)}M` : val)}
+                      tickFormatter={(val) => (nutrientChartMode === 'valuation' || nutrientChartMode === 'sales' ? `${(val / 1000000).toFixed(1)}M` : val)}
                     />
                     <Tooltip
                       cursor={{ fill: 'rgba(255, 255, 255, 0.05)' }}
@@ -1092,12 +1185,12 @@ export default function AnalyticsView({
                         fontSize: '12px',
                       }}
                       formatter={(val: any) => [
-                        nutrientChartMode === 'valuation' ? formatCurrency(val) : `${val} Units`,
-                        nutrientChartMode === 'valuation' ? 'Total Value' : 'Stock Units',
+                        nutrientChartMode === 'valuation' || nutrientChartMode === 'sales' ? formatCurrency(val) : `${val} Units`,
+                        nutrientChartMode === 'valuation' ? 'Total Asset Value' : nutrientChartMode === 'sales' ? 'Historical Sales Revenue' : 'Stock Units',
                       ]}
                     />
                     <Bar
-                      dataKey={nutrientChartMode === 'valuation' ? 'totalValue' : 'stock'}
+                      dataKey={nutrientChartMode === 'valuation' ? 'totalValue' : nutrientChartMode === 'sales' ? 'salesRevenue' : 'stock'}
                       radius={[6, 6, 0, 0]}
                     >
                       {nutrientMetrics.categoryChartData.map((entry, idx) => (
@@ -1115,7 +1208,7 @@ export default function AnalyticsView({
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-primary" />
-                <h3 className="text-sm font-bold text-foreground">Nutrient Inventory Breakdown</h3>
+                <h3 className="text-sm font-bold text-foreground">Nutrient Product Metrics & Revenue Breakdown</h3>
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
@@ -1161,18 +1254,19 @@ export default function AnalyticsView({
                   <tr className="bg-muted text-muted-foreground text-[10px] uppercase font-bold border-b border-border">
                     <th className="py-3 px-4">PRODUCT NAME</th>
                     <th className="py-3 px-4">CATEGORY</th>
-                    <th className="py-3 px-4">FLAVOR / VARIANT</th>
-                    <th className="py-3 px-4">BEST BEFORE DATE</th>
+                    <th className="py-3 px-4">BEST BEFORE</th>
                     <th className="py-3 px-4">UNIT PRICE</th>
+                    <th className="py-3 px-4">UNITS SOLD</th>
+                    <th className="py-3 px-4">HISTORICAL REVENUE</th>
                     <th className="py-3 px-4">CURRENT STOCK</th>
-                    <th className="py-3 px-4">TOTAL ASSET VALUE</th>
+                    <th className="py-3 px-4">ASSET VALUE</th>
                     <th className="py-3 px-4 text-right">STATUS & RISK</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {filteredNutrientList.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="py-8 text-center text-muted-foreground font-mono">
+                      <td colSpan={9} className="py-8 text-center text-muted-foreground font-mono">
                         No nutrient items found in inventory matching filter criteria.
                       </td>
                     </tr>
@@ -1183,13 +1277,22 @@ export default function AnalyticsView({
                       const isOut = item.stock === 0;
                       const expStatus = getNutrientExpiryStatus(item.bestBeforeDate);
 
+                      // Product specific historical sales derived from nutrientSales
+                      const productSales = nutrientSales.filter((s) => s.productId === item.id);
+                      const productUnitsSold = productSales.reduce((acc, s) => acc + s.quantity, 0);
+                      const productSalesRevenue = productSales.reduce((acc, s) => acc + s.totalPrice, 0);
+
                       return (
                         <tr key={item.id} className="hover:bg-muted/40 transition-colors">
-                          <td className="py-3 px-4 font-bold text-foreground">{item.name}</td>
+                          <td className="py-3 px-4">
+                            <div className="font-bold text-foreground">{item.name}</div>
+                            {item.flavor && (
+                              <div className="text-[10px] text-muted-foreground">{item.flavor}</div>
+                            )}
+                          </td>
                           <td className="py-3 px-4">
                             <Badge variant="info">{item.category}</Badge>
                           </td>
-                          <td className="py-3 px-4 text-muted-foreground">{item.flavor || '—'}</td>
                           <td className="py-3 px-4 font-mono text-xs">
                             {item.bestBeforeDate ? (
                               <span className={cn(
@@ -1201,7 +1304,13 @@ export default function AnalyticsView({
                               <span className="text-muted-foreground/60">—</span>
                             )}
                           </td>
-                          <td className="py-3 px-4 font-bold text-emerald-400">{formatCurrency(item.price)}</td>
+                          <td className="py-3 px-4 font-bold text-foreground">{formatCurrency(item.price)}</td>
+                          <td className="py-3 px-4 font-bold text-sky-400">
+                            {productUnitsSold} units
+                          </td>
+                          <td className="py-3 px-4 font-bold text-emerald-400">
+                            {formatCurrency(productSalesRevenue)}
+                          </td>
                           <td className="py-3 px-4 font-bold text-foreground">{item.stock} units</td>
                           <td className="py-3 px-4 font-bold text-primary">{formatCurrency(itemValuation)}</td>
                           <td className="py-3 px-4 text-right">
@@ -1226,6 +1335,87 @@ export default function AnalyticsView({
                         </tr>
                       );
                     })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+
+          {/* Historical Nutrient Sales Audit Logs Card */}
+          <Card className="p-5 shadow-md space-y-4 border border-border">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border">
+              <div>
+                <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                  <DollarSign className="w-4 h-4 text-emerald-400" />
+                  Historical Sales Audit Logs (Price Locked)
+                </h3>
+                <p className="text-xs text-muted-foreground font-mono mt-0.5">
+                  Record of every nutrient sale with exact unit price locked at transaction time. Price edits in inventory will not alter these records.
+                </p>
+              </div>
+
+              <div className="w-full sm:w-72">
+                <Input
+                  type="text"
+                  placeholder="Filter by product, buyer, staff..."
+                  value={searchSalesQuery}
+                  onChange={(e) => setSearchSalesQuery(e.target.value)}
+                  icon={<Search className="w-3.5 h-3.5 text-muted-foreground" />}
+                />
+              </div>
+            </div>
+
+            <div className="overflow-x-auto rounded-xl border border-border">
+              <table className="w-full text-left text-xs font-mono border-collapse">
+                <thead>
+                  <tr className="bg-muted text-muted-foreground text-[10px] uppercase font-bold border-b border-border">
+                    <th className="py-3 px-4">TIMESTAMP</th>
+                    <th className="py-3 px-4">PRODUCT</th>
+                    <th className="py-3 px-4">CATEGORY</th>
+                    <th className="py-3 px-4">QTY</th>
+                    <th className="py-3 px-4">UNIT PRICE (AT SALE)</th>
+                    <th className="py-3 px-4">TOTAL AMOUNT</th>
+                    <th className="py-3 px-4">PAYMENT METHOD</th>
+                    <th className="py-3 px-4">BUYER / MEMBER</th>
+                    <th className="py-3 px-4 text-right">STAFF LOGGED</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {filteredSalesLogs.length === 0 ? (
+                    <tr>
+                      <td colSpan={9} className="py-8 text-center text-muted-foreground font-mono">
+                        No sales transaction records found matching filter criteria.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredSalesLogs.map((sale) => (
+                      <tr key={sale.id} className="hover:bg-muted/40 transition-colors">
+                        <td className="py-3 px-4 font-mono text-muted-foreground text-[11px]">
+                          {sale.timestamp ? sale.timestamp.replace('T', ' ').slice(0, 16) : '—'}
+                        </td>
+                        <td className="py-3 px-4 font-bold text-foreground">{sale.productName}</td>
+                        <td className="py-3 px-4">
+                          <Badge variant="info">{sale.category}</Badge>
+                        </td>
+                        <td className="py-3 px-4 font-bold text-sky-400">{sale.quantity} units</td>
+                        <td className="py-3 px-4 font-bold text-foreground">
+                          {formatCurrency(sale.unitPriceAtSale ?? sale.unitPrice)}
+                          <span className="ml-1.5 text-[9px] uppercase px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-sans">
+                            Locked
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 font-extrabold text-emerald-400">
+                          {formatCurrency(sale.totalPrice)}
+                        </td>
+                        <td className="py-3 px-4 font-mono text-xs">{sale.paymentMethod || 'Cash'}</td>
+                        <td className="py-3 px-4 font-mono text-xs text-foreground font-medium">
+                          {sale.buyerName || sale.memberName || 'Walk-in Customer'}
+                        </td>
+                        <td className="py-3 px-4 text-right font-mono text-xs text-muted-foreground">
+                          {sale.staffName || sale.staffLogged || 'Admin'}
+                        </td>
+                      </tr>
+                    ))
                   )}
                 </tbody>
               </table>

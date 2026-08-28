@@ -14,6 +14,8 @@ import {
   MembershipExtensionLog,
   NutrientProduct,
   MOCK_NUTRIENT_PRODUCTS,
+  NutrientSaleLog,
+  INITIAL_NUTRIENT_SALES,
   StaffAccount,
   UserRole,
 } from '@/lib/types';
@@ -42,6 +44,7 @@ export interface DashboardContextValue {
   totalLockers: number;
   lockerStatuses: Record<string, LockerCustomStatus>;
   nutrients: NutrientProduct[];
+  nutrientSales: NutrientSaleLog[];
   isLoading: boolean;
   statusMessage: string | null;
 
@@ -88,6 +91,8 @@ export interface DashboardContextValue {
   addNutrient: (product: NutrientProduct) => void;
   deleteNutrient: (id: string) => void;
   updateNutrient: (product: NutrientProduct) => void;
+  updateNutrientPrice: (id: string, newPrice: number) => void;
+  recordNutrientSale: (sale: Omit<NutrientSaleLog, 'id' | 'timestamp' | 'timeFormatted'>) => void;
 }
 
 const DashboardContext = createContext<DashboardContextValue | null>(null);
@@ -160,6 +165,18 @@ export function DashboardProvider({
       }
     }
     return MOCK_NUTRIENT_PRODUCTS;
+  });
+
+  const [nutrientSales, setNutrientSales] = useState<NutrientSaleLog[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('arche_nutrient_sales');
+        if (saved) return JSON.parse(saved);
+      } catch {
+        // ignore
+      }
+    }
+    return INITIAL_NUTRIENT_SALES;
   });
 
   // Authentication handlers
@@ -558,6 +575,63 @@ export function DashboardProvider({
     });
   }, []);
 
+  const updateNutrientPrice = useCallback((id: string, newPrice: number) => {
+    setNutrients((prev) => {
+      const updated = prev.map((n) => (n.id === id ? { ...n, price: Math.max(0, newPrice) } : n));
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('arche_nutrient_products', JSON.stringify(updated));
+        } catch {
+          // ignore
+        }
+      }
+      return updated;
+    });
+  }, []);
+
+  const recordNutrientSale = useCallback(
+    (saleData: Omit<NutrientSaleLog, 'id' | 'timestamp' | 'timeFormatted'>) => {
+      const now = new Date();
+      const newSale: NutrientSaleLog = {
+        ...saleData,
+        id: `sale-${Date.now()}`,
+        timestamp: now.toISOString(),
+        timeFormatted: format(now, 'yyyy-MM-dd HH:mm'),
+      };
+
+      setNutrientSales((prev) => {
+        const updated = [newSale, ...prev];
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.setItem('arche_nutrient_sales', JSON.stringify(updated));
+          } catch {
+            // ignore
+          }
+        }
+        return updated;
+      });
+
+      // Automatically decrement product stock
+      setNutrients((prev) => {
+        const updated = prev.map((n) => {
+          if (n.id === saleData.productId) {
+            return { ...n, stock: Math.max(0, n.stock - saleData.quantity) };
+          }
+          return n;
+        });
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.setItem('arche_nutrient_products', JSON.stringify(updated));
+          } catch {
+            // ignore
+          }
+        }
+        return updated;
+      });
+    },
+    []
+  );
+
   const value = useMemo<DashboardContextValue>(
     () => ({
       isAuthenticated,
@@ -572,6 +646,7 @@ export function DashboardProvider({
       totalLockers,
       lockerStatuses,
       nutrients,
+      nutrientSales,
       isLoading,
       statusMessage,
       setActiveTab,
@@ -599,6 +674,8 @@ export function DashboardProvider({
       addNutrient,
       deleteNutrient,
       updateNutrient,
+      updateNutrientPrice,
+      recordNutrientSale,
     }),
     [
       isAuthenticated,
@@ -613,6 +690,7 @@ export function DashboardProvider({
       totalLockers,
       lockerStatuses,
       nutrients,
+      nutrientSales,
       isLoading,
       statusMessage,
       toggleSidebar,
@@ -636,6 +714,8 @@ export function DashboardProvider({
       addNutrient,
       deleteNutrient,
       updateNutrient,
+      updateNutrientPrice,
+      recordNutrientSale,
     ]
   );
 

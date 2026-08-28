@@ -148,13 +148,16 @@ export interface NutrientSaleLog {
   category: NutrientCategory;
   quantity: number;
   unitPrice: number;
+  unitPriceAtSale?: number;
   totalPrice: number;
   timestamp: string;
   timeFormatted: string;
   paymentMethod: string;
   memberId?: string;
   memberName?: string;
+  buyerName?: string;
   staffLogged?: string;
+  staffName?: string;
 }
 
 // MOCK_ Prefixed In-Memory Dataset Definitions (Pre-real-data state)
@@ -170,7 +173,64 @@ export const MOCK_NUTRIENT_PRODUCTS: NutrientProduct[] = [
   { id: 'nutr-5', name: 'High Protein Bar (Box of 12)', category: 'Snacks', price: 48000, stock: 30, flavor: 'Peanut Butter', bestBeforeDate: '2026-09-02' },
   { id: 'nutr-6', name: 'Daily Multivitamin & Omega-3 Pack', category: 'Vitamins', price: 55000, stock: 12, bestBeforeDate: '2027-08-15' },
 ];
-export const MOCK_NUTRIENT_SALES: NutrientSaleLog[] = [];
+export const MOCK_NUTRIENT_SALES: NutrientSaleLog[] = [
+  {
+    id: 'sale-1',
+    productId: 'nutr-1',
+    productName: 'Whey Isolate Protein (1kg)',
+    category: 'Supplements',
+    quantity: 2,
+    unitPrice: 135000,
+    totalPrice: 270000,
+    timestamp: '2026-08-10T10:30:00.000Z',
+    timeFormatted: '2026-08-10 10:30',
+    paymentMethod: 'Card',
+    memberName: 'Bataa Bold',
+    staffLogged: 'Admin',
+  },
+  {
+    id: 'sale-2',
+    productId: 'nutr-2',
+    productName: 'Pre-Workout Energy Blast',
+    category: 'Supplements',
+    quantity: 1,
+    unitPrice: 80000,
+    totalPrice: 80000,
+    timestamp: '2026-08-15T14:15:00.000Z',
+    timeFormatted: '2026-08-15 14:15',
+    paymentMethod: 'QPay',
+    memberName: 'Tuya Ganbaatar',
+    staffLogged: 'Front Desk Staff',
+  },
+  {
+    id: 'sale-3',
+    productId: 'nutr-3',
+    productName: 'Post-Workout Recovery Shake',
+    category: 'Shakes',
+    quantity: 5,
+    unitPrice: 15000,
+    totalPrice: 75000,
+    timestamp: '2026-08-20T16:45:00.000Z',
+    timeFormatted: '2026-08-20 16:45',
+    paymentMethod: 'Cash',
+    memberName: 'Anand Erdene',
+    staffLogged: 'Admin',
+  },
+  {
+    id: 'sale-4',
+    productId: 'nutr-5',
+    productName: 'High Protein Bar (Box of 12)',
+    category: 'Snacks',
+    quantity: 2,
+    unitPrice: 45000,
+    totalPrice: 90000,
+    timestamp: '2026-08-22T11:00:00.000Z',
+    timeFormatted: '2026-08-22 11:00',
+    paymentMethod: 'QPay',
+    memberName: 'Sarnai Dorj',
+    staffLogged: 'Front Desk Staff',
+  },
+];
 
 // Aliases for backward compatibility
 export const DEFAULT_BUILT_PLANS = MOCK_BUILT_PLANS;
@@ -178,5 +238,6 @@ export const INITIAL_GYM_MEMBERS = MOCK_GYM_MEMBERS;
 export const INITIAL_LOCKER_LOGS = MOCK_LOCKER_LOGS;
 export const INITIAL_STAFF_ACCOUNTS = MOCK_STAFF_ACCOUNTS;
 export const INITIAL_NUTRIENT_PRODUCTS = MOCK_NUTRIENT_PRODUCTS;
+export const INITIAL_NUTRIENT_SALES = MOCK_NUTRIENT_SALES;
 
 

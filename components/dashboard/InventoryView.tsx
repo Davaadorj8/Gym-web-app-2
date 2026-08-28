@@ -374,6 +374,75 @@ export default function InventoryView({
     showToast('Product removed from inventory');
   };
 
+  // Price Update State & Handlers
+  const [editingNutrientId, setEditingNutrientId] = useState<string | null>(null);
+  const [editingPriceValue, setEditingPriceValue] = useState<string>('');
+
+  const handleStartEditingPrice = (item: NutrientProduct) => {
+    setEditingNutrientId(item.id);
+    setEditingPriceValue(item.price.toString());
+  };
+
+  const handleSavePriceUpdate = (id: string) => {
+    const parsedPrice = Math.max(0, Number(editingPriceValue) || 0);
+    dashboard.updateNutrientPrice(id, parsedPrice);
+    setEditingNutrientId(null);
+    showToast('Updated product price. Past sales records retain their original sale prices.');
+  };
+
+  // Sale Recording State & Handlers
+  const [isSaleModalOpen, setIsSaleModalOpen] = useState(false);
+  const [saleProduct, setSaleProduct] = useState<NutrientProduct | null>(null);
+  const [saleQuantity, setSaleQuantity] = useState<number>(1);
+  const [salePaymentMethod, setSalePaymentMethod] = useState<string>('QPay');
+  const [saleMemberName, setSaleMemberName] = useState<string>('');
+
+  const handleOpenSaleModal = (product: NutrientProduct) => {
+    if (product.stock <= 0) {
+      showToast('Cannot sell product: Item is out of stock.');
+      return;
+    }
+    setSaleProduct(product);
+    setSaleQuantity(1);
+    setSalePaymentMethod('QPay');
+    setSaleMemberName('');
+    setIsSaleModalOpen(true);
+  };
+
+  const handleConfirmSale = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!saleProduct) return;
+
+    if (saleQuantity <= 0) {
+      showToast('Please enter a valid sale quantity.');
+      return;
+    }
+
+    if (saleQuantity > saleProduct.stock) {
+      showToast(`Cannot sell more than available stock (${saleProduct.stock} units).`);
+      return;
+    }
+
+    const unitPrice = saleProduct.price; // Locked at current listed price
+    const totalPrice = unitPrice * saleQuantity;
+
+    dashboard.recordNutrientSale({
+      productId: saleProduct.id,
+      productName: saleProduct.name,
+      category: saleProduct.category,
+      quantity: saleQuantity,
+      unitPrice,
+      totalPrice,
+      paymentMethod: salePaymentMethod,
+      memberName: saleMemberName.trim() || 'Walk-in Customer',
+      staffLogged: currentUser?.name || 'Staff',
+    });
+
+    setIsSaleModalOpen(false);
+    setSaleProduct(null);
+    showToast(`Logged sale of ${saleQuantity}x ${saleProduct.name} at ${formatCurrency(unitPrice)} each (Total: ${formatCurrency(totalPrice)}). Locked for analytics.`);
+  };
+
   const getCategoryBadgeVariant = (cat: CategoryTarget): 'warning' | 'success' | 'info' => {
     switch (cat) {
       case 'under18':
@@ -1169,15 +1238,21 @@ export default function InventoryView({
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {nutrients.map((item) => {
                     const expStatus = getNutrientExpiryStatus(item.bestBeforeDate);
+                    const isEditingPrice = editingNutrientId === item.id;
+
+                    // Derive historical sales info for this product
+                    const itemSales = dashboard.nutrientSales.filter((s) => s.productId === item.id);
+                    const unitsSold = itemSales.reduce((acc, s) => acc + s.quantity, 0);
+                    const totalSalesRevenue = itemSales.reduce((acc, s) => acc + s.totalPrice, 0);
 
                     return (
                       <div
                         key={item.id}
-                        className="bg-[#070D1E] border border-border/80 rounded-xl p-4 flex flex-col justify-between gap-3 relative group"
+                        className="bg-[#070D1E] border border-border/80 rounded-xl p-4 flex flex-col justify-between gap-3 relative group shadow-sm hover:border-border transition-all"
                       >
                         <div className="flex items-start justify-between gap-2">
-                          <div>
-                            <div className="flex items-center gap-2">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2 flex-wrap">
                               <span className="text-[9px] font-mono font-bold uppercase tracking-wider text-[#D4FF00]">
                                 {item.category}
                               </span>
@@ -1201,31 +1276,121 @@ export default function InventoryView({
                               </p>
                             )}
                             {item.bestBeforeDate && (
-                              <p className={cn(
-                                "text-[11px] font-mono mt-1 flex items-center gap-1",
-                                expStatus === 'expired' ? "text-rose-400 font-bold" : expStatus === 'expiring_soon' ? "text-amber-400 font-bold" : "text-muted-foreground"
-                              )}>
+                              <p
+                                className={cn(
+                                  'text-[11px] font-mono mt-1 flex items-center gap-1',
+                                  expStatus === 'expired'
+                                    ? 'text-rose-400 font-bold'
+                                    : expStatus === 'expiring_soon'
+                                    ? 'text-amber-400 font-bold'
+                                    : 'text-muted-foreground'
+                                )}
+                              >
                                 <Calendar className="w-3 h-3 shrink-0" />
                                 <span>Best before: {item.bestBeforeDate}</span>
                               </p>
                             )}
+
+                            {/* Historical Sales Summary Badge */}
+                            <div className="pt-1">
+                              <span className="inline-flex items-center gap-1 text-[10px] font-mono bg-muted/30 border border-border/60 rounded px-2 py-0.5 text-slate-300">
+                                <Award className="w-3 h-3 text-[#D4FF00]" />
+                                {unitsSold > 0
+                                  ? `${unitsSold} sold (${formatCurrency(totalSalesRevenue)} recorded)`
+                                  : 'No sales recorded yet'}
+                              </span>
+                            </div>
                           </div>
 
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteNutrient(item.id)}
-                            className="text-muted-foreground hover:text-destructive p-1 rounded-md transition-colors cursor-pointer"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteNutrient(item.id)}
+                              className="text-muted-foreground hover:text-destructive p-1 rounded-md transition-colors cursor-pointer"
+                              title="Delete Product"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </div>
 
-                        <div className="pt-2 border-t border-border/60 flex items-center justify-between text-xs font-mono">
-                          <span className="text-muted-foreground">
-                            Stock: <strong className="text-foreground">{item.stock}</strong>
-                          </span>
-                          <div className="bg-muted/40 border border-border/60 rounded px-2 py-0.5 text-[#D4FF00] font-bold font-mono">
-                            {formatCurrency(item.price)}
+                        <div className="pt-3 border-t border-border/60 space-y-2">
+                          <div className="flex items-center justify-between text-xs font-mono">
+                            <span className="text-muted-foreground">
+                              Stock:{' '}
+                              <strong
+                                className={cn(
+                                  item.stock === 0
+                                    ? 'text-rose-400 font-bold'
+                                    : item.stock <= 5
+                                    ? 'text-amber-400 font-bold'
+                                    : 'text-foreground'
+                                )}
+                              >
+                                {item.stock} units
+                              </strong>
+                            </span>
+
+                            {/* Price Editing vs Display */}
+                            {isEditingPrice ? (
+                              <div className="flex items-center gap-1">
+                                <input
+                                  type="number"
+                                  value={editingPriceValue}
+                                  onChange={(e) => setEditingPriceValue(e.target.value)}
+                                  className="w-24 bg-[#0B132B] border border-[#D4FF00] text-[#D4FF00] font-mono text-xs px-2 py-1 rounded outline-none"
+                                  autoFocus
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleSavePriceUpdate(item.id)}
+                                  className="bg-[#D4FF00] text-black p-1 rounded hover:opacity-90 transition-opacity"
+                                  title="Save Price"
+                                >
+                                  <Check className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingNutrientId(null)}
+                                  className="bg-muted text-muted-foreground p-1 rounded hover:text-foreground"
+                                  title="Cancel"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1.5">
+                                <div className="bg-muted/40 border border-border/60 rounded px-2 py-0.5 text-[#D4FF00] font-bold font-mono flex items-center gap-1">
+                                  <span>{formatCurrency(item.price)}</span>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => handleStartEditingPrice(item)}
+                                  className="text-muted-foreground hover:text-[#D4FF00] p-1 rounded transition-colors cursor-pointer"
+                                  title="Change Price (Admin)"
+                                >
+                                  <Edit2 className="w-3 h-3" />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Quick Actions Row */}
+                          <div className="flex items-center gap-2 pt-1">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenSaleModal(item)}
+                              disabled={item.stock <= 0}
+                              className={cn(
+                                'w-full py-1.5 px-3 rounded-lg text-xs font-mono font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer',
+                                item.stock > 0
+                                  ? 'bg-[#D4FF00]/10 hover:bg-[#D4FF00]/20 text-[#D4FF00] border border-[#D4FF00]/30'
+                                  : 'bg-muted/40 text-muted-foreground border border-border/40 opacity-50 cursor-not-allowed'
+                              )}
+                            >
+                              <ShoppingCart className="w-3.5 h-3.5" />
+                              <span>Record Sale</span>
+                            </button>
                           </div>
                         </div>
                       </div>
@@ -1374,6 +1539,114 @@ export default function InventoryView({
                   className="bg-[#D4FF00] hover:bg-[#c3eb00] text-black font-extrabold text-xs px-5 py-2.5 rounded-xl cursor-pointer shadow-md transition-all"
                 >
                   Save Product
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Quick Nutrient Sale Record Modal */}
+      {isSaleModalOpen && saleProduct && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#0B132B] border border-border rounded-2xl w-full max-w-md p-6 space-y-5 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-border/80 pb-3">
+              <div className="flex items-center gap-2.5">
+                <ShoppingCart className="w-4 h-4 text-[#D4FF00]" />
+                <div>
+                  <h3 className="text-sm font-bold text-foreground">Record Nutrient Sale</h3>
+                  <p className="text-[11px] text-muted-foreground font-mono">{saleProduct.name}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsSaleModalOpen(false)}
+                className="text-muted-foreground hover:text-foreground cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmSale} className="space-y-4 font-mono text-xs">
+              <div className="bg-[#070D1E] border border-border/60 rounded-xl p-3.5 space-y-1">
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Current Listed Price:</span>
+                  <strong className="text-[#D4FF00] font-bold">{formatCurrency(saleProduct.price)}</strong>
+                </div>
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Available Stock:</span>
+                  <strong className="text-foreground font-bold">{saleProduct.stock} units</strong>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                  Sale Quantity *
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max={saleProduct.stock}
+                  required
+                  value={saleQuantity}
+                  onChange={(e) => setSaleQuantity(Math.max(1, Number(e.target.value)))}
+                  className="w-full bg-[#070D1E] border border-border/80 focus:border-[#D4FF00] text-sm text-foreground rounded-xl px-3.5 py-2.5 outline-none"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                  Payment Method
+                </label>
+                <select
+                  value={salePaymentMethod}
+                  onChange={(e) => setSalePaymentMethod(e.target.value)}
+                  className="w-full bg-[#070D1E] border border-border/80 focus:border-[#D4FF00] text-xs text-foreground rounded-xl px-3.5 py-2.5 outline-none cursor-pointer"
+                >
+                  <option value="QPay">QPay Instant Digital</option>
+                  <option value="Card">Credit / Debit Card</option>
+                  <option value="Cash">Cash</option>
+                  <option value="Bank Transfer">Bank Wire Transfer</option>
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                  Member / Buyer Name (Optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Walk-in Customer or Member Name"
+                  value={saleMemberName}
+                  onChange={(e) => setSaleMemberName(e.target.value)}
+                  className="w-full bg-[#070D1E] border border-border/80 focus:border-[#D4FF00] text-xs text-foreground rounded-xl px-3.5 py-2.5 outline-none font-sans"
+                />
+              </div>
+
+              <div className="bg-[#111C38]/60 border border-blue-500/30 rounded-xl p-3 space-y-1 text-[11px] text-slate-300">
+                <div className="flex justify-between font-bold text-foreground">
+                  <span>Total Sale Amount:</span>
+                  <span className="text-[#D4FF00]">{formatCurrency(saleProduct.price * saleQuantity)}</span>
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  * Locks unit price at {formatCurrency(saleProduct.price)} in financial revenue records. Changing product price in the future will not modify this sale record.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-border/80">
+                <button
+                  type="button"
+                  onClick={() => setIsSaleModalOpen(false)}
+                  className="px-4 py-2 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="bg-[#D4FF00] hover:bg-[#c3eb00] text-black font-extrabold text-xs px-5 py-2.5 rounded-xl cursor-pointer shadow-md transition-all flex items-center gap-1.5"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>Confirm Sale</span>
                 </button>
               </div>
             </form>
