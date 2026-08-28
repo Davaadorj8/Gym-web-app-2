@@ -6,7 +6,6 @@ import { useAppLocale } from '@/components/I18nProvider';
 import {
   Zap,
   UserCheck,
-  LayoutGrid,
   KeyRound,
   UserPlus,
   Users,
@@ -58,7 +57,6 @@ export default function Sidebar({
   const { locale, setLocale } = useAppLocale();
 
   const menuItems = [
-    { id: 'dashboard', label: t('navDashboard'), icon: LayoutGrid },
     { id: 'checkin-desk', label: t('navCheckInDesk'), icon: UserCheck },
     { id: 'locker', label: t('navLockerUsage'), icon: KeyRound },
     { id: 'registration', label: t('navRegistration'), icon: UserPlus },

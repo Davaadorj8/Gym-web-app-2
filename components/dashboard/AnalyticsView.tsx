@@ -77,6 +77,7 @@ export default function AnalyticsView({
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<'all' | 'under18' | 'over18' | 'organization'>('all');
   const [selectedPeriodFilter, setSelectedPeriodFilter] = useState<'all' | '1' | '3' | '6' | '12' | 'other'>('all');
   const [trafficViewMode, setTrafficViewMode] = useState<'weekly' | 'hourly'>('weekly');
+  const [financialChartMode, setFinancialChartMode] = useState<'category' | 'period'>('category');
 
   // Domain Calculations via Services
   const totalMembershipValue = useMemo(() => {
@@ -308,25 +309,55 @@ export default function AnalyticsView({
             </Card>
           </div>
 
-          {/* Revenue Charts Row */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card className="p-5 shadow-md space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-bold text-foreground">
-                    {t('extensionsByCategory')}
-                  </h3>
-                  <p className="text-xs text-muted-foreground font-mono mt-0.5">
-                    Under 18 • Over 18 • Organization
-                  </p>
-                </div>
-                <Badge variant="outline" className="text-[10px]">
-                  {t('categoryData')}
-                </Badge>
+          {/* Revenue Charts Row - Merged single switch graph table */}
+          <Card className="p-5 shadow-md space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border">
+              <div>
+                <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                  <BarChart3 className="w-4 h-4 text-primary" />
+                  {financialChartMode === 'category' ? t('extensionsByCategory') : t('extensionsByPeriod')}
+                </h3>
+                <p className="text-xs text-muted-foreground font-mono mt-0.5">
+                  {financialChartMode === 'category'
+                    ? 'Under 18 • Over 18 • Organization'
+                    : '1 Mo • 3 Mo • 6 Mo • 12 Mo • Other'}
+                </p>
               </div>
 
-              <div className="h-52 w-full pt-2">
-                <ResponsiveContainer width="100%" height="100%">
+              {/* Switch graph buttons */}
+              <div className="flex items-center gap-1.5 bg-muted/60 border border-border p-1 rounded-xl self-start sm:self-auto">
+                <button
+                  type="button"
+                  id="btn-switch-chart-category"
+                  onClick={() => setFinancialChartMode('category')}
+                  className={cn(
+                    'px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer',
+                    financialChartMode === 'category'
+                      ? 'bg-background text-primary shadow-sm border border-border'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  {t('extensionsByCategory')}
+                </button>
+                <button
+                  type="button"
+                  id="btn-switch-chart-period"
+                  onClick={() => setFinancialChartMode('period')}
+                  className={cn(
+                    'px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer',
+                    financialChartMode === 'period'
+                      ? 'bg-background text-primary shadow-sm border border-border'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  {t('extensionsByPeriod')}
+                </button>
+              </div>
+            </div>
+
+            <div className="h-60 w-full pt-2">
+              <ResponsiveContainer width="100%" height="100%">
+                {financialChartMode === 'category' ? (
                   <BarChart data={categoryChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                     <XAxis dataKey="name" tickLine={false} axisLine={{ stroke: 'var(--border)' }} tick={{ fill: 'var(--muted-foreground)', fontSize: 11, fontFamily: 'monospace' }} />
                     <YAxis allowDecimals={false} tickLine={false} axisLine={{ stroke: 'var(--border)' }} tick={{ fill: 'var(--muted-foreground)', fontSize: 11, fontFamily: 'monospace' }} />
@@ -348,27 +379,7 @@ export default function AnalyticsView({
                       ))}
                     </Bar>
                   </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
-
-            <Card className="p-5 shadow-md space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-bold text-foreground">
-                    {t('extensionsByPeriod')}
-                  </h3>
-                  <p className="text-xs text-muted-foreground font-mono mt-0.5">
-                    1 Mo • 3 Mo • 6 Mo • 12 Mo
-                  </p>
-                </div>
-                <Badge variant="outline" className="text-[10px]">
-                  {t('durationData')}
-                </Badge>
-              </div>
-
-              <div className="h-52 w-full pt-2">
-                <ResponsiveContainer width="100%" height="100%">
+                ) : (
                   <BarChart data={periodChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                     <XAxis dataKey="name" tickLine={false} axisLine={{ stroke: 'var(--border)' }} tick={{ fill: 'var(--muted-foreground)', fontSize: 11, fontFamily: 'monospace' }} />
                     <YAxis allowDecimals={false} tickLine={false} axisLine={{ stroke: 'var(--border)' }} tick={{ fill: 'var(--muted-foreground)', fontSize: 11, fontFamily: 'monospace' }} />
@@ -390,10 +401,10 @@ export default function AnalyticsView({
                       ))}
                     </Bar>
                   </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
-          </div>
+                )}
+              </ResponsiveContainer>
+            </div>
+          </Card>
 
           {/* Audit Records Table */}
           <Card className="p-5 space-y-4 shadow-md">

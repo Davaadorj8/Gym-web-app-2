@@ -45,3 +45,5 @@
 - 2026-08-27: Restructured AnalyticsView.tsx into 5 switch tabs (Financial, Operational, Plan (Product), Locker, Members) with dedicated KPI strips, domain visualizations, product catalog table, locker floor status, and searchable extension audit logs. Added full EN/MN i18n support for tab titles and header subtitles.
 - 2026-08-27: Added missing translation keys for English and Mongolian locales under the Analytics namespace (`hourlyTrafficTitle`, `hourlyTrafficSubtitle`, `lockerStatusOverview`, `lockerStatusBreakdown`, `totalCapacity`, `lockersAvailable`, `currentlyOccupied`, `underService`, `utilizationRate`).
 - 2026-08-27: Connected AnalyticsView.tsx locker metrics to `dashboard.totalLockers` to pull total capacity dynamically from Inventory -> Lock Capacity Settings instead of hardcoded values.
+- 2026-08-27: Removed duplicate `dashboard` menu entry from Sidebar.tsx to eliminate redundancy where both Dashboard and Analytics mapped to AnalyticsView.
+- 2026-08-28: Merged Extensions by Category and Extensions by Period charts in AnalyticsView.tsx into a single switchable graph card with interactive toggle controls, preserving real calculation data.
