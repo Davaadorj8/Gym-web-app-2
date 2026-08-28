@@ -51,6 +51,33 @@ export default function DashboardShell({
 
   const { locale, setLocale } = useAppLocale();
 
+  const lastWidthRef = React.useRef<number | null>(null);
+
+  // Auto-collapse sidebar only when entering the smaller tablet screen range (768px to 1024px)
+  // to avoid overriding manual user toggle actions and preventing expansion.
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const { setSidebarCollapsed } = dashboard;
+
+    const handleResize = () => {
+      const width = window.innerWidth;
+      const prevWidth = lastWidthRef.current;
+
+      if (width >= 768 && width < 1024) {
+        if (prevWidth === null || prevWidth < 768 || prevWidth >= 1024) {
+          setSidebarCollapsed(true);
+        }
+      }
+
+      lastWidthRef.current = width;
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [dashboard]);
+
   return (
     <div
       id="admin-portal-layout"

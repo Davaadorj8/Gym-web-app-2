@@ -132,8 +132,11 @@ export default function RegistrationView({
 
   return (
     <div id="registration-view-root" className="w-full text-foreground space-y-6">
-      {/* 3-Step Progress Indicator / Stepper */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-muted/40 border border-border/60 p-4 rounded-xl">
+      {/* 4-Step Progress Indicator / Stepper */}
+      <div
+        id="registration-stages-progress"
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 bg-gradient-to-br from-card/90 to-card/40 border border-border/80 p-5 md:p-6 rounded-2xl shadow-xl backdrop-blur-md animate-in fade-in slide-in-from-top-4 duration-300"
+      >
         {[
           {
             stepNum: 1,
@@ -147,14 +150,23 @@ export default function RegistrationView({
           {
             stepNum: 2,
             label: t('sec2Title'),
-            isActive: !!form.watch('selectedPlanId'),
+            isActive: registrationType === 'individual'
+              ? !!(form.watch('member.firstName') && form.watch('member.lastName'))
+              : !!form.watch('orgName'),
             isDone: !!form.watch('selectedPlanId'),
-            desc: 'Plan & Payment Method',
+            desc: 'Membership Level',
           },
           {
             stepNum: 3,
-            label: '3. CAPTURE PHOTO',
+            label: '3. PAYMENT METHOD',
             isActive: !!form.watch('selectedPlanId'),
+            isDone: !!form.watch('paymentMethod'),
+            desc: 'Card, Cash or Transfer',
+          },
+          {
+            stepNum: 4,
+            label: '4. CAPTURE PHOTO',
+            isActive: !!form.watch('paymentMethod') && !!form.watch('selectedPlanId'),
             isDone: registrationType === 'individual'
               ? !!form.watch('member.photo')
               : (form.watch('orgMembers') || []).length > 0,
@@ -163,31 +175,34 @@ export default function RegistrationView({
         ].map((step, idx) => (
           <div
             key={idx}
-            className={`flex items-start gap-3 p-3 rounded-lg border transition-all ${
+            className={`flex items-start gap-3 p-4 rounded-xl border transition-all duration-200 hover:scale-[1.01] ${
               step.isDone
-                ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-400'
+                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shadow-md shadow-emerald-500/5'
                 : step.isActive
-                ? 'bg-primary/5 border-primary/20 text-primary'
+                ? 'bg-primary/10 border-primary/40 text-primary shadow-md shadow-primary/5'
                 : 'bg-background/20 border-border/40 text-muted-foreground'
             }`}
           >
             <div
-              className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold font-mono shrink-0 ${
+              className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-mono font-black shrink-0 transition-all duration-300 ${
                 step.isDone
-                  ? 'bg-emerald-500 text-white shadow-md'
+                  ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20'
                   : step.isActive
-                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  ? 'bg-primary text-primary-foreground shadow-md shadow-primary/20'
                   : 'bg-muted text-muted-foreground border border-border'
               }`}
             >
               {step.isDone ? '✓' : step.stepNum}
             </div>
-            <div className="min-w-0">
-              <span className="block text-[11px] font-extrabold uppercase tracking-wider font-mono truncate">
+            <div className="min-w-0 space-y-0.5">
+              <span className="block text-[10px] font-black uppercase tracking-wider font-mono truncate leading-tight">
                 {step.label.replace(/^\d+\.\s*/, '')}
               </span>
-              <span className="block text-[10px] text-muted-foreground font-mono truncate mt-0.5">
+              <span className="block text-[11px] font-medium text-foreground/80 truncate">
                 {step.desc}
+              </span>
+              <span className="block text-[9px] text-muted-foreground font-mono font-bold uppercase tracking-wider mt-0.5">
+                {step.isDone ? 'Completed' : step.isActive ? 'Active State' : 'Pending'}
               </span>
             </div>
           </div>

@@ -264,8 +264,8 @@ export default function LockerUsageView({
             <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20">
               <span className="w-1.5 h-1.5 rounded-full bg-purple-400" /> Clean
             </span>
-            <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-amber-500/10 text-amber-500 border border-amber-500/20">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" /> Repair
+            <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400" /> Repair
             </span>
             <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-red-500/10 text-red-400 border border-red-500/20">
               <span className="w-1.5 h-1.5 rounded-full bg-red-500" /> Key Lost
@@ -282,7 +282,7 @@ export default function LockerUsageView({
             } else if (locker.status === 'clean') {
               statusColor = "bg-purple-500/10 text-purple-400 border-purple-500/30 hover:border-purple-500/60";
             } else if (locker.status === 'repair') {
-              statusColor = "bg-amber-500/10 text-amber-500 border-amber-500/30 hover:border-amber-500/60";
+              statusColor = "bg-amber-500/10 text-amber-400 border-amber-400/30 hover:border-amber-400/60";
             } else if (locker.status === 'key_lost') {
               statusColor = "bg-red-500/10 text-red-400 border-red-500/30 hover:border-red-500/60";
             } else if (locker.status === 'key_not_returned') {
@@ -306,7 +306,7 @@ export default function LockerUsageView({
                 {locker.status === 'occupied' ? (
                   <Lock className="w-4 h-4 text-sky-400" />
                 ) : locker.status === 'repair' ? (
-                  <Lock className="w-4 h-4 text-amber-500" />
+                  <Lock className="w-4 h-4 text-amber-400" />
                 ) : (
                   <Unlock className="w-4 h-4" />
                 )}
