@@ -33,3 +33,4 @@ Only items listed below are exported for external consumption:
 
 ## 6. Maintenance Log
 - 2026-08-25: Initialized directory specification per Master System Instructions.
+- 2026-08-28: Modified `getDefaultRegistrationValues` initial structure to clear the default selection of paymentMethod, enforcing user selection.

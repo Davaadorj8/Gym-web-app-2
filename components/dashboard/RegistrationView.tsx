@@ -132,10 +132,10 @@ export default function RegistrationView({
 
   return (
     <div id="registration-view-root" className="w-full text-foreground space-y-6">
-      {/* 4-Step Progress Indicator / Stepper */}
+      {/* 4-Step Progress Indicator / Stepper (Sticky & Minimal) */}
       <div
         id="registration-stages-progress"
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 bg-gradient-to-br from-card/90 to-card/40 border border-border/80 p-5 md:p-6 rounded-2xl shadow-xl backdrop-blur-md animate-in fade-in slide-in-from-top-4 duration-300"
+        className="sticky top-0 z-30 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 bg-background/95 border-b border-border p-3 rounded-b-xl shadow-lg backdrop-blur-md animate-in fade-in slide-in-from-top-4 duration-300"
       >
         {[
           {
@@ -145,7 +145,7 @@ export default function RegistrationView({
             isDone: registrationType === 'individual'
               ? !!(form.watch('member.firstName') && form.watch('member.lastName') && form.watch('member.email'))
               : !!(form.watch('orgName') && form.watch('orgLeadName')),
-            desc: registrationType === 'individual' ? 'Athlete Profile' : 'Organization Hub',
+            desc: registrationType === 'individual' ? 'Profile' : 'Org Hub',
           },
           {
             stepNum: 2,
@@ -154,55 +154,52 @@ export default function RegistrationView({
               ? !!(form.watch('member.firstName') && form.watch('member.lastName'))
               : !!form.watch('orgName'),
             isDone: !!form.watch('selectedPlanId'),
-            desc: 'Membership Level',
+            desc: 'Plan Level',
           },
           {
             stepNum: 3,
-            label: '3. PAYMENT METHOD',
+            label: '3. PAYMENT',
             isActive: !!form.watch('selectedPlanId'),
             isDone: !!form.watch('paymentMethod'),
-            desc: 'Card, Cash or Transfer',
+            desc: 'Payment Mode',
           },
           {
             stepNum: 4,
-            label: '4. CAPTURE PHOTO',
+            label: '4. PHOTO CAPTURE',
             isActive: !!form.watch('paymentMethod') && !!form.watch('selectedPlanId'),
             isDone: registrationType === 'individual'
               ? !!form.watch('member.photo')
               : (form.watch('orgMembers') || []).length > 0,
-            desc: 'Visual Verification Key',
+            desc: 'Verify Camera',
           },
         ].map((step, idx) => (
           <div
             key={idx}
-            className={`flex items-start gap-3 p-4 rounded-xl border transition-all duration-200 hover:scale-[1.01] ${
+            className={`flex items-center gap-2.5 p-2 px-3 rounded-lg border transition-all duration-150 ${
               step.isDone
-                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shadow-md shadow-emerald-500/5'
+                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shadow-sm'
                 : step.isActive
-                ? 'bg-primary/10 border-primary/40 text-primary shadow-md shadow-primary/5'
+                ? 'bg-primary/10 border-primary/30 text-primary shadow-sm'
                 : 'bg-background/20 border-border/40 text-muted-foreground'
             }`}
           >
             <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-mono font-black shrink-0 transition-all duration-300 ${
+              className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-mono font-black shrink-0 transition-all duration-200 ${
                 step.isDone
-                  ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20'
+                  ? 'bg-emerald-500 text-white shadow-xs'
                   : step.isActive
-                  ? 'bg-primary text-primary-foreground shadow-md shadow-primary/20'
+                  ? 'bg-primary text-primary-foreground shadow-xs'
                   : 'bg-muted text-muted-foreground border border-border'
               }`}
             >
               {step.isDone ? '✓' : step.stepNum}
             </div>
-            <div className="min-w-0 space-y-0.5">
+            <div className="min-w-0">
               <span className="block text-[10px] font-black uppercase tracking-wider font-mono truncate leading-tight">
                 {step.label.replace(/^\d+\.\s*/, '')}
               </span>
-              <span className="block text-[11px] font-medium text-foreground/80 truncate">
-                {step.desc}
-              </span>
-              <span className="block text-[9px] text-muted-foreground font-mono font-bold uppercase tracking-wider mt-0.5">
-                {step.isDone ? 'Completed' : step.isActive ? 'Active State' : 'Pending'}
+              <span className="block text-[9px] text-muted-foreground font-mono font-bold leading-none mt-0.5">
+                {step.isDone ? '✓ Done' : step.isActive ? '• Active' : 'Pending'}
               </span>
             </div>
           </div>

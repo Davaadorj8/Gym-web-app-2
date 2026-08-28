@@ -71,5 +71,5 @@ export const getDefaultRegistrationValues = (initialPlanId = ''): RegistrationFo
     orgMembers: [createDefaultMember('org-1')],
     selectedPlanId: initialPlanId,
     durationMultiplier: 1,
-    paymentMethod: 'Card',
+    paymentMethod: '' as any,
   } as unknown as RegistrationFormData);
