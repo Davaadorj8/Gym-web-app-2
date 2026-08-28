@@ -470,7 +470,7 @@ export default function StaffApprovalsView({
           </div>
 
           {/* Permissions Matrix */}
-          <div className="bg-background border border-border rounded-2xl p-4 space-y-2">
+          <div className="bg-background border border-border rounded-xl p-4 space-y-2">
             <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-muted-foreground block">
               {t('permissionsLabel')}
             </span>

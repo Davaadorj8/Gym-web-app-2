@@ -50,7 +50,7 @@ export function TabsList<T extends string = string>({
                 id={`tab-btn-${tab.id}`}
                 value={tab.id}
                 className={cn(
-                  'flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer select-none',
+                  'flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer select-none whitespace-nowrap',
                   isActive
                     ? 'bg-muted text-primary border border-border shadow-xs'
                     : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
@@ -103,7 +103,7 @@ export function TabsList<T extends string = string>({
               id={`tab-btn-${tab.id}`}
               value={tab.id}
               className={cn(
-                'flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer select-none shrink-0',
+                'flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer select-none shrink-0 whitespace-nowrap',
                 isActive
                   ? 'bg-primary text-primary-foreground shadow-md shadow-primary/20'
                   : 'bg-card text-muted-foreground hover:text-foreground border border-border hover:bg-muted'

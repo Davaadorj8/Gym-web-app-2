@@ -397,7 +397,7 @@ export default function CheckInDeskView({
               </div>
 
               {/* Status Details Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-muted/40 border border-border p-4 rounded-2xl">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-muted/40 border border-border p-4 rounded-xl">
                 <div>
                   <span className="text-[10px] uppercase font-mono font-bold text-muted-foreground block">
                     {t('colExpiration')}

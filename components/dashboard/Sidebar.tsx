@@ -251,7 +251,7 @@ export default function Sidebar({
         {/* User profile info & role switcher */}
         <div
           id="sidebar-user-footer"
-          className={cn('flex flex-col gap-2.5', isCollapsed ? 'p-2.5 items-center' : 'p-3.5')}
+          className={cn('flex flex-col gap-2.5', isCollapsed ? 'p-2.5 items-center' : 'p-4 sm:p-5')}
         >
           <div
             className={cn(

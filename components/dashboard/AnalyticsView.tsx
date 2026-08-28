@@ -1055,7 +1055,7 @@ export default function AnalyticsView({
                   id="btn-switch-nutrient-category"
                   onClick={() => setNutrientChartMode('category')}
                   className={cn(
-                    'px-3 py-1.5 rounded-lg text-xs font-bold font-mono transition-all cursor-pointer',
+                    'px-3 py-1.5 rounded-lg text-xs font-bold font-mono transition-all cursor-pointer whitespace-nowrap',
                     nutrientChartMode === 'category'
                       ? 'bg-background text-primary shadow-sm border border-border'
                       : 'text-muted-foreground hover:text-foreground'
@@ -1068,7 +1068,7 @@ export default function AnalyticsView({
                   id="btn-switch-nutrient-valuation"
                   onClick={() => setNutrientChartMode('valuation')}
                   className={cn(
-                    'px-3 py-1.5 rounded-lg text-xs font-bold font-mono transition-all cursor-pointer',
+                    'px-3 py-1.5 rounded-lg text-xs font-bold font-mono transition-all cursor-pointer whitespace-nowrap',
                     nutrientChartMode === 'valuation'
                       ? 'bg-background text-primary shadow-sm border border-border'
                       : 'text-muted-foreground hover:text-foreground'
@@ -1081,7 +1081,7 @@ export default function AnalyticsView({
                   id="btn-switch-nutrient-sales"
                   onClick={() => setNutrientChartMode('sales')}
                   className={cn(
-                    'px-3 py-1.5 rounded-lg text-xs font-bold font-mono transition-all cursor-pointer',
+                    'px-3 py-1.5 rounded-lg text-xs font-bold font-mono transition-all cursor-pointer whitespace-nowrap',
                     nutrientChartMode === 'sales'
                       ? 'bg-background text-emerald-400 shadow-sm border border-emerald-500/30'
                       : 'text-muted-foreground hover:text-foreground'
@@ -1094,7 +1094,7 @@ export default function AnalyticsView({
                   id="btn-switch-nutrient-status"
                   onClick={() => setNutrientChartMode('status')}
                   className={cn(
-                    'px-3 py-1.5 rounded-lg text-xs font-bold font-mono transition-all cursor-pointer',
+                    'px-3 py-1.5 rounded-lg text-xs font-bold font-mono transition-all cursor-pointer whitespace-nowrap',
                     nutrientChartMode === 'status'
                       ? 'bg-background text-primary shadow-sm border border-border'
                       : 'text-muted-foreground hover:text-foreground'
@@ -1107,7 +1107,7 @@ export default function AnalyticsView({
                   id="btn-switch-nutrient-expiry"
                   onClick={() => setNutrientChartMode('expiry')}
                   className={cn(
-                    'px-3 py-1.5 rounded-lg text-xs font-bold font-mono transition-all cursor-pointer',
+                    'px-3 py-1.5 rounded-lg text-xs font-bold font-mono transition-all cursor-pointer whitespace-nowrap',
                     nutrientChartMode === 'expiry'
                       ? 'bg-background text-amber-400 shadow-sm border border-amber-500/30'
                       : 'text-muted-foreground hover:text-foreground'
