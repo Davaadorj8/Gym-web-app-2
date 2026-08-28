@@ -41,7 +41,7 @@ import {
 import { GymMember, AuthUser, BuiltPlan, getMemberFullName } from '@/lib/types';
 import { Card, Badge, Input } from '@/components/ui';
 import { useDashboard } from '@/lib/orchestration';
-import { formatCurrency, CURRENCY_SYMBOL, cn } from '@/lib/utils';
+import { formatCurrency, CURRENCY_SYMBOL, cn, getNutrientExpiryStatus } from '@/lib/utils';
 import {
   calculateTotalMembershipValue,
   calculateWeeklyDistribution,
@@ -85,10 +85,10 @@ export default function AnalyticsView({
   const [financialChartMode, setFinancialChartMode] = useState<'category' | 'period'>('category');
 
   // Nutrient Analytics Switchable Chart & Filter State
-  const [nutrientChartMode, setNutrientChartMode] = useState<'category' | 'valuation' | 'status'>('category');
+  const [nutrientChartMode, setNutrientChartMode] = useState<'category' | 'valuation' | 'status' | 'expiry'>('category');
   const [searchNutrientQuery, setSearchNutrientQuery] = useState('');
   const [selectedNutrientCategoryFilter, setSelectedNutrientCategoryFilter] = useState<string>('all');
-  const [selectedNutrientStatusFilter, setSelectedNutrientStatusFilter] = useState<'all' | 'in_stock' | 'low_stock' | 'out_of_stock'>('all');
+  const [selectedNutrientStatusFilter, setSelectedNutrientStatusFilter] = useState<'all' | 'in_stock' | 'low_stock' | 'out_of_stock' | 'expiring_soon' | 'expired'>('all');
 
   // Domain Calculations via Services
   const totalMembershipValue = useMemo(() => {
@@ -229,6 +229,17 @@ export default function AnalyticsView({
     const outOfStockCount = nutrients.filter((n) => n.stock === 0).length;
     const inStockCount = nutrients.filter((n) => n.stock > 5).length;
 
+    let expiredCount = 0;
+    let expiringSoonCount = 0;
+    let freshCount = 0;
+
+    nutrients.forEach((n) => {
+      const st = getNutrientExpiryStatus(n.bestBeforeDate);
+      if (st === 'expired') expiredCount++;
+      else if (st === 'expiring_soon') expiringSoonCount++;
+      else if (st === 'fresh') freshCount++;
+    });
+
     const categoryMap: Record<string, { count: number; stock: number; totalValue: number }> = {
       Supplements: { count: 0, stock: 0, totalValue: 0 },
       Shakes: { count: 0, stock: 0, totalValue: 0 },
@@ -261,6 +272,12 @@ export default function AnalyticsView({
       { name: 'Out of Stock (0)', count: outOfStockCount, fill: '#ef4444' },
     ];
 
+    const expiryChartData = [
+      { name: 'Fresh / Good', count: freshCount, fill: '#10b981' },
+      { name: 'Expiring Soon (<30d)', count: expiringSoonCount, fill: '#f59e0b' },
+      { name: 'Expired', count: expiredCount, fill: '#ef4444' },
+    ];
+
     return {
       totalProducts,
       totalStock,
@@ -268,9 +285,13 @@ export default function AnalyticsView({
       inStockCount,
       lowStockCount,
       outOfStockCount,
+      expiredCount,
+      expiringSoonCount,
+      freshCount,
       categoryMap,
       categoryChartData,
       statusChartData,
+      expiryChartData,
     };
   }, [nutrients]);
 
@@ -280,7 +301,8 @@ export default function AnalyticsView({
       const matchesSearch =
         n.name.toLowerCase().includes(q) ||
         (n.flavor && n.flavor.toLowerCase().includes(q)) ||
-        n.category.toLowerCase().includes(q);
+        n.category.toLowerCase().includes(q) ||
+        (n.bestBeforeDate && n.bestBeforeDate.includes(q));
 
       const matchesCat =
         selectedNutrientCategoryFilter === 'all' || n.category === selectedNutrientCategoryFilter;
@@ -292,6 +314,10 @@ export default function AnalyticsView({
         matchesStatus = n.stock > 0 && n.stock <= 5;
       } else if (selectedNutrientStatusFilter === 'out_of_stock') {
         matchesStatus = n.stock === 0;
+      } else if (selectedNutrientStatusFilter === 'expiring_soon') {
+        matchesStatus = getNutrientExpiryStatus(n.bestBeforeDate) === 'expiring_soon';
+      } else if (selectedNutrientStatusFilter === 'expired') {
+        matchesStatus = getNutrientExpiryStatus(n.bestBeforeDate) === 'expired';
       }
 
       return matchesSearch && matchesCat && matchesStatus;
@@ -902,15 +928,16 @@ export default function AnalyticsView({
             <Card id="metric-nutrient-health" className="p-4 relative overflow-hidden shadow-sm">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-mono font-bold uppercase text-muted-foreground">
-                  Stock Health Alert
+                  Stock & Expiry Health
                 </span>
                 <AlertTriangle className="w-4 h-4 text-amber-400" />
               </div>
               <h3 className="text-2xl font-extrabold text-foreground mt-2">
-                {nutrientMetrics.lowStockCount + nutrientMetrics.outOfStockCount}
+                {nutrientMetrics.lowStockCount + nutrientMetrics.outOfStockCount + nutrientMetrics.expiredCount + nutrientMetrics.expiringSoonCount}
               </h3>
               <p className="text-[11px] font-mono text-amber-400 mt-0.5">
-                {nutrientMetrics.lowStockCount} Low Stock • {nutrientMetrics.outOfStockCount} Out
+                {nutrientMetrics.expiredCount > 0 ? `${nutrientMetrics.expiredCount} Expired • ` : ''}
+                {nutrientMetrics.expiringSoonCount} Expiring Soon • {nutrientMetrics.lowStockCount} Low Stock • {nutrientMetrics.outOfStockCount} Out
               </p>
             </Card>
           </div>
@@ -925,6 +952,8 @@ export default function AnalyticsView({
                     ? 'Nutrient Stock Units by Category'
                     : nutrientChartMode === 'valuation'
                     ? 'Inventory Value by Category (₮ MNT)'
+                    : nutrientChartMode === 'expiry'
+                    ? 'Product Expiry Risk Distribution'
                     : 'Stock Health Distribution'}
                 </h3>
                 <p className="text-xs text-muted-foreground font-mono mt-0.5">
@@ -932,12 +961,14 @@ export default function AnalyticsView({
                     ? 'Supplements • Shakes • Beverages • Snacks • Vitamins'
                     : nutrientChartMode === 'valuation'
                     ? 'Total inventory asset valuation per product category'
+                    : nutrientChartMode === 'expiry'
+                    ? 'Fresh / Good • Expiring Soon (<30 days) • Expired'
                     : 'In Stock (>5 units) • Low Stock (1-5 units) • Out of Stock (0 units)'}
                 </p>
               </div>
 
               {/* View Switch Toggles */}
-              <div className="flex items-center gap-1.5 bg-muted/60 border border-border p-1 rounded-xl self-start sm:self-auto">
+              <div className="flex items-center gap-1.5 bg-muted/60 border border-border p-1 rounded-xl self-start sm:self-auto flex-wrap">
                 <button
                   type="button"
                   id="btn-switch-nutrient-category"
@@ -977,6 +1008,19 @@ export default function AnalyticsView({
                 >
                   Stock Status
                 </button>
+                <button
+                  type="button"
+                  id="btn-switch-nutrient-expiry"
+                  onClick={() => setNutrientChartMode('expiry')}
+                  className={cn(
+                    'px-3 py-1.5 rounded-lg text-xs font-bold font-mono transition-all cursor-pointer',
+                    nutrientChartMode === 'expiry'
+                      ? 'bg-background text-amber-400 shadow-sm border border-amber-500/30'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  Expiry Risk
+                </button>
               </div>
             </div>
 
@@ -1002,6 +1046,28 @@ export default function AnalyticsView({
                     <Bar dataKey="count" radius={[6, 6, 0, 0]}>
                       {nutrientMetrics.statusChartData.map((entry, idx) => (
                         <Cell key={`cell-status-${idx}`} fill={entry.fill} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                ) : nutrientChartMode === 'expiry' ? (
+                  <BarChart data={nutrientMetrics.expiryChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <XAxis dataKey="name" tickLine={false} axisLine={{ stroke: 'var(--border)' }} tick={{ fill: 'var(--muted-foreground)', fontSize: 11, fontFamily: 'monospace' }} />
+                    <YAxis allowDecimals={false} tickLine={false} axisLine={{ stroke: 'var(--border)' }} tick={{ fill: 'var(--muted-foreground)', fontSize: 11, fontFamily: 'monospace' }} />
+                    <Tooltip
+                      cursor={{ fill: 'rgba(255, 255, 255, 0.05)' }}
+                      contentStyle={{
+                        backgroundColor: 'var(--card)',
+                        borderColor: 'var(--border)',
+                        borderRadius: '0.75rem',
+                        color: 'var(--foreground)',
+                        fontFamily: 'monospace',
+                        fontSize: '12px',
+                      }}
+                      formatter={(val: any) => [`${val} Products`, 'Count']}
+                    />
+                    <Bar dataKey="count" radius={[6, 6, 0, 0]}>
+                      {nutrientMetrics.expiryChartData.map((entry, idx) => (
+                        <Cell key={`cell-expiry-${idx}`} fill={entry.fill} />
                       ))}
                     </Bar>
                   </BarChart>
@@ -1079,10 +1145,12 @@ export default function AnalyticsView({
                   onChange={(e) => setSelectedNutrientStatusFilter(e.target.value as any)}
                   className="bg-input border border-border text-foreground text-xs font-mono rounded-xl px-3 py-2 outline-none cursor-pointer"
                 >
-                  <option value="all">All Stock Statuses</option>
+                  <option value="all">All Statuses</option>
                   <option value="in_stock">In Stock (&gt;5)</option>
                   <option value="low_stock">Low Stock (1-5)</option>
                   <option value="out_of_stock">Out of Stock (0)</option>
+                  <option value="expiring_soon">Expiring Soon (&lt;30d)</option>
+                  <option value="expired">Expired Products</option>
                 </select>
               </div>
             </div>
@@ -1094,16 +1162,17 @@ export default function AnalyticsView({
                     <th className="py-3 px-4">PRODUCT NAME</th>
                     <th className="py-3 px-4">CATEGORY</th>
                     <th className="py-3 px-4">FLAVOR / VARIANT</th>
+                    <th className="py-3 px-4">BEST BEFORE DATE</th>
                     <th className="py-3 px-4">UNIT PRICE</th>
                     <th className="py-3 px-4">CURRENT STOCK</th>
                     <th className="py-3 px-4">TOTAL ASSET VALUE</th>
-                    <th className="py-3 px-4 text-right">STOCK STATUS</th>
+                    <th className="py-3 px-4 text-right">STATUS & RISK</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {filteredNutrientList.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="py-8 text-center text-muted-foreground font-mono">
+                      <td colSpan={8} className="py-8 text-center text-muted-foreground font-mono">
                         No nutrient items found in inventory matching filter criteria.
                       </td>
                     </tr>
@@ -1112,6 +1181,7 @@ export default function AnalyticsView({
                       const itemValuation = (item.price || 0) * (item.stock || 0);
                       const isLow = item.stock > 0 && item.stock <= 5;
                       const isOut = item.stock === 0;
+                      const expStatus = getNutrientExpiryStatus(item.bestBeforeDate);
 
                       return (
                         <tr key={item.id} className="hover:bg-muted/40 transition-colors">
@@ -1120,17 +1190,38 @@ export default function AnalyticsView({
                             <Badge variant="info">{item.category}</Badge>
                           </td>
                           <td className="py-3 px-4 text-muted-foreground">{item.flavor || '—'}</td>
+                          <td className="py-3 px-4 font-mono text-xs">
+                            {item.bestBeforeDate ? (
+                              <span className={cn(
+                                expStatus === 'expired' ? "text-rose-400 font-bold" : expStatus === 'expiring_soon' ? "text-amber-400 font-bold" : "text-muted-foreground"
+                              )}>
+                                {item.bestBeforeDate}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground/60">—</span>
+                            )}
+                          </td>
                           <td className="py-3 px-4 font-bold text-emerald-400">{formatCurrency(item.price)}</td>
                           <td className="py-3 px-4 font-bold text-foreground">{item.stock} units</td>
                           <td className="py-3 px-4 font-bold text-primary">{formatCurrency(itemValuation)}</td>
                           <td className="py-3 px-4 text-right">
-                            {isOut ? (
-                              <Badge variant="destructive">Out of Stock</Badge>
-                            ) : isLow ? (
-                              <Badge variant="warning">Low Stock ({item.stock})</Badge>
-                            ) : (
-                              <Badge variant="success">In Stock</Badge>
-                            )}
+                            <div className="flex items-center justify-end gap-1.5">
+                              {expStatus === 'expired' && (
+                                <Badge variant="destructive">Expired</Badge>
+                              )}
+                              {expStatus === 'expiring_soon' && (
+                                <Badge variant="warning">Expiring Soon</Badge>
+                              )}
+                              {isOut ? (
+                                <Badge variant="destructive">Out of Stock</Badge>
+                              ) : isLow ? (
+                                <Badge variant="warning">Low Stock ({item.stock})</Badge>
+                              ) : (
+                                expStatus === 'fresh' || expStatus === 'none' ? (
+                                  <Badge variant="success">In Stock</Badge>
+                                ) : null
+                              )}
+                            </div>
                           </td>
                         </tr>
                       );

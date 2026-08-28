@@ -32,17 +32,8 @@ import { BuiltPlan, CategoryTarget, AuthUser, LockerCustomStatus } from '@/lib/t
 import { Button, Badge, Toast } from '@/components/ui';
 import { useDashboard } from '@/lib/orchestration';
 import { getDefaultPlanTitle, generateLockerList, formatLockerNumber } from '@/lib/services';
-import { cn, formatCurrency, CURRENCY_SYMBOL } from '@/lib/utils';
-
-export interface NutrientProduct {
-  id: string;
-  name: string;
-  category: 'Supplements' | 'Shakes' | 'Beverages' | 'Snacks' | 'Vitamins';
-  price: number;
-  stock: number;
-  servingSize?: string;
-  flavor?: string;
-}
+import { cn, formatCurrency, CURRENCY_SYMBOL, getNutrientExpiryStatus } from '@/lib/utils';
+import { NutrientProduct } from '@/lib/types';
 
 interface InventoryViewProps {
   plans?: BuiltPlan[];
@@ -275,12 +266,14 @@ export default function InventoryView({
     price: number;
     stock: number;
     flavor: string;
+    bestBeforeDate: string;
   }>({
     name: '',
     category: 'Supplements',
     price: 0,
     stock: 0,
     flavor: '',
+    bestBeforeDate: '',
   });
 
   // Toast feedback
@@ -360,6 +353,7 @@ export default function InventoryView({
       price: Math.max(0, Number(nutrientForm.price) || 0),
       stock: Math.max(0, Number(nutrientForm.stock) || 0),
       flavor: nutrientForm.flavor.trim() || undefined,
+      bestBeforeDate: nutrientForm.bestBeforeDate ? nutrientForm.bestBeforeDate : undefined,
     };
 
     dashboard.addNutrient(newProduct);
@@ -370,6 +364,7 @@ export default function InventoryView({
       price: 0,
       stock: 0,
       flavor: '',
+      bestBeforeDate: '',
     });
     showToast('Nutrient product added to inventory');
   };
@@ -1172,45 +1167,70 @@ export default function InventoryView({
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {nutrients.map((item) => (
-                    <div
-                      key={item.id}
-                      className="bg-[#070D1E] border border-border/80 rounded-xl p-4 flex flex-col justify-between gap-3 relative group"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <span className="text-[9px] font-mono font-bold uppercase tracking-wider text-[#D4FF00]">
-                            {item.category}
+                  {nutrients.map((item) => {
+                    const expStatus = getNutrientExpiryStatus(item.bestBeforeDate);
+
+                    return (
+                      <div
+                        key={item.id}
+                        className="bg-[#070D1E] border border-border/80 rounded-xl p-4 flex flex-col justify-between gap-3 relative group"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[9px] font-mono font-bold uppercase tracking-wider text-[#D4FF00]">
+                                {item.category}
+                              </span>
+                              {expStatus === 'expired' && (
+                                <span className="bg-rose-500/20 text-rose-400 border border-rose-500/40 text-[9px] font-mono px-1.5 py-0.5 rounded font-bold uppercase">
+                                  Expired
+                                </span>
+                              )}
+                              {expStatus === 'expiring_soon' && (
+                                <span className="bg-amber-500/20 text-amber-400 border border-amber-500/40 text-[9px] font-mono px-1.5 py-0.5 rounded font-bold uppercase">
+                                  Expiring Soon
+                                </span>
+                              )}
+                            </div>
+                            <h4 className="text-sm font-bold text-foreground mt-0.5">
+                              {item.name}
+                            </h4>
+                            {item.flavor && (
+                              <p className="text-[11px] text-muted-foreground font-mono italic">
+                                Flavor: {item.flavor}
+                              </p>
+                            )}
+                            {item.bestBeforeDate && (
+                              <p className={cn(
+                                "text-[11px] font-mono mt-1 flex items-center gap-1",
+                                expStatus === 'expired' ? "text-rose-400 font-bold" : expStatus === 'expiring_soon' ? "text-amber-400 font-bold" : "text-muted-foreground"
+                              )}>
+                                <Calendar className="w-3 h-3 shrink-0" />
+                                <span>Best before: {item.bestBeforeDate}</span>
+                              </p>
+                            )}
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteNutrient(item.id)}
+                            className="text-muted-foreground hover:text-destructive p-1 rounded-md transition-colors cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+
+                        <div className="pt-2 border-t border-border/60 flex items-center justify-between text-xs font-mono">
+                          <span className="text-muted-foreground">
+                            Stock: <strong className="text-foreground">{item.stock}</strong>
                           </span>
-                          <h4 className="text-sm font-bold text-foreground mt-0.5">
-                            {item.name}
-                          </h4>
-                          {item.flavor && (
-                            <p className="text-[11px] text-muted-foreground font-mono italic">
-                              Flavor: {item.flavor}
-                            </p>
-                          )}
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteNutrient(item.id)}
-                          className="text-muted-foreground hover:text-destructive p-1 rounded-md transition-colors cursor-pointer"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-
-                      <div className="pt-2 border-t border-border/60 flex items-center justify-between text-xs font-mono">
-                        <span className="text-muted-foreground">
-                          Stock: <strong className="text-foreground">{item.stock}</strong>
-                        </span>
-                        <div className="bg-muted/40 border border-border/60 rounded px-2 py-0.5 text-[#D4FF00] font-bold font-mono">
-                          {formatCurrency(item.price)}
+                          <div className="bg-muted/40 border border-border/60 rounded px-2 py-0.5 text-[#D4FF00] font-bold font-mono">
+                            {formatCurrency(item.price)}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -1327,6 +1347,18 @@ export default function InventoryView({
                     className="w-full bg-[#070D1E] border border-border/80 focus:border-[#D4FF00] text-sm font-mono text-foreground rounded-xl px-3 py-2.5 outline-none"
                   />
                 </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase font-mono">
+                  Best Before Date (Expiry)
+                </label>
+                <input
+                  type="date"
+                  value={nutrientForm.bestBeforeDate}
+                  onChange={(e) => setNutrientForm((f) => ({ ...f, bestBeforeDate: e.target.value }))}
+                  className="w-full bg-[#070D1E] border border-border/80 focus:border-[#D4FF00] text-xs text-foreground rounded-xl px-3 py-2.5 outline-none font-mono"
+                />
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-border/80">

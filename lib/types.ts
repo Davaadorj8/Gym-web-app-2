@@ -138,6 +138,7 @@ export interface NutrientProduct {
   stock: number;
   servingSize?: string;
   flavor?: string;
+  bestBeforeDate?: string;
 }
 
 export interface NutrientSaleLog {
@@ -162,12 +163,12 @@ export const MOCK_GYM_MEMBERS: GymMember[] = [];
 export const MOCK_LOCKER_LOGS: LockerLog[] = [];
 export const MOCK_STAFF_ACCOUNTS: StaffAccount[] = [];
 export const MOCK_NUTRIENT_PRODUCTS: NutrientProduct[] = [
-  { id: 'nutr-1', name: 'Whey Isolate Protein (1kg)', category: 'Supplements', price: 145000, stock: 24, flavor: 'Chocolate Fudge' },
-  { id: 'nutr-2', name: 'Pre-Workout Energy Blast', category: 'Supplements', price: 85000, stock: 15, flavor: 'Blue Raspberry' },
-  { id: 'nutr-3', name: 'Post-Workout Recovery Shake', category: 'Shakes', price: 15000, stock: 40, flavor: 'Vanilla Cream' },
-  { id: 'nutr-4', name: 'BCAA Electrolyte Powder', category: 'Beverages', price: 65000, stock: 18, flavor: 'Watermelon' },
-  { id: 'nutr-5', name: 'High Protein Bar (Box of 12)', category: 'Snacks', price: 48000, stock: 30, flavor: 'Peanut Butter' },
-  { id: 'nutr-6', name: 'Daily Multivitamin & Omega-3 Pack', category: 'Vitamins', price: 55000, stock: 12 },
+  { id: 'nutr-1', name: 'Whey Isolate Protein (1kg)', category: 'Supplements', price: 145000, stock: 24, flavor: 'Chocolate Fudge', bestBeforeDate: '2027-02-28' },
+  { id: 'nutr-2', name: 'Pre-Workout Energy Blast', category: 'Supplements', price: 85000, stock: 15, flavor: 'Blue Raspberry', bestBeforeDate: '2026-09-12' },
+  { id: 'nutr-3', name: 'Post-Workout Recovery Shake', category: 'Shakes', price: 15000, stock: 40, flavor: 'Vanilla Cream', bestBeforeDate: '2026-08-15' },
+  { id: 'nutr-4', name: 'BCAA Electrolyte Powder', category: 'Beverages', price: 65000, stock: 18, flavor: 'Watermelon', bestBeforeDate: '2026-12-31' },
+  { id: 'nutr-5', name: 'High Protein Bar (Box of 12)', category: 'Snacks', price: 48000, stock: 30, flavor: 'Peanut Butter', bestBeforeDate: '2026-09-02' },
+  { id: 'nutr-6', name: 'Daily Multivitamin & Omega-3 Pack', category: 'Vitamins', price: 55000, stock: 12, bestBeforeDate: '2027-08-15' },
 ];
 export const MOCK_NUTRIENT_SALES: NutrientSaleLog[] = [];
 
