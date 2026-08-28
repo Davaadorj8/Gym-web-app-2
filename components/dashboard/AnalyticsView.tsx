@@ -20,6 +20,11 @@ import {
   Database,
   Layers,
   ShieldCheck,
+  Sparkles,
+  ShoppingBag,
+  AlertTriangle,
+  Tag,
+  Filter,
 } from 'lucide-react';
 import {
   BarChart,
@@ -52,7 +57,7 @@ interface AnalyticsViewProps {
   currentUser?: AuthUser;
 }
 
-type AnalyticsTab = 'financial' | 'operational' | 'plan' | 'locker' | 'members';
+type AnalyticsTab = 'financial' | 'operational' | 'plan' | 'nutrients' | 'locker' | 'members';
 
 const PLAN_TIER_COLORS = ['#3b82f6', '#38bdf8', '#10b981', '#f59e0b', '#a78bfa'];
 
@@ -69,15 +74,21 @@ export default function AnalyticsView({
   const t = useTranslations('Analytics');
   const isAdmin = !currentUser || currentUser.role === 'admin';
 
-  // State for Switch Tabs: financial, operational, plan (product), locker, members
+  // State for Switch Tabs: financial, operational, plan (product), nutrients, locker, members
   const [activeTab, setActiveTab] = useState<AnalyticsTab>('financial');
 
-  // Internal filters for Audit Logs
+  // Internal filters for Audit Logs & Charts
   const [searchMemberQuery, setSearchMemberQuery] = useState('');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<'all' | 'under18' | 'over18' | 'organization'>('all');
   const [selectedPeriodFilter, setSelectedPeriodFilter] = useState<'all' | '1' | '3' | '6' | '12' | 'other'>('all');
   const [trafficViewMode, setTrafficViewMode] = useState<'weekly' | 'hourly'>('weekly');
   const [financialChartMode, setFinancialChartMode] = useState<'category' | 'period'>('category');
+
+  // Nutrient Analytics Switchable Chart & Filter State
+  const [nutrientChartMode, setNutrientChartMode] = useState<'category' | 'valuation' | 'status'>('category');
+  const [searchNutrientQuery, setSearchNutrientQuery] = useState('');
+  const [selectedNutrientCategoryFilter, setSelectedNutrientCategoryFilter] = useState<string>('all');
+  const [selectedNutrientStatusFilter, setSelectedNutrientStatusFilter] = useState<'all' | 'in_stock' | 'low_stock' | 'out_of_stock'>('all');
 
   // Domain Calculations via Services
   const totalMembershipValue = useMemo(() => {
@@ -207,12 +218,93 @@ export default function AnalyticsView({
     }));
   }, [membersByPlanTier]);
 
+  // Nutrient Inventory Metrics & Chart Data
+  const nutrients = dashboard.nutrients;
+
+  const nutrientMetrics = useMemo(() => {
+    const totalProducts = nutrients.length;
+    const totalStock = nutrients.reduce((acc, n) => acc + (n.stock || 0), 0);
+    const totalValue = nutrients.reduce((acc, n) => acc + (n.price || 0) * (n.stock || 0), 0);
+    const lowStockCount = nutrients.filter((n) => n.stock > 0 && n.stock <= 5).length;
+    const outOfStockCount = nutrients.filter((n) => n.stock === 0).length;
+    const inStockCount = nutrients.filter((n) => n.stock > 5).length;
+
+    const categoryMap: Record<string, { count: number; stock: number; totalValue: number }> = {
+      Supplements: { count: 0, stock: 0, totalValue: 0 },
+      Shakes: { count: 0, stock: 0, totalValue: 0 },
+      Beverages: { count: 0, stock: 0, totalValue: 0 },
+      Snacks: { count: 0, stock: 0, totalValue: 0 },
+      Vitamins: { count: 0, stock: 0, totalValue: 0 },
+    };
+
+    nutrients.forEach((n) => {
+      const cat = n.category || 'Supplements';
+      if (!categoryMap[cat]) {
+        categoryMap[cat] = { count: 0, stock: 0, totalValue: 0 };
+      }
+      categoryMap[cat].count += 1;
+      categoryMap[cat].stock += n.stock || 0;
+      categoryMap[cat].totalValue += (n.price || 0) * (n.stock || 0);
+    });
+
+    const categoryChartData = [
+      { name: 'Supplements', stock: categoryMap['Supplements']?.stock || 0, totalValue: categoryMap['Supplements']?.totalValue || 0, fill: '#3b82f6' },
+      { name: 'Shakes', stock: categoryMap['Shakes']?.stock || 0, totalValue: categoryMap['Shakes']?.totalValue || 0, fill: '#10b981' },
+      { name: 'Beverages', stock: categoryMap['Beverages']?.stock || 0, totalValue: categoryMap['Beverages']?.totalValue || 0, fill: '#38bdf8' },
+      { name: 'Snacks', stock: categoryMap['Snacks']?.stock || 0, totalValue: categoryMap['Snacks']?.totalValue || 0, fill: '#f59e0b' },
+      { name: 'Vitamins', stock: categoryMap['Vitamins']?.stock || 0, totalValue: categoryMap['Vitamins']?.totalValue || 0, fill: '#a78bfa' },
+    ];
+
+    const statusChartData = [
+      { name: 'In Stock (>5)', count: inStockCount, fill: '#10b981' },
+      { name: 'Low Stock (1-5)', count: lowStockCount, fill: '#f59e0b' },
+      { name: 'Out of Stock (0)', count: outOfStockCount, fill: '#ef4444' },
+    ];
+
+    return {
+      totalProducts,
+      totalStock,
+      totalValue,
+      inStockCount,
+      lowStockCount,
+      outOfStockCount,
+      categoryMap,
+      categoryChartData,
+      statusChartData,
+    };
+  }, [nutrients]);
+
+  const filteredNutrientList = useMemo(() => {
+    return nutrients.filter((n) => {
+      const q = searchNutrientQuery.toLowerCase();
+      const matchesSearch =
+        n.name.toLowerCase().includes(q) ||
+        (n.flavor && n.flavor.toLowerCase().includes(q)) ||
+        n.category.toLowerCase().includes(q);
+
+      const matchesCat =
+        selectedNutrientCategoryFilter === 'all' || n.category === selectedNutrientCategoryFilter;
+
+      let matchesStatus = true;
+      if (selectedNutrientStatusFilter === 'in_stock') {
+        matchesStatus = n.stock > 5;
+      } else if (selectedNutrientStatusFilter === 'low_stock') {
+        matchesStatus = n.stock > 0 && n.stock <= 5;
+      } else if (selectedNutrientStatusFilter === 'out_of_stock') {
+        matchesStatus = n.stock === 0;
+      }
+
+      return matchesSearch && matchesCat && matchesStatus;
+    });
+  }, [nutrients, searchNutrientQuery, selectedNutrientCategoryFilter, selectedNutrientStatusFilter]);
+
   const tabs: { id: AnalyticsTab; label: string; icon: React.ElementType }[] = [
-    { id: 'financial', label: t('tabFinancial', { defaultValue: 'Financial' }), icon: DollarSign },
-    { id: 'operational', label: t('tabOperational', { defaultValue: 'Operational' }), icon: Activity },
-    { id: 'plan', label: t('tabPlan', { defaultValue: 'Plan (Product)' }), icon: Package },
-    { id: 'locker', label: t('tabLocker', { defaultValue: 'Locker' }), icon: Lock },
-    { id: 'members', label: t('tabMembers', { defaultValue: 'Members' }), icon: Users },
+    { id: 'financial', label: t.has('tabFinancial') ? t('tabFinancial') : 'Financial', icon: DollarSign },
+    { id: 'operational', label: t.has('tabOperational') ? t('tabOperational') : 'Operational', icon: Activity },
+    { id: 'plan', label: t.has('tabPlan') ? t('tabPlan') : 'Plan (Product)', icon: Package },
+    { id: 'nutrients', label: t.has('tabNutrients') ? t('tabNutrients') : 'Nutrients', icon: Sparkles },
+    { id: 'locker', label: t.has('tabLocker') ? t('tabLocker') : 'Locker', icon: Lock },
+    { id: 'members', label: t.has('tabMembers') ? t('tabMembers') : 'Members', icon: Users },
   ];
 
   return (
@@ -268,7 +360,7 @@ export default function AnalyticsView({
       {activeTab === 'financial' && (
         <div className="space-y-6">
           {/* KPI Strip */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <Card id="metric-total-membership-value" className="p-5 relative overflow-hidden shadow-md">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-muted-foreground">
@@ -279,7 +371,7 @@ export default function AnalyticsView({
                 </div>
               </div>
               <div className="mt-3">
-                <h2 className="text-3xl font-extrabold text-foreground tracking-tight">
+                <h2 className="text-2xl font-extrabold text-foreground tracking-tight">
                   {formatCurrency(totalMembershipValue)}
                 </h2>
                 <p className="text-xs font-mono font-bold text-emerald-400 mt-1">
@@ -298,11 +390,30 @@ export default function AnalyticsView({
                 </div>
               </div>
               <div className="mt-3">
-                <h2 className="text-3xl font-extrabold text-foreground tracking-tight">
+                <h2 className="text-2xl font-extrabold text-foreground tracking-tight">
                   {formatCurrency(totalExtensionRevenue)}
                 </h2>
                 <p className="text-xs font-mono font-bold text-purple-400 mt-1">
                   {t('collectedFromExtensions')} ({totalExtensionTransactions} {t('eventsUnit')})
+                </p>
+              </div>
+            </Card>
+
+            <Card id="metric-nutrient-financial-stock" className="p-5 relative overflow-hidden shadow-md">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-muted-foreground">
+                  Nutrient Inventory Value
+                </span>
+                <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                  <Sparkles className="w-4 h-4" />
+                </div>
+              </div>
+              <div className="mt-3">
+                <h2 className="text-2xl font-extrabold text-foreground tracking-tight">
+                  {formatCurrency(nutrientMetrics.totalValue)}
+                </h2>
+                <p className="text-xs font-mono font-bold text-amber-400 mt-1">
+                  {nutrientMetrics.totalStock} units across {nutrientMetrics.totalProducts} products
                 </p>
               </div>
             </Card>
@@ -317,7 +428,7 @@ export default function AnalyticsView({
                 </div>
               </div>
               <div className="mt-3">
-                <h2 className="text-3xl font-extrabold text-foreground tracking-tight">
+                <h2 className="text-2xl font-extrabold text-foreground tracking-tight">
                   {renewalPercentage}
                 </h2>
                 <p className="text-xs font-mono font-bold text-sky-400 mt-1">
@@ -750,7 +861,289 @@ export default function AnalyticsView({
         </div>
       )}
 
-      {/* ================= TAB 4: LOCKER ANALYTICS ================= */}
+      {/* ================= TAB 4: NUTRIENT INVENTORY ANALYTICS ================= */}
+      {activeTab === 'nutrients' && (
+        <div className="space-y-6">
+          {/* Nutrient KPI Strip */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Card id="metric-nutrient-products" className="p-4 relative overflow-hidden shadow-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono font-bold uppercase text-muted-foreground">
+                  Active Products
+                </span>
+                <Sparkles className="w-4 h-4 text-primary" />
+              </div>
+              <h3 className="text-2xl font-extrabold text-foreground mt-2">{nutrientMetrics.totalProducts}</h3>
+              <p className="text-[11px] font-mono text-primary mt-0.5">Items in catalog</p>
+            </Card>
+
+            <Card id="metric-nutrient-stock" className="p-4 relative overflow-hidden shadow-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono font-bold uppercase text-muted-foreground">
+                  Total Inventory Stock
+                </span>
+                <Package className="w-4 h-4 text-sky-400" />
+              </div>
+              <h3 className="text-2xl font-extrabold text-foreground mt-2">{nutrientMetrics.totalStock} units</h3>
+              <p className="text-[11px] font-mono text-sky-400 mt-0.5">Available across categories</p>
+            </Card>
+
+            <Card id="metric-nutrient-valuation" className="p-4 relative overflow-hidden shadow-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono font-bold uppercase text-muted-foreground">
+                  Inventory Asset Value
+                </span>
+                <DollarSign className="w-4 h-4 text-emerald-400" />
+              </div>
+              <h3 className="text-2xl font-extrabold text-foreground mt-2">{formatCurrency(nutrientMetrics.totalValue)}</h3>
+              <p className="text-[11px] font-mono text-emerald-400 mt-0.5">Potential retail revenue</p>
+            </Card>
+
+            <Card id="metric-nutrient-health" className="p-4 relative overflow-hidden shadow-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono font-bold uppercase text-muted-foreground">
+                  Stock Health Alert
+                </span>
+                <AlertTriangle className="w-4 h-4 text-amber-400" />
+              </div>
+              <h3 className="text-2xl font-extrabold text-foreground mt-2">
+                {nutrientMetrics.lowStockCount + nutrientMetrics.outOfStockCount}
+              </h3>
+              <p className="text-[11px] font-mono text-amber-400 mt-0.5">
+                {nutrientMetrics.lowStockCount} Low Stock • {nutrientMetrics.outOfStockCount} Out
+              </p>
+            </Card>
+          </div>
+
+          {/* Single Switchable Graph Card */}
+          <Card id="card-nutrient-switchable-graph" className="p-5 shadow-md space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border">
+              <div>
+                <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                  <BarChart3 className="w-4 h-4 text-primary" />
+                  {nutrientChartMode === 'category'
+                    ? 'Nutrient Stock Units by Category'
+                    : nutrientChartMode === 'valuation'
+                    ? 'Inventory Value by Category (₮ MNT)'
+                    : 'Stock Health Distribution'}
+                </h3>
+                <p className="text-xs text-muted-foreground font-mono mt-0.5">
+                  {nutrientChartMode === 'category'
+                    ? 'Supplements • Shakes • Beverages • Snacks • Vitamins'
+                    : nutrientChartMode === 'valuation'
+                    ? 'Total inventory asset valuation per product category'
+                    : 'In Stock (>5 units) • Low Stock (1-5 units) • Out of Stock (0 units)'}
+                </p>
+              </div>
+
+              {/* View Switch Toggles */}
+              <div className="flex items-center gap-1.5 bg-muted/60 border border-border p-1 rounded-xl self-start sm:self-auto">
+                <button
+                  type="button"
+                  id="btn-switch-nutrient-category"
+                  onClick={() => setNutrientChartMode('category')}
+                  className={cn(
+                    'px-3 py-1.5 rounded-lg text-xs font-bold font-mono transition-all cursor-pointer',
+                    nutrientChartMode === 'category'
+                      ? 'bg-background text-primary shadow-sm border border-border'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  Stock Volume
+                </button>
+                <button
+                  type="button"
+                  id="btn-switch-nutrient-valuation"
+                  onClick={() => setNutrientChartMode('valuation')}
+                  className={cn(
+                    'px-3 py-1.5 rounded-lg text-xs font-bold font-mono transition-all cursor-pointer',
+                    nutrientChartMode === 'valuation'
+                      ? 'bg-background text-primary shadow-sm border border-border'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  Asset Valuation
+                </button>
+                <button
+                  type="button"
+                  id="btn-switch-nutrient-status"
+                  onClick={() => setNutrientChartMode('status')}
+                  className={cn(
+                    'px-3 py-1.5 rounded-lg text-xs font-bold font-mono transition-all cursor-pointer',
+                    nutrientChartMode === 'status'
+                      ? 'bg-background text-primary shadow-sm border border-border'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  Stock Status
+                </button>
+              </div>
+            </div>
+
+            {/* Chart Area */}
+            <div className="h-64 w-full pt-2">
+              <ResponsiveContainer width="100%" height="100%">
+                {nutrientChartMode === 'status' ? (
+                  <BarChart data={nutrientMetrics.statusChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <XAxis dataKey="name" tickLine={false} axisLine={{ stroke: 'var(--border)' }} tick={{ fill: 'var(--muted-foreground)', fontSize: 11, fontFamily: 'monospace' }} />
+                    <YAxis allowDecimals={false} tickLine={false} axisLine={{ stroke: 'var(--border)' }} tick={{ fill: 'var(--muted-foreground)', fontSize: 11, fontFamily: 'monospace' }} />
+                    <Tooltip
+                      cursor={{ fill: 'rgba(255, 255, 255, 0.05)' }}
+                      contentStyle={{
+                        backgroundColor: 'var(--card)',
+                        borderColor: 'var(--border)',
+                        borderRadius: '0.75rem',
+                        color: 'var(--foreground)',
+                        fontFamily: 'monospace',
+                        fontSize: '12px',
+                      }}
+                      formatter={(val: any) => [`${val} Products`, 'Count']}
+                    />
+                    <Bar dataKey="count" radius={[6, 6, 0, 0]}>
+                      {nutrientMetrics.statusChartData.map((entry, idx) => (
+                        <Cell key={`cell-status-${idx}`} fill={entry.fill} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                ) : (
+                  <BarChart data={nutrientMetrics.categoryChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <XAxis dataKey="name" tickLine={false} axisLine={{ stroke: 'var(--border)' }} tick={{ fill: 'var(--muted-foreground)', fontSize: 11, fontFamily: 'monospace' }} />
+                    <YAxis
+                      allowDecimals={false}
+                      tickLine={false}
+                      axisLine={{ stroke: 'var(--border)' }}
+                      tick={{ fill: 'var(--muted-foreground)', fontSize: 11, fontFamily: 'monospace' }}
+                      tickFormatter={(val) => (nutrientChartMode === 'valuation' ? `${(val / 1000000).toFixed(1)}M` : val)}
+                    />
+                    <Tooltip
+                      cursor={{ fill: 'rgba(255, 255, 255, 0.05)' }}
+                      contentStyle={{
+                        backgroundColor: 'var(--card)',
+                        borderColor: 'var(--border)',
+                        borderRadius: '0.75rem',
+                        color: 'var(--foreground)',
+                        fontFamily: 'monospace',
+                        fontSize: '12px',
+                      }}
+                      formatter={(val: any) => [
+                        nutrientChartMode === 'valuation' ? formatCurrency(val) : `${val} Units`,
+                        nutrientChartMode === 'valuation' ? 'Total Value' : 'Stock Units',
+                      ]}
+                    />
+                    <Bar
+                      dataKey={nutrientChartMode === 'valuation' ? 'totalValue' : 'stock'}
+                      radius={[6, 6, 0, 0]}
+                    >
+                      {nutrientMetrics.categoryChartData.map((entry, idx) => (
+                        <Cell key={`cell-cat-${idx}`} fill={entry.fill} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                )}
+              </ResponsiveContainer>
+            </div>
+          </Card>
+
+          {/* Nutrient Stock Breakdown & Filterable Table */}
+          <Card className="p-5 shadow-md space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-primary" />
+                <h3 className="text-sm font-bold text-foreground">Nutrient Inventory Breakdown</h3>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <Input
+                  type="text"
+                  placeholder="Search nutrient product or flavor..."
+                  value={searchNutrientQuery}
+                  onChange={(e) => setSearchNutrientQuery(e.target.value)}
+                  icon={<Search className="w-3.5 h-3.5 text-muted-foreground" />}
+                />
+
+                <select
+                  value={selectedNutrientCategoryFilter}
+                  onChange={(e) => setSelectedNutrientCategoryFilter(e.target.value)}
+                  className="bg-input border border-border text-foreground text-xs font-mono rounded-xl px-3 py-2 outline-none cursor-pointer"
+                >
+                  <option value="all">All Categories</option>
+                  <option value="Supplements">Supplements</option>
+                  <option value="Shakes">Shakes</option>
+                  <option value="Beverages">Beverages</option>
+                  <option value="Snacks">Snacks</option>
+                  <option value="Vitamins">Vitamins</option>
+                </select>
+
+                <select
+                  value={selectedNutrientStatusFilter}
+                  onChange={(e) => setSelectedNutrientStatusFilter(e.target.value as any)}
+                  className="bg-input border border-border text-foreground text-xs font-mono rounded-xl px-3 py-2 outline-none cursor-pointer"
+                >
+                  <option value="all">All Stock Statuses</option>
+                  <option value="in_stock">In Stock (&gt;5)</option>
+                  <option value="low_stock">Low Stock (1-5)</option>
+                  <option value="out_of_stock">Out of Stock (0)</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto rounded-xl border border-border">
+              <table className="w-full text-left text-xs font-mono border-collapse">
+                <thead>
+                  <tr className="bg-muted text-muted-foreground text-[10px] uppercase font-bold border-b border-border">
+                    <th className="py-3 px-4">PRODUCT NAME</th>
+                    <th className="py-3 px-4">CATEGORY</th>
+                    <th className="py-3 px-4">FLAVOR / VARIANT</th>
+                    <th className="py-3 px-4">UNIT PRICE</th>
+                    <th className="py-3 px-4">CURRENT STOCK</th>
+                    <th className="py-3 px-4">TOTAL ASSET VALUE</th>
+                    <th className="py-3 px-4 text-right">STOCK STATUS</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {filteredNutrientList.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-8 text-center text-muted-foreground font-mono">
+                        No nutrient items found in inventory matching filter criteria.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredNutrientList.map((item) => {
+                      const itemValuation = (item.price || 0) * (item.stock || 0);
+                      const isLow = item.stock > 0 && item.stock <= 5;
+                      const isOut = item.stock === 0;
+
+                      return (
+                        <tr key={item.id} className="hover:bg-muted/40 transition-colors">
+                          <td className="py-3 px-4 font-bold text-foreground">{item.name}</td>
+                          <td className="py-3 px-4">
+                            <Badge variant="info">{item.category}</Badge>
+                          </td>
+                          <td className="py-3 px-4 text-muted-foreground">{item.flavor || '—'}</td>
+                          <td className="py-3 px-4 font-bold text-emerald-400">{formatCurrency(item.price)}</td>
+                          <td className="py-3 px-4 font-bold text-foreground">{item.stock} units</td>
+                          <td className="py-3 px-4 font-bold text-primary">{formatCurrency(itemValuation)}</td>
+                          <td className="py-3 px-4 text-right">
+                            {isOut ? (
+                              <Badge variant="destructive">Out of Stock</Badge>
+                            ) : isLow ? (
+                              <Badge variant="warning">Low Stock ({item.stock})</Badge>
+                            ) : (
+                              <Badge variant="success">In Stock</Badge>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* ================= TAB 5: LOCKER ANALYTICS ================= */}
       {activeTab === 'locker' && (
         <div className="space-y-6">
           {/* Locker Status Consolidated Card */}

@@ -12,6 +12,8 @@ import {
   LockerLog,
   LockerCustomStatus,
   MembershipExtensionLog,
+  NutrientProduct,
+  MOCK_NUTRIENT_PRODUCTS,
   StaffAccount,
   UserRole,
 } from '@/lib/types';
@@ -39,6 +41,7 @@ export interface DashboardContextValue {
   staffList: StaffAccount[];
   totalLockers: number;
   lockerStatuses: Record<string, LockerCustomStatus>;
+  nutrients: NutrientProduct[];
   isLoading: boolean;
   statusMessage: string | null;
 
@@ -82,6 +85,9 @@ export interface DashboardContextValue {
   addStaff: (staff: StaffAccount) => void;
   updateStaff: (staff: StaffAccount) => void;
   deleteStaff: (id: string) => void;
+  addNutrient: (product: NutrientProduct) => void;
+  deleteNutrient: (id: string) => void;
+  updateNutrient: (product: NutrientProduct) => void;
 }
 
 const DashboardContext = createContext<DashboardContextValue | null>(null);
@@ -142,6 +148,18 @@ export function DashboardProvider({
       }
     }
     return {};
+  });
+
+  const [nutrients, setNutrients] = useState<NutrientProduct[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('arche_nutrient_products');
+        if (saved) return JSON.parse(saved);
+      } catch {
+        // ignore
+      }
+    }
+    return MOCK_NUTRIENT_PRODUCTS;
   });
 
   // Authentication handlers
@@ -497,6 +515,49 @@ export function DashboardProvider({
     setStaffList((prev) => prev.filter((s) => s.id !== id));
   }, []);
 
+  // Nutrient Inventory Actions
+  const addNutrient = useCallback((newProduct: NutrientProduct) => {
+    setNutrients((prev) => {
+      const updated = [newProduct, ...prev];
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('arche_nutrient_products', JSON.stringify(updated));
+        } catch {
+          // ignore
+        }
+      }
+      return updated;
+    });
+  }, []);
+
+  const deleteNutrient = useCallback((id: string) => {
+    setNutrients((prev) => {
+      const updated = prev.filter((n) => n.id !== id);
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('arche_nutrient_products', JSON.stringify(updated));
+        } catch {
+          // ignore
+        }
+      }
+      return updated;
+    });
+  }, []);
+
+  const updateNutrient = useCallback((updatedProduct: NutrientProduct) => {
+    setNutrients((prev) => {
+      const updated = prev.map((n) => (n.id === updatedProduct.id ? updatedProduct : n));
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('arche_nutrient_products', JSON.stringify(updated));
+        } catch {
+          // ignore
+        }
+      }
+      return updated;
+    });
+  }, []);
+
   const value = useMemo<DashboardContextValue>(
     () => ({
       isAuthenticated,
@@ -510,6 +571,7 @@ export function DashboardProvider({
       staffList,
       totalLockers,
       lockerStatuses,
+      nutrients,
       isLoading,
       statusMessage,
       setActiveTab,
@@ -534,6 +596,9 @@ export function DashboardProvider({
       addStaff,
       updateStaff,
       deleteStaff,
+      addNutrient,
+      deleteNutrient,
+      updateNutrient,
     }),
     [
       isAuthenticated,
@@ -547,6 +612,7 @@ export function DashboardProvider({
       staffList,
       totalLockers,
       lockerStatuses,
+      nutrients,
       isLoading,
       statusMessage,
       toggleSidebar,
@@ -567,6 +633,9 @@ export function DashboardProvider({
       addStaff,
       updateStaff,
       deleteStaff,
+      addNutrient,
+      deleteNutrient,
+      updateNutrient,
     ]
   );
 

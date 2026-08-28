@@ -128,15 +128,54 @@ export interface LockerLog {
   staffRole?: UserRole;
 }
 
+export type NutrientCategory = 'Supplements' | 'Shakes' | 'Beverages' | 'Snacks' | 'Vitamins';
+
+export interface NutrientProduct {
+  id: string;
+  name: string;
+  category: NutrientCategory;
+  price: number;
+  stock: number;
+  servingSize?: string;
+  flavor?: string;
+}
+
+export interface NutrientSaleLog {
+  id: string;
+  productId: string;
+  productName: string;
+  category: NutrientCategory;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+  timestamp: string;
+  timeFormatted: string;
+  paymentMethod: string;
+  memberId?: string;
+  memberName?: string;
+  staffLogged?: string;
+}
+
 // MOCK_ Prefixed In-Memory Dataset Definitions (Pre-real-data state)
 export const MOCK_BUILT_PLANS: BuiltPlan[] = [];
 export const MOCK_GYM_MEMBERS: GymMember[] = [];
 export const MOCK_LOCKER_LOGS: LockerLog[] = [];
 export const MOCK_STAFF_ACCOUNTS: StaffAccount[] = [];
+export const MOCK_NUTRIENT_PRODUCTS: NutrientProduct[] = [
+  { id: 'nutr-1', name: 'Whey Isolate Protein (1kg)', category: 'Supplements', price: 145000, stock: 24, flavor: 'Chocolate Fudge' },
+  { id: 'nutr-2', name: 'Pre-Workout Energy Blast', category: 'Supplements', price: 85000, stock: 15, flavor: 'Blue Raspberry' },
+  { id: 'nutr-3', name: 'Post-Workout Recovery Shake', category: 'Shakes', price: 15000, stock: 40, flavor: 'Vanilla Cream' },
+  { id: 'nutr-4', name: 'BCAA Electrolyte Powder', category: 'Beverages', price: 65000, stock: 18, flavor: 'Watermelon' },
+  { id: 'nutr-5', name: 'High Protein Bar (Box of 12)', category: 'Snacks', price: 48000, stock: 30, flavor: 'Peanut Butter' },
+  { id: 'nutr-6', name: 'Daily Multivitamin & Omega-3 Pack', category: 'Vitamins', price: 55000, stock: 12 },
+];
+export const MOCK_NUTRIENT_SALES: NutrientSaleLog[] = [];
 
 // Aliases for backward compatibility
 export const DEFAULT_BUILT_PLANS = MOCK_BUILT_PLANS;
 export const INITIAL_GYM_MEMBERS = MOCK_GYM_MEMBERS;
 export const INITIAL_LOCKER_LOGS = MOCK_LOCKER_LOGS;
 export const INITIAL_STAFF_ACCOUNTS = MOCK_STAFF_ACCOUNTS;
+export const INITIAL_NUTRIENT_PRODUCTS = MOCK_NUTRIENT_PRODUCTS;
+
 

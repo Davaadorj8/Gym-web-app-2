@@ -55,7 +55,19 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <I18nContext.Provider value={{ locale, setLocale }}>
-      <NextIntlClientProvider locale={locale} messages={messages[locale]} timeZone="UTC">
+      <NextIntlClientProvider
+        locale={locale}
+        messages={messages[locale]}
+        timeZone="UTC"
+        onError={(error) => {
+          if (process.env.NODE_ENV !== 'production') {
+            console.warn(error.message);
+          }
+        }}
+        getMessageFallback={({ key, namespace }) => {
+          return `${namespace ? `${namespace}.` : ''}${key}`;
+        }}
+      >
         {children}
       </NextIntlClientProvider>
     </I18nContext.Provider>

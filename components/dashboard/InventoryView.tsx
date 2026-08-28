@@ -265,18 +265,8 @@ export default function InventoryView({
   const [durationMonths, setDurationMonths] = useState<number>(1);
   const [price, setPrice] = useState<number>(0);
 
-  // Nutrients State
-  const [nutrients, setNutrients] = useState<NutrientProduct[]>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem('arche_nutrient_inventory');
-        if (saved) return JSON.parse(saved);
-      } catch {
-        // ignore
-      }
-    }
-    return [];
-  });
+  // Nutrients State via central DashboardContext
+  const nutrients = dashboard.nutrients;
 
   const [isNutrientModalOpen, setIsNutrientModalOpen] = useState(false);
   const [nutrientForm, setNutrientForm] = useState<{
@@ -292,16 +282,6 @@ export default function InventoryView({
     stock: 0,
     flavor: '',
   });
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem('arche_nutrient_inventory', JSON.stringify(nutrients));
-      } catch {
-        // ignore
-      }
-    }
-  }, [nutrients]);
 
   // Toast feedback
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -382,7 +362,7 @@ export default function InventoryView({
       flavor: nutrientForm.flavor.trim() || undefined,
     };
 
-    setNutrients((prev) => [newProduct, ...prev]);
+    dashboard.addNutrient(newProduct);
     setIsNutrientModalOpen(false);
     setNutrientForm({
       name: '',
@@ -395,7 +375,7 @@ export default function InventoryView({
   };
 
   const handleDeleteNutrient = (id: string) => {
-    setNutrients((prev) => prev.filter((n) => n.id !== id));
+    dashboard.deleteNutrient(id);
     showToast('Product removed from inventory');
   };
 
