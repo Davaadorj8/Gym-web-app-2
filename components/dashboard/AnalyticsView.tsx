@@ -221,7 +221,8 @@ export default function AnalyticsView({
 
   // Nutrient Inventory Metrics & Chart Data
   const nutrients = dashboard.nutrients;
-  const nutrientSales = dashboard.nutrientSales || [];
+  const rawNutrientSales = dashboard.nutrientSales;
+  const nutrientSales = useMemo(() => rawNutrientSales || [], [rawNutrientSales]);
 
   const nutrientMetrics = useMemo(() => {
     const totalProducts = nutrients.length;
