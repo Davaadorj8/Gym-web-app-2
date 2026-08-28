@@ -50,10 +50,27 @@ export default function LockerUsageView({
   }, [members]);
 
   const metrics = useMemo(() => {
-    // For now, we'll assume 5 lockers are "Out of Service" for demo purposes if not specified
-    const outOfServiceCount = 0;
-    return calculateOccupancyMetrics(totalLockers, activeOccupants.length, outOfServiceCount);
-  }, [totalLockers, activeOccupants.length]);
+    return calculateOccupancyMetrics(totalLockers, activeOccupants.length, dashboard.lockerStatuses);
+  }, [totalLockers, activeOccupants.length, dashboard.lockerStatuses]);
+
+  // Specific custom status counts for floor operational awareness
+  const statusCounts = useMemo(() => {
+    const list = Array.from({ length: totalLockers }, (_, i) => `Locker #${String(i + 1).padStart(2, '0')}`);
+    const counts = {
+      clean: 0,
+      repair: 0,
+      key_lost: 0,
+      key_not_returned: 0,
+      inactive: 0,
+    };
+    list.forEach((loc) => {
+      const st = dashboard.lockerStatuses[loc];
+      if (st && st in counts) {
+        counts[st as keyof typeof counts]++;
+      }
+    });
+    return counts;
+  }, [totalLockers, dashboard.lockerStatuses]);
 
   const { occupiedCount, availableCount, outOfServiceCount, occupancyRate, totalLockers: effectiveTotalLockers } = metrics;
 
@@ -154,6 +171,26 @@ export default function LockerUsageView({
                 <span className="text-[10px] font-mono text-muted-foreground uppercase">{t('underService')}</span>
                 <p className="text-2xl font-black text-amber-500 font-mono">{outOfServiceCount}</p>
               </div>
+            </div>
+
+            {/* Custom Management Status Pills */}
+            <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-border/50 text-[10px] font-mono">
+              <span className="text-muted-foreground uppercase font-bold text-[9px]">Breakdown:</span>
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                Needs Clean: <strong className="ml-1 font-extrabold">{statusCounts.clean}</strong>
+              </span>
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                Repair Fix: <strong className="ml-1 font-extrabold">{statusCounts.repair}</strong>
+              </span>
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20">
+                Key Lost: <strong className="ml-1 font-extrabold">{statusCounts.key_lost}</strong>
+              </span>
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                Key Overdue: <strong className="ml-1 font-extrabold">{statusCounts.key_not_returned}</strong>
+              </span>
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-500/10 text-gray-400 border border-gray-500/20">
+                Inactive: <strong className="ml-1 font-extrabold">{statusCounts.inactive}</strong>
+              </span>
             </div>
           </div>
 

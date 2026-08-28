@@ -19,6 +19,7 @@ import {
   generateLockerList,
   getNextAvailableLocker,
   getOccupiedLockers,
+  isLockerUnavailableStatus,
 } from '@/lib/services';
 
 interface CheckInDeskViewProps {
@@ -93,7 +94,7 @@ export default function CheckInDeskView({
 
   // Handle Check-in action
   const handleCheckInMember = (member: GymMember) => {
-    const firstFreeLocker = getNextAvailableLocker(totalLockers, occupiedLockers);
+    const firstFreeLocker = getNextAvailableLocker(totalLockers, occupiedLockers, dashboard.lockerStatuses);
     setSelectedLockerNumber(firstFreeLocker);
     setSelectedMemberId(member.id);
     setIsLockerModalOpen(true);
@@ -493,24 +494,41 @@ export default function CheckInDeskView({
           <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2.5 max-h-60 overflow-y-auto p-1">
             {availableLockersList.map((loc) => {
               const isOccupied = occupiedLockers.has(loc);
+              const customStatus = dashboard.lockerStatuses[loc];
+              const isOutOfService = customStatus && isLockerUnavailableStatus(customStatus);
+              const isDisabled = isOccupied || isOutOfService;
               const isSelected = selectedLockerNumber === loc;
+
+              let statusLabel = 'Available';
+              if (isOccupied) statusLabel = 'Occupied';
+              else if (customStatus === 'clean') statusLabel = 'Needs Clean';
+              else if (customStatus === 'repair') statusLabel = 'Repair';
+              else if (customStatus === 'key_lost') statusLabel = 'Key Lost';
+              else if (customStatus === 'key_not_returned') statusLabel = 'Overdue';
+              else if (customStatus === 'inactive') statusLabel = 'Inactive';
 
               return (
                 <button
                   key={loc}
                   type="button"
-                  disabled={isOccupied}
+                  disabled={isDisabled}
                   onClick={() => setSelectedLockerNumber(loc)}
-                  className={`p-2.5 rounded-xl border text-center font-mono text-xs transition-all cursor-pointer ${
-                    isOccupied
-                      ? 'bg-destructive/10 border-destructive/20 text-destructive/50 cursor-not-allowed opacity-60'
+                  title={`${loc}: ${statusLabel}`}
+                  className={`p-2.5 rounded-xl border text-center font-mono text-xs transition-all cursor-pointer relative ${
+                    isDisabled
+                      ? 'bg-destructive/10 border-destructive/20 text-destructive/60 cursor-not-allowed opacity-60'
                       : isSelected
                       ? 'bg-primary text-primary-foreground border-primary font-bold shadow-md'
                       : 'bg-muted border-border text-foreground hover:border-primary/50'
                   }`}
                 >
                   <KeyRound className="w-3.5 h-3.5 mx-auto mb-1 opacity-70" />
-                  <span className="block text-[11px]">{loc.replace('Locker #', '#')}</span>
+                  <span className="block text-[11px] font-bold">{loc.replace('Locker #', '#')}</span>
+                  {customStatus && customStatus !== 'available' && !isOccupied && (
+                    <span className="block text-[8px] uppercase tracking-tighter text-amber-400 font-extrabold truncate mt-0.5">
+                      {statusLabel}
+                    </span>
+                  )}
                 </button>
               );
             })}

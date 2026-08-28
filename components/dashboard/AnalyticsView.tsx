@@ -141,9 +141,27 @@ export default function AnalyticsView({
 
   const lockerMetrics = useMemo(() => {
     const totalLockers = dashboard.totalLockers;
-    const outOfServiceCount = 0;
-    return calculateOccupancyMetrics(totalLockers, activeOccupants.length, outOfServiceCount);
-  }, [dashboard.totalLockers, activeOccupants.length]);
+    return calculateOccupancyMetrics(totalLockers, activeOccupants.length, dashboard.lockerStatuses);
+  }, [dashboard.totalLockers, activeOccupants.length, dashboard.lockerStatuses]);
+
+  const lockerStatusCounts = useMemo(() => {
+    const totalLockers = dashboard.totalLockers;
+    const list = Array.from({ length: totalLockers }, (_, i) => `Locker #${String(i + 1).padStart(2, '0')}`);
+    const counts = {
+      clean: 0,
+      repair: 0,
+      key_lost: 0,
+      key_not_returned: 0,
+      inactive: 0,
+    };
+    list.forEach((loc) => {
+      const st = dashboard.lockerStatuses[loc];
+      if (st && st in counts) {
+        counts[st as keyof typeof counts]++;
+      }
+    });
+    return counts;
+  }, [dashboard.totalLockers, dashboard.lockerStatuses]);
 
   // Filtered Extension Audit Logs
   const filteredAuditLogs = useMemo(() => {
@@ -776,6 +794,26 @@ export default function AnalyticsView({
                     <span className="text-[10px] font-mono text-muted-foreground uppercase">{t('underService', { defaultValue: 'UNDER SERVICE' })}</span>
                     <p className="text-2xl font-black text-amber-500 font-mono">{lockerMetrics.outOfServiceCount}</p>
                   </div>
+                </div>
+
+                {/* Detailed Maintenance & Operational Status Pills */}
+                <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-border/50 text-[10px] font-mono">
+                  <span className="text-muted-foreground uppercase font-bold text-[9px]">Breakdown:</span>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                    Needs Clean: <strong className="ml-1 font-extrabold">{lockerStatusCounts.clean}</strong>
+                  </span>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                    Repair Fix: <strong className="ml-1 font-extrabold">{lockerStatusCounts.repair}</strong>
+                  </span>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20">
+                    Key Lost: <strong className="ml-1 font-extrabold">{lockerStatusCounts.key_lost}</strong>
+                  </span>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                    Key Overdue: <strong className="ml-1 font-extrabold">{lockerStatusCounts.key_not_returned}</strong>
+                  </span>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-500/10 text-gray-400 border border-gray-500/20">
+                    Inactive: <strong className="ml-1 font-extrabold">{lockerStatusCounts.inactive}</strong>
+                  </span>
                 </div>
               </div>
 

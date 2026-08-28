@@ -97,6 +97,23 @@ export const STAFF_PERMISSION_OPTIONS = [
 ] as const;
 
 
+export type LockerCustomStatus =
+  | 'available'
+  | 'occupied'
+  | 'clean'
+  | 'repair'
+  | 'key_lost'
+  | 'key_not_returned'
+  | 'inactive';
+
+export interface LockerStatusDetail {
+  lockerNumber: string;
+  status: LockerCustomStatus;
+  updatedAt: string;
+  notes?: string;
+  updatedBy?: string;
+}
+
 export interface LockerLog {
   id: string;
   lockerNumber: string;

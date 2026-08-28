@@ -47,3 +47,4 @@
 - 2026-08-27: Connected AnalyticsView.tsx locker metrics to `dashboard.totalLockers` to pull total capacity dynamically from Inventory -> Lock Capacity Settings instead of hardcoded values.
 - 2026-08-27: Removed duplicate `dashboard` menu entry from Sidebar.tsx to eliminate redundancy where both Dashboard and Analytics mapped to AnalyticsView.
 - 2026-08-28: Merged Extensions by Category and Extensions by Period charts in AnalyticsView.tsx into a single switchable graph card with interactive toggle controls, preserving real calculation data.
+- 2026-08-28: Synchronized custom locker maintenance statuses (`clean`, `repair`, `key_lost`, `key_not_returned`, `inactive`) across all locker-related views (`InventoryView`, `CheckInDeskView`, `LockerUsageView`, `AnalyticsView`, and `locker.service.ts`). Out-of-service and maintenance lockers are automatically excluded from check-in availability and reflected in centralized metrics.

@@ -10,6 +10,7 @@ import {
   INITIAL_LOCKER_LOGS,
   INITIAL_STAFF_ACCOUNTS,
   LockerLog,
+  LockerCustomStatus,
   MembershipExtensionLog,
   StaffAccount,
   UserRole,
@@ -37,6 +38,7 @@ export interface DashboardContextValue {
   lockerLogs: LockerLog[];
   staffList: StaffAccount[];
   totalLockers: number;
+  lockerStatuses: Record<string, LockerCustomStatus>;
   isLoading: boolean;
   statusMessage: string | null;
 
@@ -66,6 +68,7 @@ export interface DashboardContextValue {
   addPlan: (plan: BuiltPlan) => void;
   deletePlan: (id: string) => void;
   saveTotalLockers: (count: number) => void;
+  updateLockerStatus: (lockerNumber: string, status: LockerCustomStatus, notes?: string) => void;
   logLockerEvent: (event: {
     lockerNumber: string;
     memberId: string;
@@ -129,6 +132,17 @@ export function DashboardProvider({
   const [lockerLogs, setLockerLogs] = useState<LockerLog[]>(initialLockerLogs);
   const [staffList, setStaffList] = useState<StaffAccount[]>(initialStaff);
   const [totalLockers, setTotalLockers] = useState<number>(initialTotalLockers);
+  const [lockerStatuses, setLockerStatuses] = useState<Record<string, LockerCustomStatus>>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('arche_locker_custom_statuses');
+        if (saved) return JSON.parse(saved);
+      } catch {
+        // ignore
+      }
+    }
+    return {};
+  });
 
   // Authentication handlers
   const login = useCallback(
@@ -430,6 +444,46 @@ export function DashboardProvider({
     setTotalLockers(Math.max(1, count));
   }, []);
 
+  const updateLockerStatus = useCallback(
+    (lockerNumber: string, status: LockerCustomStatus, notes?: string) => {
+      setLockerStatuses((prev) => {
+        const updated = { ...prev, [lockerNumber]: status };
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.setItem('arche_locker_custom_statuses', JSON.stringify(updated));
+          } catch {
+            // ignore
+          }
+        }
+        return updated;
+      });
+
+      const now = new Date();
+      const timeFormatted = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const statusLabels: Record<LockerCustomStatus, string> = {
+        clean: 'Marked Clean',
+        repair: 'Needs Repair / Fix',
+        key_lost: 'Key Reported Lost',
+        key_not_returned: 'Key Overdue / Not Returned',
+        inactive: 'Deactivated / Inactive',
+        available: 'Set Available',
+        occupied: 'Occupied',
+      };
+
+      logLockerEvent({
+        lockerNumber,
+        memberId: 'SYSTEM',
+        memberName: 'Staff Action',
+        eventType: 'Checked Out',
+        eventDescription: `Status updated to [${statusLabels[status] || status}]${notes ? `: ${notes}` : ''} at ${timeFormatted}`,
+        statusLabel: 'Key Returned',
+        staffLogged: currentUser.name || (currentUser.role === 'admin' ? 'Admin' : 'Staff'),
+        staffRole: currentUser.role,
+      });
+    },
+    [currentUser, logLockerEvent]
+  );
+
   // Staff Domain Actions
   const addStaff = useCallback((newStaff: StaffAccount) => {
     setStaffList((prev) => [newStaff, ...prev]);
@@ -455,6 +509,7 @@ export function DashboardProvider({
       lockerLogs,
       staffList,
       totalLockers,
+      lockerStatuses,
       isLoading,
       statusMessage,
       setActiveTab,
@@ -474,6 +529,7 @@ export function DashboardProvider({
       addPlan,
       deletePlan,
       saveTotalLockers,
+      updateLockerStatus,
       logLockerEvent,
       addStaff,
       updateStaff,
@@ -490,6 +546,7 @@ export function DashboardProvider({
       lockerLogs,
       staffList,
       totalLockers,
+      lockerStatuses,
       isLoading,
       statusMessage,
       toggleSidebar,
@@ -505,6 +562,7 @@ export function DashboardProvider({
       addPlan,
       deletePlan,
       saveTotalLockers,
+      updateLockerStatus,
       logLockerEvent,
       addStaff,
       updateStaff,
