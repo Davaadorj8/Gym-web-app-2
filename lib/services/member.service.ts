@@ -41,7 +41,7 @@ export function calculateExtensionFee(
   return Math.round(monthlyRate * monthsAdded);
 }
 
-export type MemberFilterTab = 'all' | 'active' | 'unpaid' | 'expired' | 'in-gym';
+export type MemberFilterTab = 'all' | 'active' | 'unpaid' | 'expired' | 'in-gym' | 'expiring';
 
 /**
  * Filters gym members by filter tab and search query across ID, full name, email, phone, and org.
@@ -59,6 +59,16 @@ export function filterMembers(
     if (activeFilter === 'expired' && member.status !== 'Expired') return false;
     if (activeFilter === 'unpaid' && member.status !== 'Suspended') return false;
     if (activeFilter === 'in-gym' && member.occupancyStatus !== 'Checked In') return false;
+    if (activeFilter === 'expiring') {
+      if (member.status !== 'Active' || !member.expirationDate) return false;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const expDate = parseISO(member.expirationDate);
+      if (isNaN(expDate.getTime())) return false;
+      const diffTime = expDate.getTime() - today.getTime();
+      const diffDays = Math.ceil(diffTime / 86_400_000);
+      if (diffDays < 0 || diffDays > 7) return false;
+    }
 
     // 2. Search Query Filter
     if (!trimmed) return true;

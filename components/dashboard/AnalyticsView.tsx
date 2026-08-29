@@ -115,6 +115,22 @@ export default function AnalyticsView({
     return members.filter((m) => m.status === 'Active').length;
   }, [members]);
 
+  const expiringThisWeekCount = useMemo(() => {
+    return members.filter((m) => {
+      if (m.status !== 'Active' || !m.expirationDate) return false;
+      try {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const expDate = new Date(m.expirationDate);
+        const diffTime = expDate.getTime() - today.getTime();
+        const diffDays = Math.ceil(diffTime / 86400000);
+        return diffDays >= 0 && diffDays <= 7;
+      } catch {
+        return false;
+      }
+    }).length;
+  }, [members]);
+
   const retentionRate = useMemo(() => {
     if (members.length === 0) return '0%';
     const pct = Math.round((activeMembersCount / members.length) * 100);
@@ -456,7 +472,7 @@ export default function AnalyticsView({
       </div>
 
       {/* ================= HIGH-LEVEL METRICS SUMMARY CARDS ================= */}
-      <div id="analytics-summary-cards" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-in fade-in slide-in-from-top-3 duration-300">
+      <div id="analytics-summary-cards" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 animate-in fade-in slide-in-from-top-3 duration-300">
         {/* Card 1: Gym Occupancy */}
         <Card id="stat-card-occupancy" className="p-5 flex items-center justify-between shadow-lg relative overflow-hidden group hover:border-primary/40 transition-all">
           <div className="space-y-1.5 z-10">
@@ -545,6 +561,41 @@ export default function AnalyticsView({
             <ShoppingBag className="w-5 h-5" />
           </div>
         </Card>
+
+        {/* Card 5: Expiring This Week */}
+        <button
+          type="button"
+          onClick={() => {
+            dashboard.setDirectoryFilter('expiring');
+            dashboard.setActiveTab('directory');
+          }}
+          className="text-left w-full cursor-pointer focus:outline-none"
+        >
+          <Card id="stat-card-expiring-soon" className="p-5 flex items-center justify-between shadow-lg relative overflow-hidden group hover:border-red-500/50 hover:bg-red-500/5 transition-all border-red-500/20 h-full">
+            <div className="space-y-1.5 z-10">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse shrink-0" />
+                <span className="text-[10px] font-mono text-red-500 uppercase tracking-widest font-bold">
+                  Expiring This Week
+                </span>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl font-black text-red-500 font-mono leading-none">
+                  {expiringThisWeekCount}
+                </span>
+                <span className="text-xs text-red-400 font-mono font-bold">
+                  Athletes
+                </span>
+              </div>
+              <p className="text-[10px] text-muted-foreground font-mono flex items-center gap-1 text-red-400/80 font-bold group-hover:text-red-400 transition-colors">
+                <span>Click to view and renew ➜</span>
+              </p>
+            </div>
+            <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400">
+              <AlertTriangle className="w-5 h-5" />
+            </div>
+          </Card>
+        </button>
       </div>
 
       {/* ================= TAB 1: FINANCIAL ANALYTICS ================= */}

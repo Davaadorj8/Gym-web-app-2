@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   Search,
@@ -54,13 +54,63 @@ export default function MemberDirectoryView({
 
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeFilter, setActiveFilter] = useState<MemberFilterTab>('all');
+  const [activeFilter, setActiveFilter] = useState<MemberFilterTab>((dashboard.directoryFilter as MemberFilterTab) || 'all');
 
   // Modal States
   const [editingMember, setEditingMember] = useState<GymMember | null>(null);
   const [extensionMonths, setExtensionMonths] = useState<number>(1);
   const [deletingMember, setDeletingMember] = useState<GymMember | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Cancel & Refund States
+  const [cancellingMember, setCancellingMember] = useState<GymMember | null>(null);
+  const [refundType, setRefundType] = useState<'FULL' | 'PRORATED' | 'CREDIT' | 'MANUAL'>('PRORATED');
+  const [manualAmount, setManualAmount] = useState<number>(0);
+  const [refundNotes, setRefundNotes] = useState<string>('');
+
+  const calculatedRefundAmount = useMemo(() => {
+    if (!cancellingMember) return 0;
+    const matchedPlan = plans.find((p) => p.title.toLowerCase() === cancellingMember.planTitle.toLowerCase());
+    const totalAmount = matchedPlan?.price || 150000;
+
+    if (refundType === 'FULL') {
+      return totalAmount;
+    }
+    if (refundType === 'CREDIT') {
+      return 0;
+    }
+    if (refundType === 'MANUAL') {
+      return manualAmount;
+    }
+    // Prorated refund calculation
+    try {
+      const start = new Date(cancellingMember.startDate);
+      const exp = new Date(cancellingMember.expirationDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const totalTime = exp.getTime() - start.getTime();
+      const remainingTime = exp.getTime() - today.getTime();
+
+      if (totalTime <= 0) return 0;
+      const ratio = Math.max(0, Math.min(1, remainingTime / totalTime));
+      return Math.round(totalAmount * ratio);
+    } catch {
+      return Math.round(totalAmount / 2); // Fallback to 50%
+    }
+  }, [cancellingMember, refundType, manualAmount, plans]);
+
+  const handleConfirmCancellation = async () => {
+    if (!cancellingMember) return;
+    await dashboard.cancelAndRefundMember(
+      cancellingMember.id,
+      refundType,
+      refundType === 'MANUAL' ? manualAmount : undefined,
+      refundNotes
+    );
+    setCancellingMember(null);
+    showToast(`Processed ${refundType} cancellation and refund of ${calculatedRefundAmount.toLocaleString()} MNT.`);
+  };
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -122,6 +172,19 @@ export default function MemberDirectoryView({
     { id: 'unpaid', label: t('tabUnpaid'), count: members.filter((m) => m.status === 'Suspended').length },
     { id: 'expired', label: t('tabExpired'), count: members.filter((m) => m.status === 'Expired').length },
     { id: 'in-gym', label: t('tabInGym'), count: members.filter((m) => m.occupancyStatus === 'Checked In').length },
+    {
+      id: 'expiring',
+      label: t('tabExpiring'),
+      count: members.filter((m) => {
+        if (m.status !== 'Active' || !m.expirationDate) return false;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const expDate = new Date(m.expirationDate);
+        const diffTime = expDate.getTime() - today.getTime();
+        const diffDays = Math.ceil(diffTime / 86400000);
+        return diffDays >= 0 && diffDays <= 7;
+      }).length,
+    },
   ];
 
   return (
@@ -150,7 +213,10 @@ export default function MemberDirectoryView({
           id="directory-filter-tabs"
           tabs={filterTabs}
           activeTab={activeFilter}
-          onTabChange={(tab) => setActiveFilter(tab as MemberFilterTab)}
+          onTabChange={(tab) => {
+            setActiveFilter(tab as MemberFilterTab);
+            dashboard.setDirectoryFilter(tab);
+          }}
           variant="boxed"
         />
       </div>
@@ -257,13 +323,33 @@ export default function MemberDirectoryView({
 
                       {/* Column 4: STATUS */}
                       <td className="py-3.5 px-4">
-                        {member.status === 'Active' ? (
-                          <Badge variant="success">Active</Badge>
-                        ) : isSuspended ? (
-                          <Badge variant="warning">Unpaid</Badge>
-                        ) : (
-                          <Badge variant="destructive">Expired</Badge>
-                        )}
+                        <div className="flex flex-col items-start gap-1">
+                          {member.status === 'Active' ? (
+                            <>
+                              <Badge variant="success">Active</Badge>
+                              {(() => {
+                                if (!member.expirationDate) return null;
+                                const today = new Date();
+                                today.setHours(0, 0, 0, 0);
+                                const expDate = new Date(member.expirationDate);
+                                const diffTime = expDate.getTime() - today.getTime();
+                                const diffDays = Math.ceil(diffTime / 86400000);
+                                if (diffDays >= 0 && diffDays <= 7) {
+                                  return (
+                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-black tracking-wider uppercase bg-amber-500/15 text-amber-500 border border-amber-500/30 font-mono animate-pulse">
+                                      ⚠️ Expiring Soon
+                                    </span>
+                                  );
+                                }
+                                return null;
+                              })()}
+                            </>
+                          ) : isSuspended ? (
+                            <Badge variant="warning">Unpaid</Badge>
+                          ) : (
+                            <Badge variant="destructive">Expired</Badge>
+                          )}
+                        </div>
                       </td>
 
                       {/* Column 5: ACTIONS */}
@@ -277,6 +363,22 @@ export default function MemberDirectoryView({
                           >
                             <Edit3 className="w-3.5 h-3.5 text-primary mr-1.5" />
                             <span>{t('extendBtn')}</span>
+                          </Button>
+
+                          <Button
+                            id={`btn-cancel-refund-${member.id}`}
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setCancellingMember(member);
+                              setRefundType('PRORATED');
+                              setManualAmount(0);
+                              setRefundNotes('');
+                            }}
+                            disabled={member.status === 'Cancelled' || member.status === 'Refunded'}
+                            className="border-red-500/30 text-red-500 hover:bg-red-500/10"
+                          >
+                            <span>Cancel & Refund</span>
                           </Button>
 
                           <Button
@@ -440,6 +542,52 @@ export default function MemberDirectoryView({
                 </span>
               </div>
             </div>
+
+            {/* Quick 1-Click Renew Buttons */}
+            <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono font-bold text-primary uppercase tracking-wider">
+                  ⚡ Quick Renew Actions
+                </span>
+                <span className="text-[9px] text-muted-foreground font-mono">1-click immediate renewal</span>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Button
+                  id="btn-quick-renew-1m"
+                  variant="primary"
+                  size="sm"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    const matchedPlan = plans.find((p) => p.title.toLowerCase() === editingMember.planTitle.toLowerCase());
+                    const calculatedFee = calculateExtensionFee(matchedPlan, 1, 100);
+                    const calculatedNewExpDate = computeNewExpirationDate(editingMember.expirationDate, 1);
+                    dashboard.extendMember(editingMember.id, 1, calculatedFee, 'Cash', calculatedNewExpDate);
+                    setEditingMember(null);
+                    showToast(t('extendSuccess', { name: `${editingMember.firstName} ${editingMember.lastName}` }));
+                  }}
+                  className="w-full text-xs font-bold"
+                >
+                  ⚡ +1 Month Quick Renew
+                </Button>
+                <Button
+                  id="btn-quick-renew-3m"
+                  variant="outline"
+                  size="sm"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    const matchedPlan = plans.find((p) => p.title.toLowerCase() === editingMember.planTitle.toLowerCase());
+                    const calculatedFee = calculateExtensionFee(matchedPlan, 3, 100);
+                    const calculatedNewExpDate = computeNewExpirationDate(editingMember.expirationDate, 3);
+                    dashboard.extendMember(editingMember.id, 3, calculatedFee, 'Cash', calculatedNewExpDate);
+                    setEditingMember(null);
+                    showToast(t('extendSuccess', { name: `${editingMember.firstName} ${editingMember.lastName}` }));
+                  }}
+                  className="w-full text-xs font-bold border-primary/20 text-primary hover:bg-primary/10"
+                >
+                  ⚡ +3 Months Quick Renew
+                </Button>
+              </div>
+            </div>
           </div>
         )}
       </Modal>
@@ -478,6 +626,156 @@ export default function MemberDirectoryView({
             <p className="text-xs text-muted-foreground font-mono">
               {t('deleteConfirmDesc', { name: `${deletingMember.firstName} ${deletingMember.lastName}` })}
             </p>
+          </div>
+        )}
+      </Modal>
+
+      {/* ================= MODAL 3: CANCEL & REFUND PLAN ================= */}
+      <Modal
+        id="modal-cancel-refund"
+        isOpen={Boolean(cancellingMember)}
+        onClose={() => setCancellingMember(null)}
+        title={cancellingMember ? `Cancel & Refund Membership: ${cancellingMember.firstName} ${cancellingMember.lastName}` : "Cancel & Refund Membership"}
+        maxWidth="md"
+        footer={
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCancellingMember(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleConfirmCancellation}
+              disabled={dashboard.isLoading}
+            >
+              {dashboard.isLoading ? 'Processing...' : 'Confirm Cancellation & Refund'}
+            </Button>
+          </>
+        }
+      >
+        {cancellingMember && (
+          <div className="space-y-4">
+            {/* Member Plan Details */}
+            <div className="bg-red-500/5 border border-red-500/10 rounded-xl p-4 space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-[10px] font-mono font-bold text-red-500 uppercase tracking-wider">Active Plan</span>
+                <Badge variant="primary">{cancellingMember.planTitle}</Badge>
+              </div>
+              <div className="grid grid-cols-2 gap-3 pt-2 text-xs font-mono">
+                <div>
+                  <span className="text-muted-foreground block text-[10px] uppercase">Start Date</span>
+                  <span className="font-bold text-foreground">{cancellingMember.startDate}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-[10px] uppercase">Expiration Date</span>
+                  <span className="font-bold text-foreground">{cancellingMember.expirationDate}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Refund Calculation Options */}
+            <div className="space-y-2">
+              <label className="text-[10px] font-mono font-bold text-muted-foreground uppercase">
+                Refund Method / Calculation Rule
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { id: 'FULL', label: 'Full Refund', desc: '100% money back' },
+                  { id: 'PRORATED', label: 'Prorated', desc: 'Remaining days ratio' },
+                  { id: 'CREDIT', label: 'Store Credit', desc: 'Convert to gym balance' },
+                  { id: 'MANUAL', label: 'Manual Override', desc: 'Custom direct refund' }
+                ].map((opt) => (
+                  <button
+                    key={opt.id}
+                    onClick={() => setRefundType(opt.id as any)}
+                    className={`p-3 rounded-xl border text-left flex flex-col gap-0.5 transition-all ${
+                      refundType === opt.id
+                        ? 'border-red-500 bg-red-500/5 ring-1 ring-red-500'
+                        : 'border-border bg-background hover:bg-muted/40'
+                    }`}
+                  >
+                    <span className="text-xs font-black text-foreground">{opt.label}</span>
+                    <span className="text-[10px] text-muted-foreground font-mono">{opt.desc}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Manual Override input field */}
+            {refundType === 'MANUAL' && (
+              <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                <label className="text-[10px] font-mono font-bold text-muted-foreground uppercase">
+                  Custom Refund Amount (₮ MNT)
+                </label>
+                <Input
+                  id="input-manual-refund-amount"
+                  type="number"
+                  value={manualAmount}
+                  onChange={(e) => setManualAmount(Number(e.target.value))}
+                  placeholder="Enter custom MNT refund amount"
+                />
+              </div>
+            )}
+
+            {/* Refund Notes field */}
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-mono font-bold text-muted-foreground uppercase">
+                Cancellation Notes / Reason
+              </label>
+              <Input
+                id="input-refund-notes"
+                value={refundNotes}
+                onChange={(e) => setRefundNotes(e.target.value)}
+                placeholder="Reason for cancellation (e.g., relocating, injury)"
+              />
+            </div>
+
+            {/* Live Interactive Preview Card */}
+            <div className="bg-muted/40 border border-border rounded-xl p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono font-bold text-muted-foreground uppercase tracking-wider">
+                  Refund Preview Breakdown
+                </span>
+                <Badge variant="success">Active calculation</Badge>
+              </div>
+
+              <div className="divide-y divide-border text-xs font-mono space-y-2">
+                <div className="flex justify-between items-center py-1">
+                  <span className="text-muted-foreground">Plan Total Value:</span>
+                  <span className="font-bold text-foreground">
+                    {((plans.find((p) => p.title.toLowerCase() === cancellingMember.planTitle.toLowerCase())?.price || 150000)).toLocaleString()} MNT
+                  </span>
+                </div>
+                {refundType === 'PRORATED' && (
+                  <div className="flex justify-between items-center py-1">
+                    <span className="text-muted-foreground">Elapsed Days Ratio:</span>
+                    <span className="font-bold text-foreground text-red-500">
+                      {(() => {
+                        const start = new Date(cancellingMember.startDate);
+                        const exp = new Date(cancellingMember.expirationDate);
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        const total = exp.getTime() - start.getTime();
+                        const rem = exp.getTime() - today.getTime();
+                        if (total <= 0) return '0%';
+                        const ratio = Math.max(0, Math.min(1, rem / total));
+                        return `${Math.round(ratio * 100)}% remaining`;
+                      })()}
+                    </span>
+                  </div>
+                )}
+                <div className="flex justify-between items-center pt-2.5 text-sm font-black border-t border-border">
+                  <span className="text-foreground">Estimated Refund Amount:</span>
+                  <span className="text-primary font-black tracking-wide text-base">
+                    {calculatedRefundAmount.toLocaleString()} MNT
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </Modal>

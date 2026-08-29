@@ -26,8 +26,23 @@ export interface MembershipExtensionLog {
   memberName?: string;
 }
 
-export type MemberStatus = 'Active' | 'Expired' | 'Suspended' | 'Pending';
+export type MemberStatus = 'Active' | 'Expired' | 'Suspended' | 'Pending' | 'Cancelled' | 'Refunded';
 export type OccupancyStatus = 'Checked In' | 'Checked Out';
+
+export type TransactionType = 'PAYMENT' | 'REFUND' | 'CREDIT_ADJUSTMENT';
+
+export interface MembershipTransaction {
+  id: string;
+  memberId: string;
+  memberName: string;
+  amount: number;
+  type: TransactionType;
+  timestamp: string;
+  timeFormatted: string;
+  planTitle?: string;
+  notes?: string;
+  staffLogged?: string;
+}
 
 export interface GymMember {
   id: string;

@@ -27,7 +27,11 @@ import {
   getOccupiedLockers,
   resolveMemberCategory,
   DEFAULT_STAFF_PERMISSIONS,
+  MembershipStatusService,
+  RefundService,
+  PricingService,
 } from '@/lib/services';
+import { getMemberRepository, getMembershipTransactionRepository } from '@/lib/repositories';
 import { format } from 'date-fns';
 import { verifyPassword } from '@/lib/security/password';
 import { createAuditEntry } from '@/lib/utils/audit';
@@ -49,9 +53,11 @@ export interface DashboardContextValue {
   nutrientSales: NutrientSaleLog[];
   isLoading: boolean;
   statusMessage: string | null;
+  directoryFilter: string;
 
   // Setters / UI Actions
   setActiveTab: (tab: string) => void;
+  setDirectoryFilter: (filter: string) => void;
   setMobileMenuOpen: (open: boolean) => void;
   setSidebarCollapsed: (collapsed: boolean | ((prev: boolean) => boolean)) => void;
   toggleSidebar: () => void;
@@ -73,6 +79,13 @@ export interface DashboardContextValue {
   ) => void;
   checkInMember: (memberId: string, lockerNumber: string) => void;
   checkOutMember: (memberId: string) => void;
+  cancelAndRefundMember: (
+    memberId: string,
+    refundType: 'FULL' | 'PRORATED' | 'CREDIT' | 'MANUAL',
+    manualAmount?: number,
+    notes?: string
+  ) => Promise<void>;
+  evaluateMembershipStatuses: () => Promise<{ updatedToExpired: number; updatedToActive: number }>;
   addPlan: (plan: BuiltPlan) => void;
   deletePlan: (id: string) => void;
   saveTotalLockers: (count: number) => void;
@@ -134,6 +147,7 @@ export function DashboardProvider({
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [directoryFilter, setDirectoryFilter] = useState<string>('all');
 
   const toggleSidebar = useCallback(() => {
     setSidebarCollapsed((prev) => !prev);
@@ -358,15 +372,72 @@ export function DashboardProvider({
 
   // Member Domain Actions
   const updateMember = useCallback((updatedMember: GymMember) => {
+    getMemberRepository().update(updatedMember.id, updatedMember);
     setMembers((prev) => prev.map((m) => (m.id === updatedMember.id ? updatedMember : m)));
   }, []);
 
   const registerMember = useCallback((newMember: GymMember) => {
+    getMemberRepository().create(newMember);
     setMembers((prev) => [newMember, ...prev]);
   }, []);
 
   const deleteMember = useCallback((memberId: string) => {
+    getMemberRepository().delete(memberId);
     setMembers((prev) => prev.filter((m) => m.id !== memberId));
+  }, []);
+
+  const cancelAndRefundMember = useCallback(
+    async (
+      memberId: string,
+      refundType: 'FULL' | 'PRORATED' | 'CREDIT' | 'MANUAL',
+      manualAmount?: number,
+      notes?: string
+    ) => {
+      setIsLoading(true);
+      try {
+        const result = await RefundService.cancelAndRefund(memberId, refundType, {
+          manualAmount,
+          staffName: currentUser.name || 'Admin',
+          notes,
+        });
+        
+        // Update local state
+        setMembers((prev) =>
+          prev.map((m) => (m.id === memberId ? result.member : m))
+        );
+        
+        setStatusMessage(
+          `Successfully processed ${refundType} cancellation. Refunded ${result.refundAmount.toLocaleString()} MNT.`
+        );
+      } catch (err: any) {
+        setStatusMessage(`Error during cancellation: ${err.message}`);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [currentUser]
+  );
+
+  const evaluateMembershipStatuses = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const result = await MembershipStatusService.evaluateMembershipStatuses();
+      
+      // Reload members from repository to get updated statuses
+      const memberRepo = getMemberRepository();
+      const updatedMembers = await memberRepo.findAll();
+      setMembers(updatedMembers);
+      
+      setStatusMessage(
+        `Daily check completed: ${result.updatedToExpired} expired, ${result.updatedToActive} reactivated.`
+      );
+      return result;
+    } catch (err: any) {
+      setStatusMessage(`Error during evaluation: ${err.message}`);
+      return { updatedToExpired: 0, updatedToActive: 0 };
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
   const extendMember = useCallback(
@@ -416,13 +487,16 @@ export function DashboardProvider({
             memberName: audit.details.memberName as string,
           };
 
-          return {
+          const updated: GymMember = {
             ...m,
             durationMonths: (m.durationMonths || 1) + monthsAdded,
             expirationDate: newExpDate,
             status: 'Active',
             extensionHistory: [extensionLog, ...(m.extensionHistory || [])],
           };
+
+          getMemberRepository().update(memberId, updated);
+          return updated;
         })
       );
     },
@@ -687,7 +761,9 @@ export function DashboardProvider({
       nutrientSales,
       isLoading,
       statusMessage,
+      directoryFilter,
       setActiveTab,
+      setDirectoryFilter,
       setMobileMenuOpen,
       setSidebarCollapsed,
       toggleSidebar,
@@ -701,6 +777,8 @@ export function DashboardProvider({
       extendMember,
       checkInMember,
       checkOutMember,
+      cancelAndRefundMember,
+      evaluateMembershipStatuses,
       addPlan,
       deletePlan,
       saveTotalLockers,
@@ -731,6 +809,8 @@ export function DashboardProvider({
       nutrientSales,
       isLoading,
       statusMessage,
+      directoryFilter,
+      setDirectoryFilter,
       toggleSidebar,
       login,
       logout,
@@ -741,6 +821,8 @@ export function DashboardProvider({
       extendMember,
       checkInMember,
       checkOutMember,
+      cancelAndRefundMember,
+      evaluateMembershipStatuses,
       addPlan,
       deletePlan,
       saveTotalLockers,

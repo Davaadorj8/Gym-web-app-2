@@ -4,6 +4,7 @@ import {
   LockerLog,
   StaffAccount,
   MembershipExtensionLog,
+  MembershipTransaction,
 } from '@/lib/types';
 
 export interface CrudRepository<T, ID = string> {
@@ -39,4 +40,8 @@ export interface ILockerLogRepository extends CrudRepository<LockerLog, string> 
 export interface IStaffRepository extends CrudRepository<StaffAccount, string> {
   findByUsername(username: string): Promise<StaffAccount | null>;
   findActiveStaff(): Promise<StaffAccount[]>;
+}
+
+export interface IMembershipTransactionRepository extends CrudRepository<MembershipTransaction, string> {
+  findByMemberId(memberId: string): Promise<MembershipTransaction[]>;
 }

@@ -4,6 +4,7 @@ import {
   IPlanRepository,
   ILockerLogRepository,
   IStaffRepository,
+  IMembershipTransactionRepository,
 } from '../types';
 import {
   GymMember,
@@ -11,6 +12,7 @@ import {
   LockerLog,
   StaffAccount,
   MembershipExtensionLog,
+  MembershipTransaction,
   MOCK_GYM_MEMBERS,
   MOCK_BUILT_PLANS,
   MOCK_LOCKER_LOGS,
@@ -209,6 +211,21 @@ export class InMemoryStaffRepository
 
   async findActiveStaff(): Promise<StaffAccount[]> {
     return Array.from(this.items.values()).filter((s) => s.status === 'Active' && !s.deletedAt);
+  }
+}
+
+export class InMemoryMembershipTransactionRepository
+  extends InMemoryRepository<MembershipTransaction>
+  implements IMembershipTransactionRepository
+{
+  constructor() {
+    super([]);
+  }
+
+  async findByMemberId(memberId: string): Promise<MembershipTransaction[]> {
+    return Array.from(this.items.values()).filter(
+      (tx) => tx.memberId === memberId
+    );
   }
 }
 
