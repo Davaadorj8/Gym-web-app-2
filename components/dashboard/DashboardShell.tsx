@@ -29,21 +29,15 @@ interface DashboardShellProps {
 
 function StaffClockInOutWidget() {
   const { staffList, attendances, clockIn, clockOut, currentUser } = useDashboard();
-  const [selectedStaffId, setSelectedStaffId] = React.useState('');
+  const [selectedStaffId, setSelectedStaffId] = React.useState<string>('');
+
+  const effectiveStaffId = selectedStaffId || (
+    currentUser && currentUser.role === 'staff'
+      ? staffList.find((s) => s.id === currentUser.id)?.id
+      : staffList[0]?.id
+  ) || '';
   const [selectedShiftId, setSelectedShiftId] = React.useState('shift-morning');
   const [showForm, setShowForm] = React.useState(false);
-
-  // Auto-set selected staff
-  React.useEffect(() => {
-    if (currentUser && currentUser.role === 'staff') {
-      const found = staffList.find(s => s.id === currentUser.id);
-      if (found) {
-        setSelectedStaffId(found.id);
-      }
-    } else if (staffList.length > 0 && !selectedStaffId) {
-      setSelectedStaffId(staffList[0].id);
-    }
-  }, [currentUser, staffList, selectedStaffId]);
 
   const activeAttendance = attendances.find((a) => a.status === 'ON_DUTY');
 
@@ -91,7 +85,7 @@ function StaffClockInOutWidget() {
       ) : (
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           <select
-            value={selectedStaffId}
+            value={effectiveStaffId}
             onChange={(e) => setSelectedStaffId(e.target.value)}
             className="px-2.5 py-1 bg-background border border-border text-foreground rounded-lg text-xs max-w-[150px]"
           >
@@ -117,8 +111,8 @@ function StaffClockInOutWidget() {
             <button
               type="button"
               onClick={() => {
-                if (selectedStaffId && selectedShiftId) {
-                  clockIn(selectedStaffId, selectedShiftId);
+                if (effectiveStaffId && selectedShiftId) {
+                  clockIn(effectiveStaffId, selectedShiftId);
                   setShowForm(false);
                 }
               }}

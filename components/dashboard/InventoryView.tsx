@@ -46,6 +46,10 @@ interface InventoryViewProps {
 
 type ActiveInventoryTab = 'plan-builder' | 'locker-management' | 'nutrients' | 'purchase-orders';
 
+function createUniqueId(prefix: string): string {
+  return `${prefix}-${Math.floor(1000 + Math.random() * 9000)}`;
+}
+
 export default function InventoryView({
   plans: propPlans,
   onAddPlan: propOnAddPlan,
@@ -334,7 +338,7 @@ export default function InventoryView({
       const item = nutrients.find((n) => n.id === id);
       const values = poItemsMap[id] || { quantity: 10, unitPurchaseCost: 0 };
       return {
-        id: `poi-${Math.random().toString(36).substr(2, 9)}`,
+        id: createUniqueId('poi'),
         productId: id,
         productName: item?.name || 'Unknown',
         quantity: values.quantity,
@@ -343,7 +347,7 @@ export default function InventoryView({
     });
 
     const totalCost = poItems.reduce((acc, x) => acc + x.quantity * x.unitPurchaseCost, 0);
-    const uniqueId = `po-${Math.floor(1000 + Math.random() * 9000)}`;
+    const uniqueId = createUniqueId('po');
 
     const newPO = {
       id: uniqueId,
@@ -364,7 +368,7 @@ export default function InventoryView({
   const handleAddSupplier = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newSupplierForm.name.trim()) return;
-    const uniqueId = `sup-${Math.floor(10 + Math.random() * 90)}`;
+    const uniqueId = createUniqueId('sup');
     dashboard.addSupplier({
       id: uniqueId,
       name: newSupplierForm.name.trim(),
@@ -2241,7 +2245,7 @@ export default function InventoryView({
                 </select>
                 {dashboard.suppliers.length === 0 && (
                   <p className="text-[10px] text-rose-400">
-                    * No registered suppliers. Go to 'Suppliers &amp; PO' sub-tab to register one first.
+                    * No registered suppliers. Go to &apos;Suppliers &amp; PO&apos; sub-tab to register one first.
                   </p>
                 )}
               </div>
