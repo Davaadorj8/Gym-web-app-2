@@ -53,6 +53,8 @@ export interface GymMember {
   assignedLocker?: string | null;
   lastCheckInTime?: string;
   extensionHistory?: MembershipExtensionLog[];
+  deletedAt?: string | null;
+  deletedBy?: string | null;
 }
 
 export const getMemberFullName = (member: { firstName: string; lastName: string }): string =>
@@ -75,6 +77,8 @@ export interface StaffAccount {
   assignedShift?: string;
   permissions?: string[];
   notes?: string;
+  deletedAt?: string | null;
+  deletedBy?: string | null;
 }
 
 export interface AuthUser {
@@ -112,6 +116,8 @@ export interface LockerStatusDetail {
   updatedAt: string;
   notes?: string;
   updatedBy?: string;
+  deletedAt?: string | null;
+  deletedBy?: string | null;
 }
 
 export interface LockerLog {

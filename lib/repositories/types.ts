@@ -11,7 +11,8 @@ export interface CrudRepository<T, ID = string> {
   findById(id: ID): Promise<T | null>;
   create(item: T): Promise<T>;
   update(id: ID, item: Partial<T>): Promise<T | null>;
-  delete(id: ID): Promise<boolean>;
+  delete(id: ID, actorId?: string): Promise<boolean>;
+  restore(id: ID, actorId?: string): Promise<boolean>;
 }
 
 export interface IMemberRepository extends CrudRepository<GymMember, string> {

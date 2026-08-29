@@ -25,12 +25,20 @@ export class InMemoryRepository<T extends { id: string }> implements CrudReposit
   }
 
   async findAll(): Promise<T[]> {
-    return Array.from(this.items.values());
+    return Array.from(this.items.values()).filter((item) => {
+      const anyItem = item as any;
+      return anyItem.deletedAt === undefined || anyItem.deletedAt === null;
+    });
   }
 
   async findById(id: string): Promise<T | null> {
     const item = this.items.get(id);
-    return item ? { ...item } : null;
+    if (!item) return null;
+    const anyItem = item as any;
+    if (anyItem.deletedAt !== undefined && anyItem.deletedAt !== null) {
+      return null;
+    }
+    return { ...item };
   }
 
   async create(item: T): Promise<T> {
@@ -41,13 +49,37 @@ export class InMemoryRepository<T extends { id: string }> implements CrudReposit
   async update(id: string, updates: Partial<T>): Promise<T | null> {
     const existing = this.items.get(id);
     if (!existing) return null;
+    const anyExisting = existing as any;
+    if (anyExisting.deletedAt !== undefined && anyExisting.deletedAt !== null) {
+      return null;
+    }
     const updated = { ...existing, ...updates };
     this.items.set(id, updated);
     return { ...updated };
   }
 
-  async delete(id: string): Promise<boolean> {
-    return this.items.delete(id);
+  async delete(id: string, actorId?: string): Promise<boolean> {
+    const existing = this.items.get(id);
+    if (!existing) return false;
+    
+    const anyExisting = existing as any;
+    anyExisting.deletedAt = new Date().toISOString();
+    if (actorId) {
+      anyExisting.deletedBy = actorId;
+    }
+    this.items.set(id, { ...existing });
+    return true;
+  }
+
+  async restore(id: string, actorId?: string): Promise<boolean> {
+    const existing = this.items.get(id);
+    if (!existing) return false;
+    
+    const anyExisting = existing as any;
+    anyExisting.deletedAt = null;
+    anyExisting.deletedBy = null;
+    this.items.set(id, { ...existing });
+    return true;
   }
 }
 
@@ -62,6 +94,7 @@ export class InMemoryMemberRepository
   async findByPhoneOrEmail(query: string): Promise<GymMember | null> {
     const normalized = query.trim().toLowerCase();
     for (const member of this.items.values()) {
+      if (member.deletedAt) continue;
       if (
         (member.phone && member.phone.toLowerCase() === normalized) ||
         (member.email && member.email.toLowerCase() === normalized)
@@ -73,12 +106,12 @@ export class InMemoryMemberRepository
   }
 
   async findActiveMembers(): Promise<GymMember[]> {
-    return Array.from(this.items.values()).filter((m) => m.status === 'Active');
+    return Array.from(this.items.values()).filter((m) => m.status === 'Active' && !m.deletedAt);
   }
 
   async findMembersInGym(): Promise<GymMember[]> {
     return Array.from(this.items.values()).filter(
-      (m) => m.occupancyStatus === 'Checked In'
+      (m) => m.occupancyStatus === 'Checked In' && !m.deletedAt
     );
   }
 
@@ -87,7 +120,7 @@ export class InMemoryMemberRepository
     extension: MembershipExtensionLog
   ): Promise<GymMember | null> {
     const member = this.items.get(memberId);
-    if (!member) return null;
+    if (!member || member.deletedAt) return null;
     const history = member.extensionHistory ? [...member.extensionHistory] : [];
     history.push(extension);
     const updated: GymMember = {
@@ -106,7 +139,7 @@ export class InMemoryMemberRepository
     assignedLocker?: string | null
   ): Promise<GymMember | null> {
     const member = this.items.get(memberId);
-    if (!member) return null;
+    if (!member || member.deletedAt) return null;
     const updated: GymMember = {
       ...member,
       occupancyStatus,
@@ -166,6 +199,7 @@ export class InMemoryStaffRepository
   async findByUsername(username: string): Promise<StaffAccount | null> {
     const normalized = username.trim().toLowerCase();
     for (const staff of this.items.values()) {
+      if (staff.deletedAt) continue;
       if (staff.username.toLowerCase() === normalized) {
         return { ...staff };
       }
@@ -174,7 +208,7 @@ export class InMemoryStaffRepository
   }
 
   async findActiveStaff(): Promise<StaffAccount[]> {
-    return Array.from(this.items.values()).filter((s) => s.status === 'Active');
+    return Array.from(this.items.values()).filter((s) => s.status === 'Active' && !s.deletedAt);
   }
 }
 

@@ -82,6 +82,49 @@ describe('InMemoryMemberRepository Contract', () => {
     expect(updated?.occupancyStatus).toBe('Checked In');
     expect(updated?.assignedLocker).toBe('Locker #12');
   });
+
+  it('should soft delete and restore a gym member', async () => {
+    const member: GymMember = {
+      id: 'test-mem-soft-delete',
+      firstName: 'Soft',
+      lastName: 'Deleted',
+      email: 'soft@example.com',
+      phone: '99001122',
+      planTitle: 'Adult 1 Month',
+      durationMonths: 1,
+      startDate: '2026-08-01',
+      expirationDate: '2026-09-01',
+      status: 'Active',
+      occupancyStatus: 'Checked Out',
+    };
+
+    await memberRepo.create(member);
+
+    // Initial find should succeed
+    let found = await memberRepo.findById('test-mem-soft-delete');
+    expect(found).not.toBeNull();
+
+    // Soft delete member
+    const deleteResult = await memberRepo.delete('test-mem-soft-delete', 'usr-admin-123');
+    expect(deleteResult).toBe(true);
+
+    // After soft delete, findById and findAll should filter it out
+    found = await memberRepo.findById('test-mem-soft-delete');
+    expect(found).toBeNull();
+
+    const allMembers = await memberRepo.findAll();
+    expect(allMembers.some((m) => m.id === 'test-mem-soft-delete')).toBe(false);
+
+    // Restore member
+    const restoreResult = await memberRepo.restore('test-mem-soft-delete', 'usr-admin-123');
+    expect(restoreResult).toBe(true);
+
+    // After restore, should be found again and soft-delete fields cleared/null
+    found = await memberRepo.findById('test-mem-soft-delete');
+    expect(found).not.toBeNull();
+    expect(found?.deletedAt).toBeNull();
+    expect(found?.deletedBy).toBeNull();
+  });
 });
 
 describe('InMemoryPlanRepository Contract', () => {
