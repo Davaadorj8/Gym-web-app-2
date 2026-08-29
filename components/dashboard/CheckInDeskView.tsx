@@ -124,7 +124,8 @@ export default function CheckInDeskView({
         });
       }
     } else {
-      dashboard.checkInMember(activeMember.id, selectedLockerNumber);
+      const activeStaff = dashboard.attendances.find((a) => a.status === 'ON_DUTY');
+      dashboard.checkInMember(activeMember.id, selectedLockerNumber, activeStaff?.staffId);
     }
 
     setIsLockerModalOpen(false);
@@ -163,10 +164,119 @@ export default function CheckInDeskView({
     triggerToast(t('checkOutSuccess', { name: `${member.firstName} ${member.lastName}` }));
   };
 
+  const currentlyCheckedInCount = useMemo(() => {
+    return members.filter((m) => m.occupancyStatus === 'Checked In').length;
+  }, [members]);
+
   return (
     <div id="checkin-desk-root" className="space-y-6 pb-12">
       {/* Toast Notification */}
       <Toast id="checkin-toast" message={toastMessage} type="success" />
+
+      {/* Gym Capacity Meter & Active Waitlist */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-muted/30 border border-border rounded-2xl p-5 shadow-sm">
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs sm:text-sm font-bold tracking-wider text-foreground font-mono uppercase">
+              Gym Capacity Monitoring
+            </h3>
+            <span className="font-mono text-xs font-bold px-2.5 py-1 rounded-lg bg-primary/10 text-primary border border-primary/20">
+              {currentlyCheckedInCount} / {dashboard.maxGymCapacity} Members
+            </span>
+          </div>
+
+          {/* Progress bar */}
+          <div className="w-full bg-muted border border-border h-4 rounded-full overflow-hidden relative">
+            <div
+              className={`h-full transition-all duration-500 rounded-full ${
+                currentlyCheckedInCount >= dashboard.maxGymCapacity
+                  ? 'bg-red-500'
+                  : currentlyCheckedInCount >= dashboard.maxGymCapacity * 0.8
+                  ? 'bg-amber-500'
+                  : 'bg-green-500'
+              }`}
+              style={{ width: `${Math.min(100, (currentlyCheckedInCount / dashboard.maxGymCapacity) * 100)}%` }}
+            />
+          </div>
+
+          <div className="flex items-center justify-between text-xs text-muted-foreground font-mono">
+            <span>Remaining slots: {Math.max(0, dashboard.maxGymCapacity - currentlyCheckedInCount)}</span>
+            <div className="flex items-center gap-1.5">
+              <span>Limit:</span>
+              <input
+                type="number"
+                min="1"
+                value={dashboard.maxGymCapacity}
+                onChange={(e) => dashboard.setMaxGymCapacity(Number(e.target.value) || 40)}
+                className="w-16 px-1.5 py-0.5 border border-border rounded-lg bg-background text-foreground font-bold text-center"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Waitlist Section */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h4 className="text-xs sm:text-sm font-bold tracking-wider text-foreground font-mono uppercase">
+              Locker & Gym Waitlist
+            </h4>
+            <Badge variant="warning">
+              {dashboard.waitlist.filter((w) => w.status === 'WAITING').length} Queued
+            </Badge>
+          </div>
+
+          <div className="max-h-[140px] overflow-y-auto space-y-1.5 pr-1">
+            {dashboard.waitlist.length === 0 ? (
+              <p className="text-xs text-muted-foreground italic text-center py-4">
+                No active waitlisted members.
+              </p>
+            ) : (
+              dashboard.waitlist.map((entry) => (
+                <div
+                  key={entry.id}
+                  className="flex items-center justify-between text-xs bg-background border border-border px-3 py-2 rounded-xl"
+                >
+                  <div>
+                    <span className="font-bold text-foreground mr-1.5">{entry.memberName}</span>
+                    <Badge variant="outline" className="text-[10px] scale-90 origin-left font-mono font-bold">
+                      {entry.resourceType}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {entry.status === 'OFFERED' && (
+                      <span className="text-[10px] text-amber-500 font-extrabold font-mono animate-pulse mr-1">
+                        OFFERED ({entry.offeredLockerNumber})
+                      </span>
+                    )}
+                    {entry.status === 'WAITING' ? (
+                      <button
+                        type="button"
+                        onClick={() => dashboard.leaveWaitlist(entry.id)}
+                        className="text-red-500 hover:text-red-600 font-bold cursor-pointer"
+                      >
+                        Remove
+                      </button>
+                    ) : entry.status === 'OFFERED' ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          dashboard.claimWaitlistOffer(entry.id);
+                          dashboard.checkInMember(entry.memberId, entry.offeredLockerNumber || '');
+                        }}
+                        className="text-green-500 hover:text-green-600 font-bold cursor-pointer font-mono"
+                      >
+                        Claim Offer
+                      </button>
+                    ) : (
+                      <span className="text-muted-foreground font-mono">Claimed</span>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* Main Two-Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -383,120 +493,186 @@ export default function CheckInDeskView({
           </div>
 
           {activeMember ? (
-            <Card id="active-athlete-profile-card" className="p-6 space-y-6">
-              {/* Profile Header */}
-              <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4">
-                <div className="relative w-24 h-24 rounded-3xl bg-muted border-2 border-border overflow-hidden shrink-0 flex items-center justify-center shadow-lg">
-                  {activeMember.photoUrl || activeMember.profileImage ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={activeMember.photoUrl || activeMember.profileImage}
-                      alt={`${activeMember.firstName} ${activeMember.lastName}`}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <User className="w-10 h-10 text-muted-foreground stroke-[1.2]" />
-                  )}
-                  <div className="absolute bottom-1 right-1 p-1 rounded-full bg-background/80 text-muted-foreground">
-                    <Camera className="w-3 h-3" />
+            <div className="space-y-4">
+              <Card id="active-athlete-profile-card" className="p-6 space-y-6">
+                {/* Profile Header */}
+                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4">
+                  <div className="relative w-24 h-24 rounded-3xl bg-muted border-2 border-border overflow-hidden shrink-0 flex items-center justify-center shadow-lg">
+                    {activeMember.photoUrl || activeMember.profileImage ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={activeMember.photoUrl || activeMember.profileImage}
+                        alt={`${activeMember.firstName} ${activeMember.lastName}`}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <User className="w-10 h-10 text-muted-foreground stroke-[1.2]" />
+                    )}
+                    <div className="absolute bottom-1 right-1 p-1 rounded-full bg-background/80 text-muted-foreground">
+                      <Camera className="w-3 h-3" />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5 text-center sm:text-left">
+                    <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
+                      <h3 className="text-lg font-black text-foreground uppercase tracking-wide">
+                        {activeMember.firstName} {activeMember.lastName}
+                      </h3>
+                      <Badge
+                        variant={
+                          activeMember.status === 'Active'
+                            ? 'success'
+                            : activeMember.status === 'Expired'
+                            ? 'destructive'
+                            : 'warning'
+                        }
+                      >
+                        {activeMember.status}
+                      </Badge>
+                    </div>
+
+                    <p className="text-xs font-mono text-primary font-bold">
+                      {activeMember.planTitle || 'All Access Gym Membership'}
+                    </p>
+
+                    <p className="text-xs text-muted-foreground font-mono">
+                      {activeMember.email} • {activeMember.phone || 'No phone'}
+                    </p>
                   </div>
                 </div>
 
-                <div className="space-y-1.5 text-center sm:text-left">
-                  <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
-                    <h3 className="text-lg font-black text-foreground uppercase tracking-wide">
-                      {activeMember.firstName} {activeMember.lastName}
-                    </h3>
-                    <Badge
-                      variant={
-                        activeMember.status === 'Active'
-                          ? 'success'
-                          : activeMember.status === 'Expired'
-                          ? 'destructive'
-                          : 'warning'
-                      }
-                    >
-                      {activeMember.status}
-                    </Badge>
-                  </div>
-
-                  <p className="text-xs font-mono text-primary font-bold">
-                    {activeMember.planTitle || 'All Access Gym Membership'}
-                  </p>
-
-                  <p className="text-xs text-muted-foreground font-mono">
-                    {activeMember.email} • {activeMember.phone || 'No phone'}
-                  </p>
-                </div>
-              </div>
-
-              {/* Status Details Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-muted/40 border border-border p-4 rounded-xl">
-                <div>
-                  <span className="text-[10px] uppercase font-mono font-bold text-muted-foreground block">
-                    {t('colExpiration')}
-                  </span>
-                  <span className="text-xs font-mono font-bold text-foreground mt-0.5 block">
-                    {activeMember.expirationDate}
-                  </span>
-                </div>
-
-                <div>
-                  <span className="text-[10px] uppercase font-mono font-bold text-muted-foreground block">
-                    {t('colOccupancy')}
-                  </span>
-                  <span
-                    className={`text-xs font-mono font-bold mt-0.5 block ${
-                      activeMember.occupancyStatus === 'Checked In'
-                        ? 'text-emerald-400'
-                        : 'text-muted-foreground'
-                    }`}
-                  >
-                    {activeMember.occupancyStatus || 'Checked Out'}
-                  </span>
-                </div>
-
-                <div>
-                  <span className="text-[10px] uppercase font-mono font-bold text-muted-foreground block">
-                    {t('colLocker')}
-                  </span>
-                  <span className="text-xs font-mono font-bold text-primary mt-0.5 block">
-                    {activeMember.assignedLocker || 'None'}
-                  </span>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex items-center gap-3 pt-2">
-                {activeMember.occupancyStatus === 'Checked In' ? (
-                  <Button
-                    id="btn-profile-checkout"
-                    variant="destructive"
-                    size="lg"
-                    onClick={() => handleCheckOutMember(activeMember)}
-                    className="flex-1"
-                  >
-                    <LogOut className="w-4 h-4 mr-2" />
-                    <span>{t('checkOutBtn')}</span>
-                  </Button>
-                ) : (
-                  <Button
-                    id="btn-profile-checkin"
-                    variant={activeMember.status === 'Expired' || activeMember.status === 'Suspended' ? 'destructive' : 'primary'}
-                    size="lg"
-                    onClick={() => handleCheckInMember(activeMember)}
-                    className="flex-1"
-                  >
-                    <UserCheck className="w-4 h-4 mr-2 stroke-[2.5]" />
-                    <span>
-                      {activeMember.status === 'Expired' || activeMember.status === 'Suspended'
-                        ? 'Emergency Override'
-                        : t('checkInBtn')}
+                {/* Status Details Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-muted/40 border border-border p-4 rounded-xl">
+                  <div>
+                    <span className="text-[10px] uppercase font-mono font-bold text-muted-foreground block">
+                      {t('colExpiration')}
                     </span>
-                  </Button>
-                )}
-              </div>
-            </Card>
+                    <span className="text-xs font-mono font-bold text-foreground mt-0.5 block">
+                      {activeMember.expirationDate}
+                    </span>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] uppercase font-mono font-bold text-muted-foreground block">
+                      {t('colOccupancy')}
+                    </span>
+                    <span
+                      className={`text-xs font-mono font-bold mt-0.5 block ${
+                        activeMember.occupancyStatus === 'Checked In'
+                          ? 'text-emerald-400'
+                          : 'text-muted-foreground'
+                      }`}
+                    >
+                      {activeMember.occupancyStatus || 'Checked Out'}
+                    </span>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] uppercase font-mono font-bold text-muted-foreground block">
+                      {t('colLocker')}
+                    </span>
+                    <span className="text-xs font-mono font-bold text-primary mt-0.5 block">
+                      {activeMember.assignedLocker || 'None'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex flex-col gap-3 pt-2">
+                  <div className="flex items-center gap-3">
+                    {activeMember.occupancyStatus === 'Checked In' ? (
+                      <Button
+                        id="btn-profile-checkout"
+                        variant="destructive"
+                        size="lg"
+                        onClick={() => handleCheckOutMember(activeMember)}
+                        className="flex-1"
+                      >
+                        <LogOut className="w-4 h-4 mr-2" />
+                        <span>{t('checkOutBtn')}</span>
+                      </Button>
+                    ) : (
+                      <Button
+                        id="btn-profile-checkin"
+                        variant={activeMember.status === 'Expired' || activeMember.status === 'Suspended' ? 'destructive' : 'primary'}
+                        size="lg"
+                        onClick={() => handleCheckInMember(activeMember)}
+                        className="flex-1"
+                      >
+                        <UserCheck className="w-4 h-4 mr-2 stroke-[2.5]" />
+                        <span>
+                          {activeMember.status === 'Expired' || activeMember.status === 'Suspended'
+                            ? 'Emergency Override'
+                            : t('checkInBtn')}
+                        </span>
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* Waitlist Buttons */}
+                  {activeMember.occupancyStatus !== 'Checked In' && (
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          dashboard.joinWaitlist('LOCKER', activeMember.id, `${activeMember.firstName} ${activeMember.lastName}`.trim());
+                          triggerToast(`Added ${activeMember.firstName} to Locker Waitlist`);
+                        }}
+                      >
+                        Queue for Locker
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          dashboard.joinWaitlist('GYM_FLOOR', activeMember.id, `${activeMember.firstName} ${activeMember.lastName}`.trim());
+                          triggerToast(`Added ${activeMember.firstName} to Gym Waitlist`);
+                        }}
+                      >
+                        Queue for Gym Floor
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </Card>
+
+              {/* Lobby Check-In Activity Logs */}
+              <Card className="p-5 space-y-4">
+                <div className="flex items-center justify-between border-b border-border pb-3">
+                  <h3 className="text-xs sm:text-sm font-bold tracking-wider text-muted-foreground uppercase font-mono">
+                    Recent Check-In Activity
+                  </h3>
+                  <Badge variant="outline">Live Logs</Badge>
+                </div>
+
+                <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+                  {dashboard.lockerLogs.length === 0 ? (
+                    <p className="text-xs text-muted-foreground italic text-center py-6">
+                      No recent check-in activities logged.
+                    </p>
+                  ) : (
+                    dashboard.lockerLogs.slice(0, 5).map((log) => (
+                      <div
+                        key={log.id}
+                        className="text-xs border-b border-border/50 pb-2 last:border-b-0 last:pb-0 space-y-1"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-foreground">{log.memberName}</span>
+                          <span className="text-[10px] font-mono text-muted-foreground">{log.timeFormatted || 'Now'}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-muted-foreground">
+                          <span>{log.eventDescription}</span>
+                          <span className="font-mono text-[10px] bg-muted px-1.5 py-0.5 rounded text-foreground font-bold">
+                            Processed by: {log.staffLogged || 'System'}
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </Card>
+            </div>
           ) : null}
         </div>
       </div>

@@ -44,7 +44,7 @@ interface InventoryViewProps {
   currentUser?: AuthUser;
 }
 
-type ActiveInventoryTab = 'plan-builder' | 'locker-management' | 'nutrients';
+type ActiveInventoryTab = 'plan-builder' | 'locker-management' | 'nutrients' | 'purchase-orders';
 
 export default function InventoryView({
   plans: propPlans,
@@ -289,19 +289,96 @@ export default function InventoryView({
     return nutrients.filter((item) => item.stock === 0).length;
   }, [nutrients]);
 
-  const handleBatchRestock = () => {
+  // Suppliers & PO states
+  const [isPOModalOpen, setIsPOModalOpen] = useState(false);
+  const [poSupplierId, setPoSupplierId] = useState<string>('');
+  const [poItemsMap, setPoItemsMap] = useState<Record<string, { quantity: number; unitPurchaseCost: number }>>({});
+  
+  // Inline Supplier Form States
+  const [newSupplierForm, setNewSupplierForm] = useState({
+    name: '',
+    contactEmail: '',
+    phone: '',
+    leadTimeDays: 3,
+  });
+
+  const handleOpenPOModal = () => {
     if (selectedNutrientIds.length === 0) return;
+    if (dashboard.suppliers.length > 0 && !poSupplierId) {
+      setPoSupplierId(dashboard.suppliers[0].id);
+    }
+    const initialMap: Record<string, { quantity: number; unitPurchaseCost: number }> = {};
     selectedNutrientIds.forEach((id) => {
       const item = nutrients.find((n) => n.id === id);
       if (item) {
-        dashboard.updateNutrient({
-          ...item,
-          stock: item.stock + 10,
-        });
+        initialMap[id] = {
+          quantity: 20,
+          unitPurchaseCost: Math.round(item.price * 0.5),
+        };
       }
     });
-    showToast(`Restocked ${selectedNutrientIds.length} items by +10 units.`);
+    setPoItemsMap(initialMap);
+    setIsPOModalOpen(true);
+  };
+
+  const handleConfirmPO = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!poSupplierId) {
+      showToast('Please select a supplier');
+      return;
+    }
+    const supplier = dashboard.suppliers.find((s) => s.id === poSupplierId);
+    if (!supplier) return;
+
+    const poItems = selectedNutrientIds.map((id) => {
+      const item = nutrients.find((n) => n.id === id);
+      const values = poItemsMap[id] || { quantity: 10, unitPurchaseCost: 0 };
+      return {
+        id: `poi-${Math.random().toString(36).substr(2, 9)}`,
+        productId: id,
+        productName: item?.name || 'Unknown',
+        quantity: values.quantity,
+        unitPurchaseCost: values.unitPurchaseCost,
+      };
+    });
+
+    const totalCost = poItems.reduce((acc, x) => acc + x.quantity * x.unitPurchaseCost, 0);
+    const uniqueId = `po-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    const newPO = {
+      id: uniqueId,
+      supplierId: supplier.id,
+      supplierName: supplier.name,
+      status: 'ORDERED' as const,
+      items: poItems,
+      totalCost,
+      createdAt: new Date().toISOString(),
+    };
+
+    dashboard.createPurchaseOrder(newPO);
+    setIsPOModalOpen(false);
     setSelectedNutrientIds([]);
+    showToast(`Purchase Order ${newPO.id} successfully generated & ordered.`);
+  };
+
+  const handleAddSupplier = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newSupplierForm.name.trim()) return;
+    const uniqueId = `sup-${Math.floor(10 + Math.random() * 90)}`;
+    dashboard.addSupplier({
+      id: uniqueId,
+      name: newSupplierForm.name.trim(),
+      contactEmail: newSupplierForm.contactEmail.trim() || 'info@supplier.mn',
+      phone: newSupplierForm.phone.trim() || '9900-1122',
+      leadTimeDays: Number(newSupplierForm.leadTimeDays) || 3,
+    });
+    setNewSupplierForm({
+      name: '',
+      contactEmail: '',
+      phone: '',
+      leadTimeDays: 3,
+    });
+    showToast('New nutrient supplier registered.');
   };
 
   const handleBatchDelete = () => {
@@ -585,6 +662,19 @@ export default function InventoryView({
             )}
           >
             {t('tabNutrients') || 'NUTRIENTS'}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('purchase-orders')}
+            className={cn(
+              'pb-2.5 px-0.5 border-b-2 transition-all cursor-pointer whitespace-nowrap',
+              activeTab === 'purchase-orders'
+                ? 'text-[#D4FF00] border-[#D4FF00]'
+                : 'text-muted-foreground hover:text-foreground border-transparent'
+            )}
+          >
+            {t('tabPurchaseOrders') || 'SUPPLIERS & PO'}
           </button>
         </div>
       </div>
@@ -1371,10 +1461,10 @@ export default function InventoryView({
                       <Button
                         type="button"
                         variant="primary"
-                        onClick={handleBatchRestock}
+                        onClick={handleOpenPOModal}
                         className="h-7 text-[10px] px-2.5 font-mono"
                       >
-                        Restock (+10 units)
+                        Restock &amp; Purchase Intake
                       </Button>
                       {isAdmin && (
                         <Button
@@ -1594,6 +1684,269 @@ export default function InventoryView({
                 )}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* 4. SUPPLIERS & PURCHASE ORDERS TAB */}
+      {activeTab === 'purchase-orders' && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Left Column: Suppliers & Registration */}
+            <div className="lg:col-span-4 space-y-6">
+              {/* Add Supplier Form */}
+              <div className="bg-[#0B132B]/80 dark:bg-[#0D1527] border border-border/80 rounded-2xl p-5 space-y-4 shadow-xl">
+                <div className="flex items-center gap-2 border-b border-border/80 pb-2.5">
+                  <Building2 className="w-4 h-4 text-[#D4FF00]" />
+                  <h3 className="text-xs sm:text-sm font-bold font-mono uppercase text-foreground">
+                    Register Supplier
+                  </h3>
+                </div>
+
+                <form onSubmit={handleAddSupplier} className="space-y-4 font-mono text-xs">
+                  <div className="space-y-1.5">
+                    <label className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                      Supplier Name *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Elite Sports Nutrition"
+                      value={newSupplierForm.name}
+                      onChange={(e) => setNewSupplierForm({ ...newSupplierForm, name: e.target.value })}
+                      className="w-full bg-[#070D1E] border border-border/80 focus:border-[#D4FF00] text-xs text-foreground rounded-lg px-3 py-2 outline-none font-sans"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                      Contact Email
+                    </label>
+                    <input
+                      type="email"
+                      placeholder="orders@supplier.com"
+                      value={newSupplierForm.contactEmail}
+                      onChange={(e) => setNewSupplierForm({ ...newSupplierForm, contactEmail: e.target.value })}
+                      className="w-full bg-[#070D1E] border border-border/80 focus:border-[#D4FF00] text-xs text-foreground rounded-lg px-3 py-2 outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                      Phone Number
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="9911-2233"
+                      value={newSupplierForm.phone}
+                      onChange={(e) => setNewSupplierForm({ ...newSupplierForm, phone: e.target.value })}
+                      className="w-full bg-[#070D1E] border border-border/80 focus:border-[#D4FF00] text-xs text-foreground rounded-lg px-3 py-2 outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                      Lead Time (Days)
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      required
+                      value={newSupplierForm.leadTimeDays}
+                      onChange={(e) => setNewSupplierForm({ ...newSupplierForm, leadTimeDays: Number(e.target.value) })}
+                      className="w-full bg-[#070D1E] border border-border/80 focus:border-[#D4FF00] text-xs text-foreground rounded-lg px-3 py-2 outline-none"
+                    />
+                  </div>
+
+                  <Button type="submit" variant="primary" className="w-full text-xs py-2">
+                    <Plus className="w-3.5 h-3.5 mr-1" />
+                    Register Supplier
+                  </Button>
+                </form>
+              </div>
+
+              {/* Suppliers Directory */}
+              <div className="bg-[#0B132B]/80 dark:bg-[#0D1527] border border-border/80 rounded-2xl p-5 space-y-4 shadow-xl">
+                <div className="flex items-center justify-between border-b border-border/80 pb-2.5">
+                  <span className="text-xs sm:text-sm font-bold font-mono uppercase text-foreground">
+                    Suppliers Directory
+                  </span>
+                  <Badge variant="outline">{dashboard.suppliers.length}</Badge>
+                </div>
+
+                <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+                  {dashboard.suppliers.map((sup) => (
+                    <div key={sup.id} className="p-3 bg-[#070D1E] border border-border/60 rounded-xl space-y-1.5 text-xs">
+                      <div className="flex items-center justify-between">
+                        <strong className="text-foreground font-black">{sup.name}</strong>
+                        <Badge variant="outline" className="text-[10px] scale-90 font-mono">
+                          {sup.leadTimeDays}d lead
+                        </Badge>
+                      </div>
+                      <div className="text-[11px] text-muted-foreground font-mono space-y-0.5">
+                        <p>{sup.contactEmail}</p>
+                        <p>{sup.phone}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column: Purchase Orders list */}
+            <div className="lg:col-span-8 space-y-6">
+              <div className="bg-[#0B132B]/80 dark:bg-[#0D1527] border border-border/80 rounded-2xl p-6 space-y-4 shadow-xl">
+                <div className="flex items-center justify-between border-b border-border/80 pb-4">
+                  <div className="flex items-center gap-2">
+                    <Package className="w-5 h-5 text-[#D4FF00]" />
+                    <h2 className="text-base font-bold text-foreground font-mono uppercase">
+                      Purchase Order Pipeline
+                    </h2>
+                  </div>
+                  <Badge variant="info">{dashboard.purchaseOrders.length} Orders</Badge>
+                </div>
+
+                <div className="space-y-4">
+                  {dashboard.purchaseOrders.length === 0 ? (
+                    <p className="text-xs text-muted-foreground italic text-center py-12 font-mono">
+                      No purchase orders recorded yet. Use the Nutrients tab to restock via POs.
+                    </p>
+                  ) : (
+                    [...dashboard.purchaseOrders].reverse().map((po) => (
+                      <div
+                        key={po.id}
+                        className="p-4 bg-[#070D1E] border border-border/80 rounded-xl space-y-3"
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/40 pb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-xs font-bold text-[#D4FF00]">#{po.id}</span>
+                            <span className="text-xs text-muted-foreground font-mono">|</span>
+                            <span className="text-xs text-foreground font-black font-sans">{po.supplierName}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] text-muted-foreground font-mono">
+                              {new Date(po.createdAt).toLocaleDateString()}
+                            </span>
+                            <Badge
+                              variant={
+                                po.status === 'RECEIVED'
+                                  ? 'success'
+                                  : po.status === 'CANCELLED'
+                                  ? 'destructive'
+                                  : 'warning'
+                              }
+                              className="text-[10px] font-mono font-bold"
+                            >
+                              {po.status}
+                            </Badge>
+                          </div>
+                        </div>
+
+                        {/* Items listed */}
+                        <div className="space-y-1.5 pl-2 border-l-2 border-[#D4FF00]/40">
+                          {po.items.map((item) => (
+                            <div key={item.id} className="flex items-center justify-between text-xs font-mono text-slate-300">
+                              <span>
+                                {item.productName} <strong className="text-foreground">x{item.quantity}</strong>
+                              </span>
+                              <span>{formatCurrency(item.unitPurchaseCost)} / unit</span>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Cost & Action footer */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 font-mono text-xs">
+                          <div>
+                            <span className="text-muted-foreground mr-1.5">Total Cost:</span>
+                            <strong className="text-foreground font-extrabold">{formatCurrency(po.totalCost)}</strong>
+                          </div>
+
+                          {po.status === 'ORDERED' && (
+                            <div className="flex items-center gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  dashboard.cancelPurchaseOrder(po.id);
+                                  showToast(`Purchase Order ${po.id} cancelled.`);
+                                }}
+                                className="h-8 text-[11px] font-bold border-rose-500/40 text-rose-400 hover:bg-rose-500/10"
+                              >
+                                Cancel Order
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="primary"
+                                onClick={() => {
+                                  dashboard.receivePurchaseOrder(po.id);
+                                  showToast(`PO ${po.id} received. Restocked items.`);
+                                }}
+                                className="h-8 text-[11px]"
+                              >
+                                Mark Received
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom section: Stock Intake History Logs */}
+          <div className="bg-[#0B132B]/80 dark:bg-[#0D1527] border border-border/80 rounded-2xl p-6 space-y-4 shadow-xl">
+            <div className="flex items-center gap-2 border-b border-border/80 pb-3">
+              <Layers className="w-5 h-5 text-[#D4FF00]" />
+              <h3 className="text-base font-bold text-foreground font-mono uppercase">
+                Stock Intake Logs &amp; Gross Margins
+              </h3>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs font-mono">
+                <thead>
+                  <tr className="border-b border-border/80 text-muted-foreground font-bold">
+                    <th className="py-2.5">Intake Timestamp</th>
+                    <th className="py-2.5">PO Ref</th>
+                    <th className="py-2.5">Product Name</th>
+                    <th className="py-2.5 text-center">Qty</th>
+                    <th className="py-2.5 text-right">Cost Price</th>
+                    <th className="py-2.5 text-right">Sell Price</th>
+                    <th className="py-2.5 text-right text-[#D4FF00]">Gross Margin</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/40 text-slate-300">
+                  {dashboard.stockIntakes.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-6 text-center italic text-muted-foreground">
+                        No intake logs recorded yet. Receiving purchase orders creates logs here.
+                      </td>
+                    </tr>
+                  ) : (
+                    [...dashboard.stockIntakes].reverse().map((log) => {
+                      const profit = log.unitSellingPrice - log.unitPurchaseCost;
+                      const margin = log.unitSellingPrice > 0 ? (profit / log.unitSellingPrice) * 100 : 0;
+                      return (
+                        <tr key={log.id} className="hover:bg-muted/10">
+                          <td className="py-2.5">{new Date(log.timestamp).toLocaleString()}</td>
+                          <td className="py-2.5 text-[#D4FF00]">#{log.purchaseOrderId}</td>
+                          <td className="py-2.5 text-foreground font-sans font-bold">{log.productName}</td>
+                          <td className="py-2.5 text-center">{log.quantity}</td>
+                          <td className="py-2.5 text-right">{formatCurrency(log.unitPurchaseCost)}</td>
+                          <td className="py-2.5 text-right">{formatCurrency(log.unitSellingPrice)}</td>
+                          <td className={`py-2.5 text-right font-black ${margin >= 40 ? 'text-[#D4FF00]' : 'text-amber-400'}`}>
+                            {margin.toFixed(1)}%
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
@@ -1842,6 +2195,145 @@ export default function InventoryView({
                 >
                   <Check className="w-4 h-4" />
                   <span>Confirm Sale</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Restock & Purchase Intake / Purchase Order Modal */}
+      {isPOModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#0B132B] border border-border rounded-2xl w-full max-w-lg p-6 space-y-5 shadow-2xl animate-in fade-in zoom-in-95 duration-150 font-sans">
+            <div className="flex items-center justify-between border-b border-border/80 pb-3">
+              <div className="flex items-center gap-2.5">
+                <Package className="w-5 h-5 text-[#D4FF00]" />
+                <h3 className="text-sm font-bold text-foreground uppercase tracking-wide font-mono">Restock &amp; Purchase Intake</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsPOModalOpen(false)}
+                className="text-muted-foreground hover:text-foreground cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmPO} className="space-y-4 font-mono text-xs">
+              {/* Supplier Selection */}
+              <div className="space-y-1.5">
+                <label className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                  Select Registered Supplier
+                </label>
+                <select
+                  value={poSupplierId}
+                  onChange={(e) => setPoSupplierId(e.target.value)}
+                  className="w-full bg-[#070D1E] border border-border/80 focus:border-[#D4FF00] text-xs text-foreground rounded-xl px-3 py-2.5 outline-none font-sans"
+                  required
+                >
+                  <option value="">-- Select Supplier --</option>
+                  {dashboard.suppliers.map((sup) => (
+                    <option key={sup.id} value={sup.id}>
+                      {sup.name} ({sup.leadTimeDays}d lead)
+                    </option>
+                  ))}
+                </select>
+                {dashboard.suppliers.length === 0 && (
+                  <p className="text-[10px] text-rose-400">
+                    * No registered suppliers. Go to 'Suppliers &amp; PO' sub-tab to register one first.
+                  </p>
+                )}
+              </div>
+
+              {/* Items in PO */}
+              <div className="space-y-3">
+                <span className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                  Order Items &amp; Unit Costs
+                </span>
+
+                <div className="space-y-3.5 max-h-[220px] overflow-y-auto pr-1">
+                  {selectedNutrientIds.map((id) => {
+                    const item = nutrients.find((n) => n.id === id);
+                    if (!item) return null;
+                    const values = poItemsMap[id] || { quantity: 20, unitPurchaseCost: 0 };
+                    return (
+                      <div key={id} className="p-3 bg-[#070D1E] border border-border/60 rounded-xl space-y-2">
+                        <div className="font-sans font-bold text-foreground text-xs">
+                          {item.name}
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1">
+                            <label className="text-[9px] text-muted-foreground uppercase">Quantity</label>
+                            <input
+                              type="number"
+                              min="1"
+                              required
+                              value={values.quantity}
+                              onChange={(e) => {
+                                const val = Math.max(1, Number(e.target.value) || 1);
+                                setPoItemsMap({
+                                  ...poItemsMap,
+                                  [id]: { ...values, quantity: val },
+                                });
+                              }}
+                              className="w-full bg-[#0B132B] border border-border/60 focus:border-[#D4FF00] text-xs text-foreground rounded px-2 py-1 outline-none font-mono"
+                            />
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="text-[9px] text-muted-foreground uppercase">Unit Purchase Cost (₮)</label>
+                            <input
+                              type="number"
+                              min="0"
+                              required
+                              value={values.unitPurchaseCost}
+                              onChange={(e) => {
+                                const val = Math.max(0, Number(e.target.value) || 0);
+                                setPoItemsMap({
+                                  ...poItemsMap,
+                                  [id]: { ...values, unitPurchaseCost: val },
+                                });
+                              }}
+                              className="w-full bg-[#0B132B] border border-border/60 focus:border-[#D4FF00] text-xs text-foreground rounded px-2 py-1 outline-none font-mono"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Total Summary */}
+              <div className="bg-[#111C38]/60 border border-blue-500/30 rounded-xl p-3 flex justify-between items-center text-[11px] font-bold text-foreground">
+                <span>Total Estimated Cost:</span>
+                <span className="text-[#D4FF00] text-sm">
+                  {formatCurrency(
+                    selectedNutrientIds.reduce((acc, id) => {
+                      const values = poItemsMap[id] || { quantity: 20, unitPurchaseCost: 0 };
+                      return acc + values.quantity * values.unitPurchaseCost;
+                    }, 0)
+                  )}
+                </span>
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-border/80">
+                <button
+                  type="button"
+                  onClick={() => setIsPOModalOpen(false)}
+                  className="px-4 py-2 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={dashboard.suppliers.length === 0}
+                  className="bg-[#D4FF00] disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#c3eb00] text-black font-extrabold text-xs px-5 py-2.5 rounded-xl cursor-pointer shadow-md transition-all flex items-center gap-1.5 font-mono"
+                >
+                  <Check className="w-4 h-4 stroke-[2.5]" />
+                  <span>Submit Purchase Order</span>
                 </button>
               </div>
             </form>

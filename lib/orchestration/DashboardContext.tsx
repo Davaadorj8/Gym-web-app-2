@@ -18,6 +18,14 @@ import {
   INITIAL_NUTRIENT_SALES,
   StaffAccount,
   UserRole,
+  StaffAttendance,
+  Supplier,
+  PurchaseOrder,
+  StockIntakeLog,
+  WaitlistEntry,
+  MOCK_SUPPLIERS,
+  MOCK_PURCHASE_ORDERS,
+  MOCK_STOCK_INTAKES,
 } from '@/lib/types';
 import {
   computeNewExpirationDate,
@@ -55,6 +63,14 @@ export interface DashboardContextValue {
   statusMessage: string | null;
   directoryFilter: string;
 
+  // Phase 3 States
+  attendances: StaffAttendance[];
+  suppliers: Supplier[];
+  purchaseOrders: PurchaseOrder[];
+  stockIntakes: StockIntakeLog[];
+  waitlist: WaitlistEntry[];
+  maxGymCapacity: number;
+
   // Setters / UI Actions
   setActiveTab: (tab: string) => void;
   setDirectoryFilter: (filter: string) => void;
@@ -65,6 +81,7 @@ export interface DashboardContextValue {
   login: (identifier: string, password?: string, loginRole?: UserRole, locale?: string) => void;
   logout: () => void;
   switchRole: (role: UserRole) => void;
+  setMaxGymCapacity: (capacity: number) => void;
 
   // Domain Actions
   updateMember: (member: GymMember) => void;
@@ -77,7 +94,7 @@ export interface DashboardContextValue {
     paymentMethod: string,
     newExpirationDate?: string
   ) => void;
-  checkInMember: (memberId: string, lockerNumber: string) => void;
+  checkInMember: (memberId: string, lockerNumber: string, processedByStaffId?: string) => void;
   checkOutMember: (memberId: string) => void;
   cancelAndRefundMember: (
     memberId: string,
@@ -99,6 +116,7 @@ export interface DashboardContextValue {
     statusLabel: 'Check-In Logged' | 'Key Returned';
     staffLogged?: string;
     staffRole?: UserRole;
+    checkedInByStaffId?: string;
   }) => void;
   addStaff: (staff: StaffAccount) => void;
   updateStaff: (staff: StaffAccount) => void;
@@ -108,6 +126,19 @@ export interface DashboardContextValue {
   updateNutrient: (product: NutrientProduct) => void;
   updateNutrientPrice: (id: string, newPrice: number) => void;
   recordNutrientSale: (sale: Omit<NutrientSaleLog, 'id' | 'timestamp' | 'timeFormatted'>) => void;
+
+  // Phase 3 Actions
+  clockIn: (staffId: string, shiftId: string) => void;
+  clockOut: (attendanceId: string) => void;
+  addSupplier: (supplier: Supplier) => void;
+  updateSupplier: (supplier: Supplier) => void;
+  deleteSupplier: (id: string) => void;
+  createPurchaseOrder: (po: PurchaseOrder) => void;
+  receivePurchaseOrder: (id: string) => void;
+  cancelPurchaseOrder: (id: string) => void;
+  joinWaitlist: (resourceType: 'LOCKER' | 'GYM_FLOOR', memberId: string, memberName: string) => void;
+  leaveWaitlist: (id: string) => void;
+  claimWaitlistOffer: (id: string) => void;
 }
 
 const DashboardContext = createContext<DashboardContextValue | null>(null);
@@ -194,6 +225,75 @@ export function DashboardProvider({
     }
     return INITIAL_NUTRIENT_SALES;
   });
+
+  // Phase 3 States
+  const [attendances, setAttendances] = useState<StaffAttendance[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('arche_staff_attendances');
+        if (saved) return JSON.parse(saved);
+      } catch {}
+    }
+    return [];
+  });
+
+  const [suppliers, setSuppliers] = useState<Supplier[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('arche_suppliers');
+        if (saved) return JSON.parse(saved);
+      } catch {}
+    }
+    return MOCK_SUPPLIERS;
+  });
+
+  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('arche_purchase_orders');
+        if (saved) return JSON.parse(saved);
+      } catch {}
+    }
+    return MOCK_PURCHASE_ORDERS;
+  });
+
+  const [stockIntakes, setStockIntakes] = useState<StockIntakeLog[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('arche_stock_intakes');
+        if (saved) return JSON.parse(saved);
+      } catch {}
+    }
+    return MOCK_STOCK_INTAKES;
+  });
+
+  const [waitlist, setWaitlist] = useState<WaitlistEntry[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('arche_waitlist');
+        if (saved) return JSON.parse(saved);
+      } catch {}
+    }
+    return [];
+  });
+
+  const [maxGymCapacity, setMaxGymCapacityState] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('arche_max_gym_capacity');
+        if (saved) return Number(saved) || 40;
+      } catch {}
+    }
+    return 40;
+  });
+
+  const setMaxGymCapacity = useCallback((cap: number) => {
+    const val = Math.max(1, cap);
+    setMaxGymCapacityState(val);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('arche_max_gym_capacity', String(val));
+    }
+  }, []);
 
   // Authentication handlers
   const login = useCallback(
@@ -333,6 +433,7 @@ export function DashboardProvider({
       statusLabel: 'Check-In Logged' | 'Key Returned';
       staffLogged?: string;
       staffRole?: UserRole;
+      checkedInByStaffId?: string;
     }) => {
       const staffBadge = event.staffLogged || (currentUser.role === 'admin' ? 'Admin' : 'Staff');
       const audit = createAuditEntry('LOCKER_EVENT', event.lockerNumber, {
@@ -343,6 +444,7 @@ export function DashboardProvider({
         statusLabel: event.statusLabel,
         staffLogged: staffBadge,
         staffRole: event.staffRole || currentUser.role,
+        checkedInByStaffId: event.checkedInByStaffId,
       }, currentUser.id);
 
       const now = new Date(audit.timestamp);
@@ -363,6 +465,7 @@ export function DashboardProvider({
         statusLabel: event.statusLabel,
         staffLogged: staffBadge,
         staffRole: event.staffRole || currentUser.role,
+        checkedInByStaffId: event.checkedInByStaffId,
       };
 
       setLockerLogs((prev) => [newLog, ...prev]);
@@ -504,7 +607,7 @@ export function DashboardProvider({
   );
 
   const checkInMember = useCallback(
-    (memberId: string, lockerNumber: string) => {
+    (memberId: string, lockerNumber: string, processedByStaffId?: string) => {
       const now = new Date();
       const nowFormatted = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
@@ -524,6 +627,10 @@ export function DashboardProvider({
       const target = members.find((m) => m.id === memberId);
       const memberName = target ? `${target.firstName} ${target.lastName}`.trim() : 'Member';
 
+      const finalStaffId = processedByStaffId || currentUser.id;
+      const staffAccount = staffList.find((s) => s.id === finalStaffId);
+      const staffName = staffAccount ? staffAccount.fullName : (currentUser.role === 'admin' ? 'Admin' : 'Staff');
+
       logLockerEvent({
         lockerNumber,
         memberId,
@@ -531,11 +638,12 @@ export function DashboardProvider({
         eventType: 'Checked In',
         eventDescription: `Check-in recorded, ${lockerNumber} assigned at ${nowFormatted}`,
         statusLabel: 'Check-In Logged',
-        staffLogged: currentUser.role === 'admin' ? 'Admin' : 'Staff',
+        staffLogged: staffName,
         staffRole: currentUser.role,
+        checkedInByStaffId: finalStaffId,
       });
     },
-    [members, logLockerEvent, currentUser]
+    [members, logLockerEvent, currentUser, staffList]
   );
 
   const checkOutMember = useCallback(
@@ -569,6 +677,49 @@ export function DashboardProvider({
         statusLabel: 'Key Returned',
         staffLogged: currentUser.role === 'admin' ? 'Admin' : 'Staff',
         staffRole: currentUser.role,
+      });
+
+      // Automated Waitlist Trigger on Locker Release
+      setWaitlist((prevWaitlist) => {
+        const firstWaiting = prevWaitlist.find(
+          (entry) => entry.resourceType === 'LOCKER' && entry.status === 'WAITING'
+        );
+        if (firstWaiting) {
+          const expires = new Date();
+          expires.setHours(expires.getHours() + 24); // 24-hour reservation window
+
+          const updated = prevWaitlist.map((entry) => {
+            if (entry.id === firstWaiting.id) {
+              // Log the automated offer in locker logs asynchronously so we don't block
+              setTimeout(() => {
+                logLockerEvent({
+                  lockerNumber: releasedLocker,
+                  memberId: entry.memberId,
+                  memberName: entry.memberName,
+                  eventType: 'Checked In',
+                  eventDescription: `Locker reserved for waitlisted member ${entry.memberName} (offer expires in 24 hours).`,
+                  statusLabel: 'Check-In Logged',
+                  staffLogged: 'System Auto-Reserve',
+                  staffRole: 'admin',
+                });
+              }, 10);
+
+              return {
+                ...entry,
+                status: 'OFFERED' as const,
+                offeredLockerNumber: releasedLocker,
+                offerExpiresAt: expires.toISOString(),
+              };
+            }
+            return entry;
+          });
+
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('arche_waitlist', JSON.stringify(updated));
+          }
+          return updated;
+        }
+        return prevWaitlist;
       });
     },
     [members, logLockerEvent, currentUser]
@@ -744,6 +895,214 @@ export function DashboardProvider({
     [currentUser]
   );
 
+  // Phase 3 Actions implementation
+  const clockIn = useCallback((staffId: string, shiftId: string) => {
+    const staff = staffList.find((s) => s.id === staffId);
+    const staffName = staff ? staff.fullName : 'Staff Member';
+    const newAttendance: StaffAttendance = {
+      id: `attendance-${Date.now()}`,
+      staffId,
+      staffName,
+      shiftId,
+      clockInTime: new Date().toISOString(),
+      status: 'ON_DUTY',
+    };
+    setAttendances((prev) => {
+      const updated = [newAttendance, ...prev];
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('arche_staff_attendances', JSON.stringify(updated));
+      }
+      return updated;
+    });
+    createAuditEntry('STAFF_CLOCK_IN', staffId, { shiftId, staffName }, currentUser.id);
+  }, [staffList, currentUser]);
+
+  const clockOut = useCallback((attendanceId: string) => {
+    setAttendances((prev) => {
+      const updated = prev.map((a) => {
+        if (a.id === attendanceId) {
+          return {
+            ...a,
+            clockOutTime: new Date().toISOString(),
+            status: 'COMPLETED' as const,
+          };
+        }
+        return a;
+      });
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('arche_staff_attendances', JSON.stringify(updated));
+      }
+      return updated;
+    });
+    createAuditEntry('STAFF_CLOCK_OUT', attendanceId, {}, currentUser.id);
+  }, [currentUser]);
+
+  const addSupplier = useCallback((sup: Supplier) => {
+    setSuppliers((prev) => {
+      const updated = [sup, ...prev];
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('arche_suppliers', JSON.stringify(updated));
+      }
+      return updated;
+    });
+  }, []);
+
+  const updateSupplier = useCallback((sup: Supplier) => {
+    setSuppliers((prev) => {
+      const updated = prev.map((s) => (s.id === sup.id ? sup : s));
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('arche_suppliers', JSON.stringify(updated));
+      }
+      return updated;
+    });
+  }, []);
+
+  const deleteSupplier = useCallback((id: string) => {
+    setSuppliers((prev) => {
+      const updated = prev.filter((s) => s.id !== id);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('arche_suppliers', JSON.stringify(updated));
+      }
+      return updated;
+    });
+  }, []);
+
+  const createPurchaseOrder = useCallback((po: PurchaseOrder) => {
+    setPurchaseOrders((prev) => {
+      const updated = [po, ...prev];
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('arche_purchase_orders', JSON.stringify(updated));
+      }
+      return updated;
+    });
+  }, []);
+
+  const receivePurchaseOrder = useCallback((poId: string) => {
+    setPurchaseOrders((prev) => {
+      let selectedPo: PurchaseOrder | undefined;
+      const updated = prev.map((po) => {
+        if (po.id === poId) {
+          selectedPo = { ...po, status: 'RECEIVED' as const, receivedAt: new Date().toISOString() };
+          return selectedPo;
+        }
+        return po;
+      });
+
+      if (selectedPo && selectedPo.status === 'RECEIVED') {
+        // Log stock intakes and update inventory stock
+        const newIntakes: StockIntakeLog[] = [];
+        selectedPo.items.forEach((item) => {
+          setNutrients((prevNutr) => {
+            const updatedNutr = prevNutr.map((n) => {
+              if (n.id === item.productId) {
+                const newStock = n.stock + item.quantity;
+                const marginPercent = Number((((n.price - item.unitPurchaseCost) / n.price) * 100).toFixed(2));
+                
+                newIntakes.push({
+                  id: `intake-${Date.now()}-${item.productId}`,
+                  purchaseOrderId: poId,
+                  productId: item.productId,
+                  productName: item.productName,
+                  quantity: item.quantity,
+                  unitPurchaseCost: item.unitPurchaseCost,
+                  unitSellingPrice: n.price,
+                  marginPercent,
+                  timestamp: new Date().toISOString(),
+                });
+
+                return { ...n, stock: newStock };
+              }
+              return n;
+            });
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('arche_nutrient_products', JSON.stringify(updatedNutr));
+            }
+            return updatedNutr;
+          });
+        });
+
+        if (newIntakes.length > 0) {
+          setStockIntakes((prevIntakes) => {
+            const updatedIntakes = [...newIntakes, ...prevIntakes];
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('arche_stock_intakes', JSON.stringify(updatedIntakes));
+            }
+            return updatedIntakes;
+          });
+        }
+      }
+
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('arche_purchase_orders', JSON.stringify(updated));
+      }
+      return updated;
+    });
+  }, []);
+
+  const cancelPurchaseOrder = useCallback((poId: string) => {
+    setPurchaseOrders((prev) => {
+      const updated = prev.map((po) => {
+        if (po.id === poId) {
+          return {
+            ...po,
+            status: 'CANCELLED' as const,
+          };
+        }
+        return po;
+      });
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('arche_purchase_orders', JSON.stringify(updated));
+      }
+      return updated;
+    });
+  }, []);
+
+  const joinWaitlist = useCallback((resourceType: 'LOCKER' | 'GYM_FLOOR', memberId: string, memberName: string) => {
+    const newEntry: WaitlistEntry = {
+      id: `waitlist-${Date.now()}`,
+      resourceType,
+      memberId,
+      memberName,
+      joinedAt: new Date().toISOString(),
+      status: 'WAITING',
+    };
+    setWaitlist((prev) => {
+      const updated = [...prev, newEntry];
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('arche_waitlist', JSON.stringify(updated));
+      }
+      return updated;
+    });
+  }, []);
+
+  const leaveWaitlist = useCallback((id: string) => {
+    setWaitlist((prev) => {
+      const updated = prev.filter((entry) => entry.id !== id);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('arche_waitlist', JSON.stringify(updated));
+      }
+      return updated;
+    });
+  }, []);
+
+  const claimWaitlistOffer = useCallback((id: string) => {
+    setWaitlist((prev) => {
+      const updated = prev.map((entry) => {
+        if (entry.id === id) {
+          return {
+            ...entry,
+            status: 'CLAIMED' as const,
+          };
+        }
+        return entry;
+      });
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('arche_waitlist', JSON.stringify(updated));
+      }
+      return updated;
+    });
+  }, []);
+
   const value = useMemo<DashboardContextValue>(
     () => ({
       isAuthenticated,
@@ -762,6 +1121,12 @@ export function DashboardProvider({
       isLoading,
       statusMessage,
       directoryFilter,
+      attendances,
+      suppliers,
+      purchaseOrders,
+      stockIntakes,
+      waitlist,
+      maxGymCapacity,
       setActiveTab,
       setDirectoryFilter,
       setMobileMenuOpen,
@@ -771,6 +1136,7 @@ export function DashboardProvider({
       login,
       logout,
       switchRole,
+      setMaxGymCapacity,
       updateMember,
       registerMember,
       deleteMember,
@@ -792,6 +1158,17 @@ export function DashboardProvider({
       updateNutrient,
       updateNutrientPrice,
       recordNutrientSale,
+      clockIn,
+      clockOut,
+      addSupplier,
+      updateSupplier,
+      deleteSupplier,
+      createPurchaseOrder,
+      receivePurchaseOrder,
+      cancelPurchaseOrder,
+      joinWaitlist,
+      leaveWaitlist,
+      claimWaitlistOffer,
     }),
     [
       isAuthenticated,
@@ -810,11 +1187,18 @@ export function DashboardProvider({
       isLoading,
       statusMessage,
       directoryFilter,
+      attendances,
+      suppliers,
+      purchaseOrders,
+      stockIntakes,
+      waitlist,
+      maxGymCapacity,
       setDirectoryFilter,
       toggleSidebar,
       login,
       logout,
       switchRole,
+      setMaxGymCapacity,
       updateMember,
       registerMember,
       deleteMember,
@@ -836,6 +1220,17 @@ export function DashboardProvider({
       updateNutrient,
       updateNutrientPrice,
       recordNutrientSale,
+      clockIn,
+      clockOut,
+      addSupplier,
+      updateSupplier,
+      deleteSupplier,
+      createPurchaseOrder,
+      receivePurchaseOrder,
+      cancelPurchaseOrder,
+      joinWaitlist,
+      leaveWaitlist,
+      claimWaitlistOffer,
     ]
   );
 

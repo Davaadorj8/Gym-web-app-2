@@ -147,6 +147,7 @@ export interface LockerLog {
   statusLabel: 'Check-In Logged' | 'Key Returned';
   staffLogged: string;
   staffRole?: UserRole;
+  checkedInByStaffId?: string;
 }
 
 export type NutrientCategory = 'Supplements' | 'Shakes' | 'Beverages' | 'Snacks' | 'Vitamins';
@@ -251,6 +252,112 @@ export const MOCK_NUTRIENT_SALES: NutrientSaleLog[] = [
     memberName: 'Sarnai Dorj',
     staffLogged: 'Front Desk Staff',
   },
+];
+
+export interface StaffAttendance {
+  id: string;
+  staffId: string;
+  staffName: string;
+  shiftId: string;
+  clockInTime: string;
+  clockOutTime?: string;
+  status: 'ON_DUTY' | 'COMPLETED';
+}
+
+export interface Supplier {
+  id: string;
+  name: string;
+  contactEmail: string;
+  phone: string;
+  leadTimeDays: number;
+}
+
+export interface POItem {
+  id: string;
+  productId: string;
+  productName: string;
+  quantity: number;
+  unitPurchaseCost: number;
+}
+
+export interface PurchaseOrder {
+  id: string;
+  supplierId: string;
+  supplierName: string;
+  status: 'DRAFT' | 'ORDERED' | 'RECEIVED' | 'CANCELLED';
+  items: POItem[];
+  totalCost: number;
+  createdAt: string;
+  receivedAt?: string;
+}
+
+export interface StockIntakeLog {
+  id: string;
+  purchaseOrderId: string;
+  productId: string;
+  productName: string;
+  quantity: number;
+  unitPurchaseCost: number;
+  unitSellingPrice: number;
+  marginPercent: number;
+  timestamp: string;
+}
+
+export interface WaitlistEntry {
+  id: string;
+  resourceType: 'LOCKER' | 'GYM_FLOOR';
+  memberId: string;
+  memberName: string;
+  joinedAt: string;
+  status: 'WAITING' | 'OFFERED' | 'CLAIMED' | 'EXPIRED';
+  offerExpiresAt?: string;
+  offeredLockerNumber?: string;
+}
+
+export const MOCK_SUPPLIERS: Supplier[] = [
+  { id: 'sup-1', name: 'Elite Nutrition LLC', contactEmail: 'orders@elitenutrition.mn', phone: '9911-2233', leadTimeDays: 3 },
+  { id: 'sup-2', name: 'BioTech Organics', contactEmail: 'info@biotech.mn', phone: '9922-3344', leadTimeDays: 5 },
+  { id: 'sup-3', name: 'Peak Performance Suppliers', contactEmail: 'supply@peakperf.mn', phone: '8811-0022', leadTimeDays: 2 },
+];
+
+export const MOCK_PURCHASE_ORDERS: PurchaseOrder[] = [
+  {
+    id: 'po-1001',
+    supplierId: 'sup-1',
+    supplierName: 'Elite Nutrition LLC',
+    status: 'RECEIVED',
+    items: [
+      { id: 'poi-1', productId: 'nutr-1', productName: 'Whey Isolate Protein (1kg)', quantity: 20, unitPurchaseCost: 95000 }
+    ],
+    totalCost: 1900000,
+    createdAt: '2026-08-01T10:00:00.000Z',
+    receivedAt: '2026-08-04T14:30:00.000Z'
+  },
+  {
+    id: 'po-1002',
+    supplierId: 'sup-2',
+    supplierName: 'BioTech Organics',
+    status: 'ORDERED',
+    items: [
+      { id: 'poi-2', productId: 'nutr-2', productName: 'Pre-Workout Energy Blast', quantity: 15, unitPurchaseCost: 55000 }
+    ],
+    totalCost: 825000,
+    createdAt: '2026-08-25T09:00:00.000Z'
+  }
+];
+
+export const MOCK_STOCK_INTAKES: StockIntakeLog[] = [
+  {
+    id: 'intake-1',
+    purchaseOrderId: 'po-1001',
+    productId: 'nutr-1',
+    productName: 'Whey Isolate Protein (1kg)',
+    quantity: 20,
+    unitPurchaseCost: 95000,
+    unitSellingPrice: 145000,
+    marginPercent: 34.48,
+    timestamp: '2026-08-04T14:30:00.000Z'
+  }
 ];
 
 // Aliases for backward compatibility
