@@ -18,6 +18,8 @@
 - Repositories: `member.repository`, `plan.repository`, `checkin.repository`
 - Translations & Messages: `messages.ts`
 - Orchestration: `DashboardContext.tsx`
+- Security: `password.ts` (bcryptjs password hashing & validation)
+- Constants: `permissions.ts` (strongly typed RBAC permission enum and role map)
 
 ## 4. State & Data Lifecycle
 - Server Data / Persistence: Mock repository store with localStorage synchronization and initial seed data in Mongolian Tugrik (MNT).
@@ -30,3 +32,4 @@
 ## 6. Maintenance Log
 - 2026-08-26: Updated pricing calculations and formatting to Mongolian Tugrik (₮ MNT), updated test suites to node environment, verified all unit tests passing.
 - 2026-08-27: Added translation keys for Traffic Analysis and Locker Status Overview to `messages.ts` for both English and Mongolian locales.
+- 2026-08-28: Implemented Phase 1 Security, Logic Consolidation & Data Governance including async password hashing via bcryptjs, strongly typed Permission Enums, and NextAuth credentials validation.

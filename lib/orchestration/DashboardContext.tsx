@@ -29,6 +29,7 @@ import {
   DEFAULT_STAFF_PERMISSIONS,
 } from '@/lib/services';
 import { format } from 'date-fns';
+import { verifyPassword } from '@/lib/security/password';
 
 export interface DashboardContextValue {
   // State
@@ -181,7 +182,7 @@ export function DashboardProvider({
 
   // Authentication handlers
   const login = useCallback(
-    (
+    async (
       identifier: string,
       password?: string,
       loginRole: UserRole = 'admin',
@@ -209,12 +210,22 @@ export function DashboardProvider({
           return;
         }
 
-        if (password && matchedStaff.passwordHash && password !== matchedStaff.passwordHash) {
-          setStatusMessage(
-            locale === 'mn' ? 'Нууц үг тохирохгүй байна.' : 'Invalid password provided.'
-          );
-          setIsLoading(false);
-          return;
+        if (password && matchedStaff.passwordHash) {
+          // Verify with bcrypt, fall back to plain text comparison if password is not hashed
+          let isValid = false;
+          try {
+            isValid = await verifyPassword(password, matchedStaff.passwordHash);
+          } catch {
+            isValid = password === matchedStaff.passwordHash;
+          }
+
+          if (!isValid && password !== matchedStaff.passwordHash) {
+            setStatusMessage(
+              locale === 'mn' ? 'Нууц үг тохирохгүй байна.' : 'Invalid password provided.'
+            );
+            setIsLoading(false);
+            return;
+          }
         }
 
         setCurrentUser({

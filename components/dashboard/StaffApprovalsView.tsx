@@ -28,6 +28,7 @@ import { StaffAccount, AuthUser } from '@/lib/types';
 import { Button, Card, Badge, Input } from '@/components/ui';
 import { useDashboard } from '@/lib/orchestration';
 import { STAFF_SHIFTS, STAFF_ROLES, DEFAULT_STAFF_PERMISSIONS } from '@/lib/services';
+import { hashPassword } from '@/lib/security/password';
 
 interface StaffApprovalsViewProps {
   currentUser?: AuthUser;
@@ -98,7 +99,7 @@ export default function StaffApprovalsView({
     }));
   };
 
-  const handleRegisterStaff = (e: React.FormEvent) => {
+  const handleRegisterStaff = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
     setSuccessToast(null);
@@ -133,10 +134,13 @@ export default function StaffApprovalsView({
       return;
     }
 
+    // Hash the password prior to account creation
+    const hashedPassword = await hashPassword(password);
+
     const newStaff: StaffAccount = {
       id: `staff-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       username: cleanUsername,
-      passwordHash: password,
+      passwordHash: hashedPassword,
       fullName: fullName.trim(),
       email: email.trim() || undefined,
       phoneNumber: phoneNumber.trim() || undefined,
@@ -181,15 +185,17 @@ export default function StaffApprovalsView({
     }
   };
 
-  const handleSavePasswordReset = (staff: StaffAccount) => {
+  const handleSavePasswordReset = async (staff: StaffAccount) => {
     if (!newPasswordInput || newPasswordInput.length < 4) {
       alert('Password must be at least 4 characters.');
       return;
     }
 
+    const hashedPassword = await hashPassword(newPasswordInput);
+
     const updated = {
       ...staff,
-      passwordHash: newPasswordInput,
+      passwordHash: hashedPassword,
     };
 
     if (propOnUpdateStaff) {
