@@ -35,7 +35,8 @@ export function LoginForm() {
         }
         setLoading(false);
       } else {
-        window.location.href = "/dashboard";
+        router.push("/dashboard");
+        router.refresh();
       }
     } catch (err) {
       setError("An unexpected error occurred. Please try again.");
