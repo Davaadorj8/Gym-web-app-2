@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useAppLocale } from '@/components/I18nProvider';
-import { Zap, Menu, X, Clock } from 'lucide-react';
+import { Zap, Menu, X, Clock, Building2 } from 'lucide-react';
 import Sidebar from '@/components/dashboard/Sidebar';
 import { useDashboard } from '@/lib/orchestration';
 import { AuthUser, UserRole } from '@/lib/types';
@@ -136,6 +136,66 @@ function StaffClockInOutWidget() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function BranchSwitcherWidget() {
+  const { locations, selectedLocationId, setSelectedLocationId, currentUser } = useDashboard();
+  const { locale } = useAppLocale();
+
+  const isStaff = currentUser?.role === 'staff';
+  const activeLocation = locations.find((l) => l.id === selectedLocationId);
+
+  return (
+    <div id="branch-switcher-widget" className="flex items-center gap-2.5 bg-card border border-border rounded-xl p-2 px-3 shadow-2xs">
+      <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+        <Building2 className="w-4 h-4" />
+      </div>
+      <div className="flex flex-col">
+        <div className="flex items-center gap-1.5">
+          <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+            {locale === 'mn' ? 'Салбар' : 'Branch Location'}
+          </span>
+          {isStaff ? (
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+              {locale === 'mn' ? 'Заагдсан салбар' : 'Assigned Location'}
+            </span>
+          ) : (
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+              {locale === 'mn' ? 'Байгууллага' : 'Organization-Wide'}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2 mt-0.5">
+          {isStaff ? (
+            <div className="flex items-center gap-2 text-sm font-bold text-foreground">
+              <span>{activeLocation ? activeLocation.name : (locale === 'mn' ? 'Downtown Flagship' : 'Downtown Flagship')}</span>
+              {activeLocation && (
+                <span className="text-xs font-mono font-semibold px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                  {activeLocation.code}
+                </span>
+              )}
+            </div>
+          ) : (
+            <select
+              id="branch-location-select"
+              value={selectedLocationId}
+              onChange={(e) => setSelectedLocationId(e.target.value)}
+              className="bg-transparent text-sm font-bold text-foreground cursor-pointer focus:outline-hidden hover:text-primary transition-colors pr-2"
+            >
+              <option value="all" className="bg-background text-foreground font-medium">
+                🌐 {locale === 'mn' ? 'Бүх салбарууд (Нэгтгэсэн)' : 'All Locations (Aggregated)'}
+              </option>
+              {locations.map((loc) => (
+                <option key={loc.id} value={loc.id} className="bg-background text-foreground font-medium">
+                  📍 {loc.name} ({loc.code})
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -292,8 +352,11 @@ export default function DashboardShell({
             </p>
           </div>
 
-          {/* Staff Shift Attendance Widget */}
-          <StaffClockInOutWidget />
+          {/* Header Controls: Branch Switcher & Staff Shift Attendance Widget */}
+          <div className="flex flex-wrap items-center gap-3">
+            <BranchSwitcherWidget />
+            <StaffClockInOutWidget />
+          </div>
         </div>
 
         {activeTab === 'directory' ? (

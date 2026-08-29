@@ -1,7 +1,25 @@
 export type CategoryTarget = 'under18' | 'over18' | 'organization';
 
+export interface GymLocation {
+  id: string;
+  tenantId: string;
+  name: string;
+  code: string;
+  address: string;
+  phone: string;
+  status: 'Active' | 'Inactive';
+}
+
+export const MOCK_LOCATIONS: GymLocation[] = [
+  { id: 'loc-downtown', tenantId: 'tenant-arche', name: 'Downtown Flagship Branch', code: 'DT-01', address: 'Sukhbaatar Sq 5, Ulaanbaatar', phone: '7711-0001', status: 'Active' },
+  { id: 'loc-uptown', tenantId: 'tenant-arche', name: 'Uptown Express Branch', code: 'UT-02', address: 'Khan-Uul District 11, Ulaanbaatar', phone: '7711-0002', status: 'Active' },
+  { id: 'loc-westside', tenantId: 'tenant-arche', name: 'Westside Performance Branch', code: 'WS-03', address: 'Bayangol District 3, Ulaanbaatar', phone: '7711-0003', status: 'Active' },
+];
+
 export interface BuiltPlan {
   id: string;
+  tenantId?: string;
+  locationId?: string;
   categoryTarget: CategoryTarget;
   title: string;
   titleMn?: string;
@@ -13,6 +31,8 @@ export interface BuiltPlan {
 
 export interface MembershipExtensionLog {
   id: string;
+  tenantId?: string;
+  locationId?: string;
   extendedAt: string;
   timeFormatted: string;
   monthsAdded: number;
@@ -33,6 +53,8 @@ export type TransactionType = 'PAYMENT' | 'REFUND' | 'CREDIT_ADJUSTMENT';
 
 export interface MembershipTransaction {
   id: string;
+  tenantId?: string;
+  locationId?: string;
   memberId: string;
   memberName: string;
   amount: number;
@@ -46,6 +68,8 @@ export interface MembershipTransaction {
 
 export interface GymMember {
   id: string;
+  tenantId?: string;
+  locationId?: string;
   firstName: string;
   lastName: string;
   email: string;
@@ -80,6 +104,8 @@ export type UserRole = 'admin' | 'staff';
 
 export interface StaffAccount {
   id: string;
+  tenantId?: string;
+  locationId?: string;
   username: string;
   passwordHash: string;
   fullName: string;
@@ -98,6 +124,8 @@ export interface StaffAccount {
 
 export interface AuthUser {
   id: string;
+  tenantId?: string;
+  locationId?: string;
   name: string;
   role: UserRole;
   roleTitle: string;
@@ -127,6 +155,8 @@ export type LockerCustomStatus =
 
 export interface LockerStatusDetail {
   lockerNumber: string;
+  tenantId?: string;
+  locationId?: string;
   status: LockerCustomStatus;
   updatedAt: string;
   notes?: string;
@@ -137,6 +167,8 @@ export interface LockerStatusDetail {
 
 export interface LockerLog {
   id: string;
+  tenantId?: string;
+  locationId?: string;
   lockerNumber: string;
   memberId: string;
   memberName: string;
@@ -154,6 +186,8 @@ export type NutrientCategory = 'Supplements' | 'Shakes' | 'Beverages' | 'Snacks'
 
 export interface NutrientProduct {
   id: string;
+  tenantId?: string;
+  locationId?: string;
   name: string;
   category: NutrientCategory;
   price: number;
@@ -165,6 +199,8 @@ export interface NutrientProduct {
 
 export interface NutrientSaleLog {
   id: string;
+  tenantId?: string;
+  locationId?: string;
   productId: string;
   productName: string;
   category: NutrientCategory;
@@ -184,20 +220,136 @@ export interface NutrientSaleLog {
 
 // MOCK_ Prefixed In-Memory Dataset Definitions (Pre-real-data state)
 export const MOCK_BUILT_PLANS: BuiltPlan[] = [];
-export const MOCK_GYM_MEMBERS: GymMember[] = [];
+export const MOCK_GYM_MEMBERS: GymMember[] = [
+  {
+    id: 'mem-101',
+    tenantId: 'tenant-arche',
+    locationId: 'loc-downtown',
+    firstName: 'Bataa',
+    lastName: 'Bold',
+    email: 'bataa.b@gmail.com',
+    phone: '9911-1234',
+    planTitle: 'Full Gym + Spa Annual',
+    planCategory: 'over18',
+    durationMonths: 12,
+    startDate: '2026-01-10',
+    expirationDate: '2027-01-10',
+    status: 'Active',
+    occupancyStatus: 'Checked In',
+    assignedLocker: 'L-12',
+    lastCheckInTime: '2026-08-28T09:15:00.000Z',
+  },
+  {
+    id: 'mem-102',
+    tenantId: 'tenant-arche',
+    locationId: 'loc-downtown',
+    firstName: 'Tuya',
+    lastName: 'Ganbaatar',
+    email: 'tuya.g@yahoo.com',
+    phone: '9922-5678',
+    planTitle: 'Student Monthly Express',
+    planCategory: 'under18',
+    durationMonths: 1,
+    startDate: '2026-08-01',
+    expirationDate: '2026-09-01',
+    status: 'Active',
+    occupancyStatus: 'Checked Out',
+  },
+  {
+    id: 'mem-103',
+    tenantId: 'tenant-arche',
+    locationId: 'loc-uptown',
+    firstName: 'Anand',
+    lastName: 'Erdene',
+    email: 'anand.e@company.mn',
+    phone: '8811-4321',
+    planTitle: 'Corporate Executive Pass',
+    planCategory: 'organization',
+    durationMonths: 6,
+    startDate: '2026-05-15',
+    expirationDate: '2026-11-15',
+    status: 'Active',
+    isOrganization: true,
+    orgName: 'Mobicom Corp',
+    occupancyStatus: 'Checked In',
+    assignedLocker: 'L-04',
+    lastCheckInTime: '2026-08-28T10:00:00.000Z',
+  },
+  {
+    id: 'mem-104',
+    tenantId: 'tenant-arche',
+    locationId: 'loc-westside',
+    firstName: 'Sarnai',
+    lastName: 'Dorj',
+    email: 'sarnai.d@gmail.com',
+    phone: '9988-7766',
+    planTitle: 'CrossFit & Strength Monthly',
+    planCategory: 'over18',
+    durationMonths: 3,
+    startDate: '2026-06-01',
+    expirationDate: '2026-09-01',
+    status: 'Active',
+    occupancyStatus: 'Checked Out',
+  },
+];
 export const MOCK_LOCKER_LOGS: LockerLog[] = [];
-export const MOCK_STAFF_ACCOUNTS: StaffAccount[] = [];
+export const MOCK_STAFF_ACCOUNTS: StaffAccount[] = [
+  {
+    id: 'staff-1',
+    tenantId: 'tenant-arche',
+    locationId: 'loc-downtown',
+    username: 'staff_downtown',
+    passwordHash: 'password123',
+    fullName: 'Bat-Erdene FrontDesk (Downtown)',
+    email: 'downtown.staff@archegym.com',
+    role: 'Front Desk Staff',
+    status: 'Active',
+    registeredAt: '2026-01-01T08:00:00.000Z',
+    registeredBy: 'Admin',
+    assignedShift: 'Morning (07:00 - 15:00)',
+  },
+  {
+    id: 'staff-2',
+    tenantId: 'tenant-arche',
+    locationId: 'loc-uptown',
+    username: 'staff_uptown',
+    passwordHash: 'password123',
+    fullName: 'Khulan ShiftLead (Uptown)',
+    email: 'uptown.staff@archegym.com',
+    role: 'Shift Lead',
+    status: 'Active',
+    registeredAt: '2026-02-15T08:00:00.000Z',
+    registeredBy: 'Admin',
+    assignedShift: 'Evening (15:00 - 23:00)',
+  },
+  {
+    id: 'staff-3',
+    tenantId: 'tenant-arche',
+    locationId: 'loc-westside',
+    username: 'staff_westside',
+    passwordHash: 'password123',
+    fullName: 'Temuulen Trainer (Westside)',
+    email: 'westside.staff@archegym.com',
+    role: 'Gym Trainer',
+    status: 'Active',
+    registeredAt: '2026-03-10T08:00:00.000Z',
+    registeredBy: 'Admin',
+    assignedShift: 'Full Day (09:00 - 18:00)',
+  },
+];
 export const MOCK_NUTRIENT_PRODUCTS: NutrientProduct[] = [
-  { id: 'nutr-1', name: 'Whey Isolate Protein (1kg)', category: 'Supplements', price: 145000, stock: 24, flavor: 'Chocolate Fudge', bestBeforeDate: '2027-02-28' },
-  { id: 'nutr-2', name: 'Pre-Workout Energy Blast', category: 'Supplements', price: 85000, stock: 15, flavor: 'Blue Raspberry', bestBeforeDate: '2026-09-12' },
-  { id: 'nutr-3', name: 'Post-Workout Recovery Shake', category: 'Shakes', price: 15000, stock: 40, flavor: 'Vanilla Cream', bestBeforeDate: '2026-08-15' },
-  { id: 'nutr-4', name: 'BCAA Electrolyte Powder', category: 'Beverages', price: 65000, stock: 18, flavor: 'Watermelon', bestBeforeDate: '2026-12-31' },
-  { id: 'nutr-5', name: 'High Protein Bar (Box of 12)', category: 'Snacks', price: 48000, stock: 30, flavor: 'Peanut Butter', bestBeforeDate: '2026-09-02' },
-  { id: 'nutr-6', name: 'Daily Multivitamin & Omega-3 Pack', category: 'Vitamins', price: 55000, stock: 12, bestBeforeDate: '2027-08-15' },
+  { id: 'nutr-1', tenantId: 'tenant-arche', locationId: 'loc-downtown', name: 'Whey Isolate Protein (1kg)', category: 'Supplements', price: 145000, stock: 24, flavor: 'Chocolate Fudge', bestBeforeDate: '2027-02-28' },
+  { id: 'nutr-2', tenantId: 'tenant-arche', locationId: 'loc-downtown', name: 'Pre-Workout Energy Blast', category: 'Supplements', price: 85000, stock: 15, flavor: 'Blue Raspberry', bestBeforeDate: '2026-09-12' },
+  { id: 'nutr-3', tenantId: 'tenant-arche', locationId: 'loc-uptown', name: 'Post-Workout Recovery Shake', category: 'Shakes', price: 15000, stock: 40, flavor: 'Vanilla Cream', bestBeforeDate: '2026-08-15' },
+  { id: 'nutr-4', tenantId: 'tenant-arche', locationId: 'loc-uptown', name: 'BCAA Electrolyte Powder', category: 'Beverages', price: 65000, stock: 18, flavor: 'Watermelon', bestBeforeDate: '2026-12-31' },
+  { id: 'nutr-5', tenantId: 'tenant-arche', locationId: 'loc-westside', name: 'High Protein Bar (Box of 12)', category: 'Snacks', price: 48000, stock: 30, flavor: 'Peanut Butter', bestBeforeDate: '2026-09-02' },
+  { id: 'nutr-6', tenantId: 'tenant-arche', locationId: 'loc-westside', name: 'Daily Multivitamin & Omega-3 Pack', category: 'Vitamins', price: 55000, stock: 12, bestBeforeDate: '2027-08-15' },
 ];
 export const MOCK_NUTRIENT_SALES: NutrientSaleLog[] = [
   {
     id: 'sale-1',
+    tenantId: 'tenant-arche',
+    locationId: 'loc-downtown',
     productId: 'nutr-1',
     productName: 'Whey Isolate Protein (1kg)',
     category: 'Supplements',
@@ -212,6 +364,8 @@ export const MOCK_NUTRIENT_SALES: NutrientSaleLog[] = [
   },
   {
     id: 'sale-2',
+    tenantId: 'tenant-arche',
+    locationId: 'loc-uptown',
     productId: 'nutr-2',
     productName: 'Pre-Workout Energy Blast',
     category: 'Supplements',
@@ -226,6 +380,8 @@ export const MOCK_NUTRIENT_SALES: NutrientSaleLog[] = [
   },
   {
     id: 'sale-3',
+    tenantId: 'tenant-arche',
+    locationId: 'loc-downtown',
     productId: 'nutr-3',
     productName: 'Post-Workout Recovery Shake',
     category: 'Shakes',
@@ -240,6 +396,8 @@ export const MOCK_NUTRIENT_SALES: NutrientSaleLog[] = [
   },
   {
     id: 'sale-4',
+    tenantId: 'tenant-arche',
+    locationId: 'loc-westside',
     productId: 'nutr-5',
     productName: 'High Protein Bar (Box of 12)',
     category: 'Snacks',
@@ -256,6 +414,8 @@ export const MOCK_NUTRIENT_SALES: NutrientSaleLog[] = [
 
 export interface StaffAttendance {
   id: string;
+  tenantId?: string;
+  locationId?: string;
   staffId: string;
   staffName: string;
   shiftId: string;
@@ -266,6 +426,8 @@ export interface StaffAttendance {
 
 export interface Supplier {
   id: string;
+  tenantId?: string;
+  locationId?: string;
   name: string;
   contactEmail: string;
   phone: string;
@@ -282,6 +444,8 @@ export interface POItem {
 
 export interface PurchaseOrder {
   id: string;
+  tenantId?: string;
+  locationId?: string;
   supplierId: string;
   supplierName: string;
   status: 'DRAFT' | 'ORDERED' | 'RECEIVED' | 'CANCELLED';
@@ -293,6 +457,8 @@ export interface PurchaseOrder {
 
 export interface StockIntakeLog {
   id: string;
+  tenantId?: string;
+  locationId?: string;
   purchaseOrderId: string;
   productId: string;
   productName: string;
@@ -305,6 +471,8 @@ export interface StockIntakeLog {
 
 export interface WaitlistEntry {
   id: string;
+  tenantId?: string;
+  locationId?: string;
   resourceType: 'LOCKER' | 'GYM_FLOOR';
   memberId: string;
   memberName: string;

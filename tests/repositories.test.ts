@@ -125,6 +125,61 @@ describe('InMemoryMemberRepository Contract', () => {
     expect(found?.deletedAt).toBeNull();
     expect(found?.deletedBy).toBeNull();
   });
+
+  it('should enforce multi-tenancy and location-level scoping', async () => {
+    const dtCtx = { tenantId: 'tenant-arche', locationId: 'loc-downtown' };
+    const utCtx = { tenantId: 'tenant-arche', locationId: 'loc-uptown' };
+    const allCtx = { tenantId: 'tenant-arche', locationId: 'all' };
+    const otherTenantCtx = { tenantId: 'tenant-other', locationId: 'loc-downtown' };
+
+    await memberRepo.create(dtCtx, {
+      id: 'dt-scoped-member',
+      firstName: 'Downtown',
+      lastName: 'User',
+      email: 'dtuser@example.com',
+      phone: '99001111',
+      planTitle: 'Adult Pass',
+      durationMonths: 1,
+      startDate: '2026-08-01',
+      expirationDate: '2026-09-01',
+      status: 'Active',
+      occupancyStatus: 'Checked Out',
+    });
+
+    await memberRepo.create(utCtx, {
+      id: 'ut-scoped-member',
+      firstName: 'Uptown',
+      lastName: 'User',
+      email: 'utuser@example.com',
+      phone: '99002222',
+      planTitle: 'Adult Pass',
+      durationMonths: 1,
+      startDate: '2026-08-01',
+      expirationDate: '2026-09-01',
+      status: 'Active',
+      occupancyStatus: 'Checked Out',
+    });
+
+    // Downtown scoped search
+    const dtFound = await memberRepo.findAll(dtCtx);
+    expect(dtFound.some((m) => m.id === 'dt-scoped-member')).toBe(true);
+    expect(dtFound.some((m) => m.id === 'ut-scoped-member')).toBe(false);
+
+    // Uptown scoped search
+    const utFound = await memberRepo.findAll(utCtx);
+    expect(utFound.some((m) => m.id === 'ut-scoped-member')).toBe(true);
+    expect(utFound.some((m) => m.id === 'dt-scoped-member')).toBe(false);
+
+    // Organization-wide aggregated search
+    const allFound = await memberRepo.findAll(allCtx);
+    expect(allFound.some((m) => m.id === 'dt-scoped-member')).toBe(true);
+    expect(allFound.some((m) => m.id === 'ut-scoped-member')).toBe(true);
+
+    // Foreign tenant isolation search
+    const otherFound = await memberRepo.findAll(otherTenantCtx);
+    expect(otherFound.some((m) => m.id === 'dt-scoped-member')).toBe(false);
+    expect(otherFound.some((m) => m.id === 'ut-scoped-member')).toBe(false);
+  });
 });
 
 describe('InMemoryPlanRepository Contract', () => {

@@ -29,3 +29,4 @@
 
 ## 6. Maintenance Log
 - 2026-08-25: Initialized directory specification per Master System Instructions.
+- 2026-08-28: Updated interfaces and InMemoryRepository to support Phase 4 TenantQueryContext (tenantId & locationId) scoping across all domain entities.

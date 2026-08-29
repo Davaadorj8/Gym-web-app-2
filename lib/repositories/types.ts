@@ -7,41 +7,51 @@ import {
   MembershipTransaction,
 } from '@/lib/types';
 
+export interface TenantQueryContext {
+  tenantId: string;
+  locationId?: string;
+}
+
 export interface CrudRepository<T, ID = string> {
-  findAll(): Promise<T[]>;
-  findById(id: ID): Promise<T | null>;
-  create(item: T): Promise<T>;
-  update(id: ID, item: Partial<T>): Promise<T | null>;
-  delete(id: ID, actorId?: string): Promise<boolean>;
-  restore(id: ID, actorId?: string): Promise<boolean>;
+  findAll(ctx?: TenantQueryContext): Promise<T[]>;
+  findById(ctxOrId: TenantQueryContext | ID, id?: ID): Promise<T | null>;
+  create(ctxOrItem: TenantQueryContext | T, item?: T): Promise<T>;
+  update(ctxOrId: TenantQueryContext | ID, idOrUpdates: ID | Partial<T>, updates?: Partial<T>): Promise<T | null>;
+  delete(ctxOrId: TenantQueryContext | ID, idOrActor?: ID, actorId?: string): Promise<boolean>;
+  restore(ctxOrId: TenantQueryContext | ID, idOrActor?: ID, actorId?: string): Promise<boolean>;
 }
 
 export interface IMemberRepository extends CrudRepository<GymMember, string> {
-  findByPhoneOrEmail(query: string): Promise<GymMember | null>;
-  findActiveMembers(): Promise<GymMember[]>;
-  findMembersInGym(): Promise<GymMember[]>;
-  addExtension(memberId: string, extension: MembershipExtensionLog): Promise<GymMember | null>;
+  findByPhoneOrEmail(ctxOrQuery: TenantQueryContext | string, query?: string): Promise<GymMember | null>;
+  findActiveMembers(ctx?: TenantQueryContext): Promise<GymMember[]>;
+  findMembersInGym(ctx?: TenantQueryContext): Promise<GymMember[]>;
+  addExtension(
+    ctxOrMemberId: TenantQueryContext | string,
+    memberIdOrExtension: string | MembershipExtensionLog,
+    extension?: MembershipExtensionLog
+  ): Promise<GymMember | null>;
   updateCheckInStatus(
-    memberId: string,
-    occupancyStatus: 'Checked In' | 'Checked Out',
+    ctxOrMemberId: TenantQueryContext | string,
+    memberIdOrStatus: string | 'Checked In' | 'Checked Out',
+    occupancyStatusOrLocker?: 'Checked In' | 'Checked Out' | string | null,
     assignedLocker?: string | null
   ): Promise<GymMember | null>;
 }
 
 export interface IPlanRepository extends CrudRepository<BuiltPlan, string> {
-  findByCategory(category: string): Promise<BuiltPlan[]>;
+  findByCategory(ctxOrCategory: TenantQueryContext | string, category?: string): Promise<BuiltPlan[]>;
 }
 
 export interface ILockerLogRepository extends CrudRepository<LockerLog, string> {
-  findRecentLogs(limit?: number): Promise<LockerLog[]>;
-  findLogsByMember(memberId: string): Promise<LockerLog[]>;
+  findRecentLogs(ctxOrLimit?: TenantQueryContext | number, limit?: number): Promise<LockerLog[]>;
+  findLogsByMember(ctxOrMemberId: TenantQueryContext | string, memberId?: string): Promise<LockerLog[]>;
 }
 
 export interface IStaffRepository extends CrudRepository<StaffAccount, string> {
-  findByUsername(username: string): Promise<StaffAccount | null>;
-  findActiveStaff(): Promise<StaffAccount[]>;
+  findByUsername(ctxOrUsername: TenantQueryContext | string, username?: string): Promise<StaffAccount | null>;
+  findActiveStaff(ctx?: TenantQueryContext): Promise<StaffAccount[]>;
 }
 
 export interface IMembershipTransactionRepository extends CrudRepository<MembershipTransaction, string> {
-  findByMemberId(memberId: string): Promise<MembershipTransaction[]>;
+  findByMemberId(ctxOrMemberId: TenantQueryContext | string, memberId?: string): Promise<MembershipTransaction[]>;
 }

@@ -6,6 +6,8 @@ import {
   BuiltPlan,
   DEFAULT_BUILT_PLANS,
   GymMember,
+  GymLocation,
+  MOCK_LOCATIONS,
   INITIAL_GYM_MEMBERS,
   INITIAL_LOCKER_LOGS,
   INITIAL_STAFF_ACCOUNTS,
@@ -27,6 +29,7 @@ import {
   MOCK_PURCHASE_ORDERS,
   MOCK_STOCK_INTAKES,
 } from '@/lib/types';
+import { TenantQueryContext } from '@/lib/repositories/types';
 import {
   computeNewExpirationDate,
   formatLockerNumber,
@@ -45,6 +48,13 @@ import { verifyPassword } from '@/lib/security/password';
 import { createAuditEntry } from '@/lib/utils/audit';
 
 export interface DashboardContextValue {
+  // Multi-Tenant & Location Context
+  tenantId: string;
+  locations: GymLocation[];
+  selectedLocationId: string;
+  tenantContext: TenantQueryContext;
+  setSelectedLocationId: (locationId: string) => void;
+
   // State
   isAuthenticated: boolean;
   currentUser: AuthUser;
@@ -179,6 +189,31 @@ export function DashboardProvider({
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [directoryFilter, setDirectoryFilter] = useState<string>('all');
+
+  // Phase 4 Multi-Tenancy & Multi-Location Scaling
+  const [tenantId] = useState<string>('tenant-arche');
+  const [locations] = useState<GymLocation[]>(MOCK_LOCATIONS);
+  const [selectedLocationId, setSelectedLocationIdState] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('arche_selected_location_id');
+        if (saved) return saved;
+      } catch {}
+    }
+    return 'loc-downtown';
+  });
+
+  const setSelectedLocationId = useCallback((locId: string) => {
+    setSelectedLocationIdState(locId);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('arche_selected_location_id', locId);
+    }
+  }, []);
+
+  const tenantContext = useMemo<TenantQueryContext>(() => ({
+    tenantId,
+    locationId: selectedLocationId,
+  }), [tenantId, selectedLocationId]);
 
   const toggleSidebar = useCallback(() => {
     setSidebarCollapsed((prev) => !prev);
@@ -1105,6 +1140,11 @@ export function DashboardProvider({
 
   const value = useMemo<DashboardContextValue>(
     () => ({
+      tenantId,
+      locations,
+      selectedLocationId,
+      tenantContext,
+      setSelectedLocationId,
       isAuthenticated,
       currentUser,
       activeTab,
@@ -1171,6 +1211,11 @@ export function DashboardProvider({
       claimWaitlistOffer,
     }),
     [
+      tenantId,
+      locations,
+      selectedLocationId,
+      tenantContext,
+      setSelectedLocationId,
       isAuthenticated,
       currentUser,
       activeTab,
