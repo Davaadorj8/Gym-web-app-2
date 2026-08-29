@@ -1,5 +1,6 @@
 import { addMonths, format, parseISO, isValid } from 'date-fns';
 import { GymMember, CategoryTarget, BuiltPlan, MembershipExtensionLog } from '@/lib/types';
+import { PRICING_CONFIG } from '@/lib/constants/pricing';
 
 /**
  * Calculates a new expiration date string (YYYY-MM-DD) given a base date and months to add.
@@ -31,7 +32,7 @@ export function computeNewExpirationDate(currentExpDateStr?: string, monthsToAdd
 export function calculateExtensionFee(
   plan: BuiltPlan | undefined | null,
   monthsAdded: number,
-  fallbackMonthlyRate: number = 150000
+  fallbackMonthlyRate: number = PRICING_CONFIG.DEFAULT_MONTHLY_RATE
 ): number {
   if (!plan || !plan.price) {
     return monthsAdded * fallbackMonthlyRate;

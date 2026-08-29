@@ -30,6 +30,7 @@ import {
 } from '@/lib/services';
 import { format } from 'date-fns';
 import { verifyPassword } from '@/lib/security/password';
+import { createAuditEntry } from '@/lib/utils/audit';
 
 export interface DashboardContextValue {
   // State
@@ -319,21 +320,31 @@ export function DashboardProvider({
       staffLogged?: string;
       staffRole?: UserRole;
     }) => {
-      const now = new Date();
+      const staffBadge = event.staffLogged || (currentUser.role === 'admin' ? 'Admin' : 'Staff');
+      const audit = createAuditEntry('LOCKER_EVENT', event.lockerNumber, {
+        memberId: event.memberId,
+        memberName: event.memberName,
+        eventType: event.eventType,
+        eventDescription: event.eventDescription,
+        statusLabel: event.statusLabel,
+        staffLogged: staffBadge,
+        staffRole: event.staffRole || currentUser.role,
+      }, currentUser.id);
+
+      const now = new Date(audit.timestamp);
       const timeFormatted = now.toLocaleTimeString([], {
         hour: '2-digit',
         minute: '2-digit',
       });
-      const staffBadge = event.staffLogged || (currentUser.role === 'admin' ? 'Admin' : 'Staff');
 
       const newLog: LockerLog = {
-        id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        id: audit.id,
         lockerNumber: event.lockerNumber,
         memberId: event.memberId,
         memberName: event.memberName,
         eventType: event.eventType,
         eventDescription: event.eventDescription,
-        timestamp: now.toISOString(),
+        timestamp: audit.timestamp,
         timeFormatted,
         statusLabel: event.statusLabel,
         staffLogged: staffBadge,
@@ -372,16 +383,8 @@ export function DashboardProvider({
 
           const newExpDate =
             customExpirationDate || computeNewExpirationDate(m.expirationDate, monthsAdded);
-          const now = new Date();
-          const timeFormatted = now.toLocaleTimeString([], {
-            hour: '2-digit',
-            minute: '2-digit',
-          });
 
-          const extensionLog: MembershipExtensionLog = {
-            id: `ext-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-            extendedAt: format(now, 'yyyy-MM-dd'),
-            timeFormatted,
+          const audit = createAuditEntry('MEMBERSHIP_EXTENSION', m.id, {
             monthsAdded,
             previousExpirationDate: m.expirationDate,
             newExpirationDate: newExpDate,
@@ -389,8 +392,28 @@ export function DashboardProvider({
             feePaid,
             paymentMethod,
             memberCategory: resolveMemberCategory(m),
-            memberId: m.id,
             memberName: `${m.firstName} ${m.lastName}`.trim(),
+          }, currentUser.id);
+
+          const now = new Date(audit.timestamp);
+          const timeFormatted = now.toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+          });
+
+          const extensionLog: MembershipExtensionLog = {
+            id: audit.id,
+            extendedAt: format(now, 'yyyy-MM-dd'),
+            timeFormatted,
+            monthsAdded,
+            previousExpirationDate: m.expirationDate,
+            newExpirationDate: newExpDate,
+            staffLogged: audit.details.staffLogged as string,
+            feePaid,
+            paymentMethod,
+            memberCategory: audit.details.memberCategory as any,
+            memberId: m.id,
+            memberName: audit.details.memberName as string,
           };
 
           return {
@@ -602,11 +625,15 @@ export function DashboardProvider({
 
   const recordNutrientSale = useCallback(
     (saleData: Omit<NutrientSaleLog, 'id' | 'timestamp' | 'timeFormatted'>) => {
-      const now = new Date();
+      const audit = createAuditEntry('NUTRIENT_SALE', saleData.productId, {
+        ...saleData,
+      }, currentUser.id);
+
+      const now = new Date(audit.timestamp);
       const newSale: NutrientSaleLog = {
         ...saleData,
-        id: `sale-${Date.now()}`,
-        timestamp: now.toISOString(),
+        id: audit.id,
+        timestamp: audit.timestamp,
         timeFormatted: format(now, 'yyyy-MM-dd HH:mm'),
       };
 
@@ -640,7 +667,7 @@ export function DashboardProvider({
         return updated;
       });
     },
-    []
+    [currentUser]
   );
 
   const value = useMemo<DashboardContextValue>(

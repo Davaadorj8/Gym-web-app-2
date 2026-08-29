@@ -49,6 +49,7 @@ import {
   aggregateExtensionMetrics,
   calculateHourlyTraffic,
   calculateOccupancyMetrics,
+  resolveMemberCategory,
 } from '@/lib/services';
 
 interface AnalyticsViewProps {
@@ -1029,7 +1030,7 @@ export default function AnalyticsView({
                 </thead>
                 <tbody className="divide-y divide-border">
                   {plans.map((p) => {
-                    const enrolled = members.filter((m) => m.planCategory === p.categoryTarget).length;
+                    const enrolled = members.filter((m) => resolveMemberCategory(m) === p.categoryTarget).length;
                     return (
                       <tr key={p.id} className="hover:bg-muted/40 transition-colors">
                         <td className="py-3 px-4 font-bold text-foreground">{p.title}</td>

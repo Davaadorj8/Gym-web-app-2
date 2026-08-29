@@ -1,6 +1,7 @@
 import { getDay, parseISO, isValid } from 'date-fns';
 import { GymMember, BuiltPlan, CategoryTarget, MembershipExtensionLog } from '@/lib/types';
 import { resolveMemberCategory } from './plan.service';
+import { PRICING_CONFIG } from '@/lib/constants/pricing';
 
 export interface WeeklyDistributionItem {
   day: string;
@@ -98,7 +99,7 @@ export function calculateTotalMembershipValue(members: GymMember[], plans: Built
   return members.reduce((acc, m) => {
     const months = m.durationMonths || 1;
     const matchedPlan = planMap.get(m.planTitle.toLowerCase());
-    const monthlyRate = matchedPlan ? matchedPlan.price / (matchedPlan.durationMonths || 1) : 150000;
+    const monthlyRate = matchedPlan ? matchedPlan.price / (matchedPlan.durationMonths || 1) : PRICING_CONFIG.DEFAULT_MONTHLY_RATE;
     return acc + Math.round(monthlyRate * months);
   }, 0);
 }
@@ -149,7 +150,7 @@ export function calculateRevenueByPlan(members: GymMember[], plans: BuiltPlan[])
     const category = resolveMemberCategory(m);
     const months = m.durationMonths || 1;
     const matchedPlan = planMap.get(m.planTitle.toLowerCase());
-    const baseRate = matchedPlan ? matchedPlan.price / (matchedPlan.durationMonths || 1) : 150000;
+    const baseRate = matchedPlan ? matchedPlan.price / (matchedPlan.durationMonths || 1) : PRICING_CONFIG.DEFAULT_MONTHLY_RATE;
     const revenue = Math.round(baseRate * months);
 
     if (category === 'under18') {
@@ -220,7 +221,7 @@ export function aggregateExtensionMetrics(members: GymMember[]): ExtensionMetric
           memberName: log.memberName || `${m.firstName} ${m.lastName}`,
           memberCategory: log.memberCategory || resolveMemberCategory(m),
           monthsAdded: log.monthsAdded || 1,
-          feePaid: log.feePaid || (log.monthsAdded || 1) * 150000,
+          feePaid: log.feePaid || (log.monthsAdded || 1) * PRICING_CONFIG.DEFAULT_MONTHLY_RATE,
           paymentMethod: log.paymentMethod || 'Cash',
           previousExpirationDate: log.previousExpirationDate || 'N/A',
           newExpirationDate: log.newExpirationDate || m.expirationDate,
