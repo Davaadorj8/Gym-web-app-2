@@ -1,0 +1,369 @@
+{/* 3. NUTRIENTS TAB */}
+      {activeTab === 'nutrients' && (
+        <div className="space-y-6">
+          <div
+            id="card-nutrient-inventory"
+            className="bg-[#0B132B]/80 dark:bg-[#0D1527] border border-border/80 rounded-2xl p-8 sm:p-10 shadow-xl"
+          >
+            {nutrients.length === 0 ? (
+              <div className="flex flex-col items-center justify-center text-center py-10 space-y-4">
+                <div className="w-16 h-16 rounded-full bg-[#111C38] border border-slate-800/80 flex items-center justify-center text-[#7E8CA3]">
+                  <ShoppingCart className="w-7 h-7" strokeWidth={1.8} />
+                </div>
+                <div className="space-y-1">
+                  <h2 className="text-lg font-bold text-foreground">
+                    {t('nutrientsTitle') || 'Nutrient Inventory'}
+                  </h2>
+                  <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+                    {t('nutrientsSubtitle') ||
+                      'Manage supplements, shakes, and other nutritional products available for members.'}
+                  </p>
+                </div>
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsNutrientModalOpen(true)}
+                    className="border border-[#D4FF00]/40 text-[#D4FF00] hover:bg-[#D4FF00]/10 px-6 py-2.5 rounded-lg text-xs font-mono font-bold tracking-wider transition-all cursor-pointer flex items-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>{t('addProductBtn') || 'Add New Product'}</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-6 animate-in fade-in duration-200">
+                {/* Header Title Section */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border/80">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-[#070D1E] border border-border/80 flex items-center justify-center text-[#D4FF00]">
+                      <ShoppingCart className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h2 className="text-base font-bold text-foreground">
+                        {t('nutrientsTitle') || 'Nutrient Inventory'}
+                      </h2>
+                      <p className="text-xs text-muted-foreground">
+                        {nutrients.length} total nutritional items registered
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsNutrientModalOpen(true)}
+                    className="border border-[#D4FF00]/40 text-[#D4FF00] hover:bg-[#D4FF00]/10 px-4 py-2 rounded-lg text-xs font-mono font-bold tracking-wider transition-all cursor-pointer flex items-center gap-2"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>{t('addProductBtn') || 'Add New Product'}</span>
+                  </button>
+                </div>
+
+                {/* Low Stock and Out of Stock Alerts */}
+                {(lowStockCount > 0 || outOfStockCount > 0) && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {outOfStockCount > 0 && (
+                      <div className="bg-rose-500/10 border-2 border-rose-500/30 text-rose-400 p-4 rounded-xl flex items-start gap-3 shadow-md">
+                        <ShieldAlert className="w-5 h-5 shrink-0 text-rose-400 mt-0.5" />
+                        <div className="space-y-1">
+                          <h4 className="text-xs font-black uppercase tracking-wider font-mono">Critical: Out of Stock Alert!</h4>
+                          <p className="text-[11px] text-muted-foreground font-mono">
+                            There are <strong className="text-rose-400 font-extrabold">{outOfStockCount}</strong> products completely depleted. Members cannot purchase these. Restock immediately.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                    {lowStockCount > 0 && (
+                      <div className="bg-amber-500/10 border-2 border-amber-500/30 text-amber-400 p-4 rounded-xl flex items-start gap-3 shadow-md">
+                        <AlertCircle className="w-5 h-5 shrink-0 text-amber-500 mt-0.5" />
+                        <div className="space-y-1">
+                          <h4 className="text-xs font-black uppercase tracking-wider font-mono">Warning: Low Stock Alert!</h4>
+                          <p className="text-[11px] text-muted-foreground font-mono">
+                            There are <strong className="text-amber-400 font-extrabold">{lowStockCount}</strong> products with less than 5 units remaining. Order refills soon.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Interactive Search, Filters & Batch Action Toolbar */}
+                <div className="bg-[#070D1E]/60 border border-border/80 rounded-xl p-4 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+                  <div className="flex flex-wrap items-center gap-3">
+                    {/* Search Box */}
+                    <div className="relative">
+                      <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                      <input
+                        type="text"
+                        placeholder="Search supplements / flavor / category..."
+                        value={nutrientSearchQuery}
+                        onChange={(e) => setNutrientSearchQuery(e.target.value)}
+                        className="bg-[#070D1E] border border-border/80 focus:border-[#D4FF00] focus:ring-1 focus:ring-[#D4FF00] text-xs font-mono text-foreground placeholder:text-muted-foreground/60 rounded-xl pl-9 pr-4 py-2.5 outline-none w-full sm:w-64 transition-all"
+                      />
+                    </div>
+
+                    {/* Filter Buttons */}
+                    <div className="flex items-center gap-1.5 bg-muted/20 p-1 rounded-lg border border-border/60">
+                      <Button
+                        type="button"
+                        variant={nutrientFilterStock === 'all' ? 'primary' : 'outline'}
+                        onClick={() => setNutrientFilterStock('all')}
+                        className="h-8 text-xs px-3 py-1 font-mono"
+                      >
+                        All Items
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={nutrientFilterStock === 'low' ? 'primary' : 'outline'}
+                        onClick={() => setNutrientFilterStock('low')}
+                        className="h-8 text-xs px-3 py-1 font-mono"
+                      >
+                        Low Stock ({lowStockCount})
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={nutrientFilterStock === 'out' ? 'primary' : 'outline'}
+                        onClick={() => setNutrientFilterStock('out')}
+                        className="h-8 text-xs px-3 py-1 font-mono"
+                      >
+                        Out of Stock ({outOfStockCount})
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Batch Actions section */}
+                  {selectedNutrientIds.length > 0 && (
+                    <div className="flex items-center gap-2 bg-[#D4FF00]/10 border border-[#D4FF00]/30 rounded-lg px-3.5 py-1.5 animate-in fade-in zoom-in-95 duration-150">
+                      <span className="text-[11px] font-mono font-bold text-[#D4FF00]">
+                        {selectedNutrientIds.length} Selected:
+                      </span>
+                      <Button
+                        type="button"
+                        variant="primary"
+                        onClick={handleOpenPOModal}
+                        className="h-7 text-[10px] px-2.5 font-mono"
+                      >
+                        Restock &amp; Purchase Intake
+                      </Button>
+                      {isAdmin && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={handleBatchDelete}
+                          className="h-7 text-[10px] px-2.5 font-mono border-rose-500/40 text-rose-400 hover:bg-rose-500/10"
+                        >
+                          Delete Selected
+                        </Button>
+                      )}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setSelectedNutrientIds([])}
+                        className="h-7 text-[10px] px-2"
+                      >
+                        Clear
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                {filteredNutrients.length === 0 ? (
+                  <div className="bg-[#070D1E]/40 border border-border/80 rounded-xl p-8 text-center text-muted-foreground text-xs font-mono">
+                    No nutrient products match the current filters or search term.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {filteredNutrients.map((item) => {
+                      const expStatus = getNutrientExpiryStatus(item.bestBeforeDate);
+                      const isEditingPrice = editingNutrientId === item.id;
+                      const isSelected = selectedNutrientIds.includes(item.id);
+
+                      // Derive historical sales info for this product
+                      const itemSales = dashboard.nutrientSales.filter((s) => s.productId === item.id);
+                      const unitsSold = itemSales.reduce((acc, s) => acc + s.quantity, 0);
+                      const totalSalesRevenue = itemSales.reduce((acc, s) => acc + s.totalPrice, 0);
+
+                      return (
+                        <div
+                          key={item.id}
+                          onClick={() => {
+                            if (selectedNutrientIds.includes(item.id)) {
+                              setSelectedNutrientIds(selectedNutrientIds.filter((id) => id !== item.id));
+                            } else {
+                              setSelectedNutrientIds([...selectedNutrientIds, item.id]);
+                            }
+                          }}
+                          className={cn(
+                            'bg-[#070D1E] border rounded-xl p-4 flex flex-col justify-between gap-3 relative group shadow-sm transition-all cursor-pointer select-none',
+                            isSelected ? 'border-[#D4FF00] ring-1 ring-[#D4FF00]' : 'border-border/80 hover:border-border'
+                          )}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex items-start gap-2.5">
+                              {/* Batch Select Checkbox */}
+                              <div
+                                className={cn(
+                                  'w-4 h-4 rounded border flex items-center justify-center shrink-0 mt-0.5 transition-all',
+                                  isSelected ? 'bg-[#D4FF00] border-[#D4FF00] text-black' : 'border-muted-foreground/60'
+                                )}
+                              >
+                                {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                              </div>
+
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="text-[9px] font-mono font-bold uppercase tracking-wider text-[#D4FF00]">
+                                    {item.category}
+                                  </span>
+                                  {expStatus === 'expired' && (
+                                    <span className="bg-rose-500/20 text-rose-400 border border-rose-500/40 text-[9px] font-mono px-1.5 py-0.5 rounded font-bold uppercase">
+                                      Expired
+                                    </span>
+                                  )}
+                                  {expStatus === 'expiring_soon' && (
+                                    <span className="bg-amber-500/20 text-amber-400 border border-amber-500/40 text-[9px] font-mono px-1.5 py-0.5 rounded font-bold uppercase">
+                                      Expiring Soon
+                                    </span>
+                                  )}
+                                </div>
+                                <h4 className="text-sm font-bold text-foreground mt-0.5">
+                                  {item.name}
+                                </h4>
+                                {item.flavor && (
+                                  <p className="text-[11px] text-muted-foreground font-mono italic">
+                                    Flavor: {item.flavor}
+                                  </p>
+                                )}
+                                {item.bestBeforeDate && (
+                                  <p
+                                    className={cn(
+                                      'text-[11px] font-mono mt-1 flex items-center gap-1',
+                                      expStatus === 'expired'
+                                        ? 'text-rose-400 font-bold'
+                                        : expStatus === 'expiring_soon'
+                                        ? 'text-amber-400 font-bold'
+                                        : 'text-muted-foreground'
+                                    )}
+                                  >
+                                    <Calendar className="w-3 h-3 shrink-0" />
+                                    <span>Best before: {item.bestBeforeDate}</span>
+                                  </p>
+                                )}
+
+                                {/* Historical Sales Summary Badge */}
+                                <div className="pt-1">
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-mono bg-muted/30 border border-border/60 rounded px-2 py-0.5 text-slate-300">
+                                    <Award className="w-3 h-3 text-[#D4FF00]" />
+                                    {unitsSold > 0
+                                      ? `${unitsSold} sold (${formatCurrency(totalSalesRevenue)} recorded)`
+                                      : 'No sales recorded yet'}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteNutrient(item.id);
+                                }}
+                                className="text-muted-foreground hover:text-destructive p-1 rounded-md transition-colors cursor-pointer"
+                                title="Delete Product"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="pt-3 border-t border-border/60 space-y-2" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center justify-between text-xs font-mono">
+                              <span className="text-muted-foreground">
+                                Stock:{' '}
+                                <strong
+                                  className={cn(
+                                    item.stock === 0
+                                      ? 'text-rose-400 font-bold'
+                                      : item.stock <= 5
+                                      ? 'text-amber-400 font-bold'
+                                      : 'text-foreground'
+                                  )}
+                                >
+                                  {item.stock} units
+                                </strong>
+                              </span>
+
+                              {/* Price Editing vs Display */}
+                              {isEditingPrice ? (
+                                <div className="flex items-center gap-1">
+                                  <input
+                                    type="number"
+                                    value={editingPriceValue}
+                                    onChange={(e) => setEditingPriceValue(e.target.value)}
+                                    className="w-24 bg-[#0B132B] border border-[#D4FF00] text-[#D4FF00] font-mono text-xs px-2 py-1 rounded outline-none"
+                                    autoFocus
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSavePriceUpdate(item.id)}
+                                    className="bg-[#D4FF00] text-black p-1 rounded hover:opacity-90 transition-opacity"
+                                    title="Save Price"
+                                  >
+                                    <Check className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditingNutrientId(null)}
+                                    className="bg-muted text-muted-foreground p-1 rounded hover:text-foreground"
+                                    title="Cancel"
+                                  >
+                                    <X className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-1.5">
+                                  <div className="bg-muted/40 border border-border/60 rounded px-2 py-0.5 text-[#D4FF00] font-bold font-mono flex items-center gap-1">
+                                    <span>{formatCurrency(item.price)}</span>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleStartEditingPrice(item)}
+                                    className="text-muted-foreground hover:text-[#D4FF00] p-1 rounded transition-colors cursor-pointer"
+                                    title="Change Price (Admin)"
+                                  >
+                                    <Edit2 className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Quick Actions Row */}
+                            <div className="flex items-center gap-2 pt-1">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenSaleModal(item)}
+                                disabled={item.stock <= 0}
+                                className={cn(
+                                  'w-full py-1.5 px-3 rounded-lg text-xs font-mono font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer',
+                                  item.stock > 0
+                                    ? 'bg-[#D4FF00]/10 hover:bg-[#D4FF00]/20 text-[#D4FF00] border border-[#D4FF00]/30'
+                                    : 'bg-muted/40 text-muted-foreground border border-border/40 opacity-50 cursor-not-allowed'
+                                )}
+                              >
+                                <ShoppingCart className="w-3.5 h-3.5" />
+                                <span>Record Sale</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      

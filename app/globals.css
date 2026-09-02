@@ -1,5 +1,14 @@
 @import "tailwindcss";
 
+@layer base {
+  :root {
+    --card-radius: 0.75rem;       /* 12px default */
+    --inner-radius: 0.5rem;       /* 8px default */
+    --border-subtle: rgba(255, 255, 255, 0.08);
+    --border-highlight: rgba(250, 204, 21, 0.45); /* Softened neon yellow */
+  }
+}
+
 :root {
   --background: #060b13;
   --foreground: #f8fafc;

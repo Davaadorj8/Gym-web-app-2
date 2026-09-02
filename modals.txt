@@ -1,0 +1,2349 @@
+'use client';
+
+import React, { useState, useEffect, useMemo } from 'react';
+import { useTranslations } from 'next-intl';
+import {
+  Lock,
+  Package,
+  Award,
+  UserCheck,
+  Building2,
+  Sparkles,
+  DollarSign,
+  Plus,
+  Trash2,
+  Check,
+  ShoppingCart,
+  Layers,
+  Calendar,
+  X,
+  Edit2,
+  AlertCircle,
+  Wrench,
+  Key,
+  KeyRound,
+  Search,
+  RefreshCw,
+  SlidersHorizontal,
+  CheckCircle2,
+  ShieldAlert,
+} from 'lucide-react';
+import { BuiltPlan, CategoryTarget, AuthUser, LockerCustomStatus } from '@/lib/types';
+import { Button, Badge, Toast } from '@/components/ui';
+import { useDashboard } from '@/lib/orchestration';
+import { getDefaultPlanTitle, generateLockerList, formatLockerNumber } from '@/lib/services';
+import { cn, formatCurrency, CURRENCY_SYMBOL, getNutrientExpiryStatus } from '@/lib/utils';
+import { NutrientProduct } from '@/lib/types';
+
+interface InventoryViewProps {
+  plans?: BuiltPlan[];
+  onAddPlan?: (plan: BuiltPlan) => void;
+  onDeletePlan?: (id: string) => void;
+  totalLockers?: number;
+  onSaveTotalLockers?: (count: number) => void;
+  currentUser?: AuthUser;
+}
+
+type ActiveInventoryTab = 'plan-builder' | 'locker-management' | 'nutrients' | 'purchase-orders';
+
+function createUniqueId(prefix: string): string {
+  return `${prefix}-${Math.floor(1000 + Math.random() * 9000)}`;
+}
+
+export default function InventoryView({
+  plans: propPlans,
+  onAddPlan: propOnAddPlan,
+  onDeletePlan: propOnDeletePlan,
+  totalLockers: propTotalLockers,
+  onSaveTotalLockers: propOnSaveTotalLockers,
+  currentUser: propCurrentUser,
+}: InventoryViewProps) {
+  const dashboard = useDashboard();
+  const plans = propPlans ?? dashboard.plans;
+  const totalLockers = propTotalLockers ?? dashboard.totalLockers;
+  const currentUser = propCurrentUser ?? dashboard.currentUser;
+
+  const isAdmin = !currentUser || currentUser.role === 'admin';
+  const t = useTranslations('Inventory');
+
+  // Sub-tabs State
+  const [activeTab, setActiveTab] = useState<ActiveInventoryTab>('plan-builder');
+
+  // Locker State
+  const [lockerCount, setLockerCount] = useState<number>(totalLockers);
+  const [lockerSaved, setLockerSaved] = useState(false);
+
+  // Specific Locker Status Management State & Logic
+  const [targetLockerNumber, setTargetLockerNumber] = useState<string>('Locker #01');
+  const [targetStatus, setTargetStatus] = useState<LockerCustomStatus>('clean');
+  const [statusNotes, setStatusNotes] = useState<string>('');
+  const [lockerSearchQuery, setLockerSearchQuery] = useState<string>('');
+  const [gridFilterStatus, setGridFilterStatus] = useState<LockerCustomStatus | 'all'>('all');
+
+  const lockerList = useMemo(() => {
+    return generateLockerList(totalLockers);
+  }, [totalLockers]);
+
+  const occupiedLockerMap = useMemo(() => {
+    const map = new Map<string, string>();
+    dashboard.members.forEach((m) => {
+      if (m.occupancyStatus === 'Checked In' && m.assignedLocker) {
+        map.set(m.assignedLocker, `${m.firstName} ${m.lastName}`.trim());
+      }
+    });
+    return map;
+  }, [dashboard.members]);
+
+  const handleUpdateSingleLockerStatus = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!targetLockerNumber) return;
+
+    dashboard.updateLockerStatus(targetLockerNumber, targetStatus, statusNotes.trim() || undefined);
+
+    const statusLabels: Record<LockerCustomStatus, string> = {
+      clean: 'Clean / Sanitized',
+      repair: 'Needs Repair / Fix',
+      key_lost: 'Key Reported Lost',
+      key_not_returned: 'Key Overdue / Not Returned',
+      inactive: 'Inactive / Out of Service',
+      available: 'Available / Functional',
+      occupied: 'Occupied',
+    };
+
+    showToast(`${targetLockerNumber} status updated to "${statusLabels[targetStatus]}"`);
+    setStatusNotes('');
+  };
+
+  const getLockerStatusConfig = React.useCallback(
+    (lockerNum: string) => {
+      const isOccupied = occupiedLockerMap.has(lockerNum);
+      const customStatus = dashboard.lockerStatuses[lockerNum];
+
+      if (customStatus && customStatus !== 'available') {
+        switch (customStatus) {
+          case 'clean':
+            return {
+              label: 'Needs Cleaning',
+              bg: 'bg-amber-500/10 border-amber-500/40 text-amber-400',
+              badgeBg: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+              icon: Sparkles,
+              code: 'clean' as LockerCustomStatus,
+            };
+          case 'repair':
+            return {
+              label: 'Needs Repair / Fix',
+              bg: 'bg-orange-500/10 border-orange-500/40 text-orange-400',
+              badgeBg: 'bg-orange-500/20 text-orange-300 border-orange-500/30',
+              icon: Wrench,
+              code: 'repair' as LockerCustomStatus,
+            };
+          case 'key_lost':
+            return {
+              label: 'Key Lost',
+              bg: 'bg-rose-500/10 border-rose-500/40 text-rose-400',
+              badgeBg: 'bg-rose-500/20 text-rose-300 border-rose-500/30',
+              icon: KeyRound,
+              code: 'key_lost' as LockerCustomStatus,
+            };
+          case 'key_not_returned':
+            return {
+              label: 'Key Not Returned',
+              bg: 'bg-purple-500/10 border-purple-500/40 text-purple-400',
+              badgeBg: 'bg-purple-500/20 text-purple-300 border-purple-500/30',
+              icon: Key,
+              code: 'key_not_returned' as LockerCustomStatus,
+            };
+          case 'inactive':
+            return {
+              label: 'Inactive',
+              bg: 'bg-slate-500/10 border-slate-500/40 text-slate-400',
+              badgeBg: 'bg-slate-500/20 text-slate-300 border-slate-500/30',
+              icon: AlertCircle,
+              code: 'inactive' as LockerCustomStatus,
+            };
+          case 'occupied':
+            return {
+              label: 'Occupied',
+              bg: 'bg-sky-500/10 border-sky-500/40 text-sky-400',
+              badgeBg: 'bg-sky-500/20 text-sky-300 border-sky-500/30',
+              icon: UserCheck,
+              code: 'occupied' as LockerCustomStatus,
+            };
+        }
+      }
+
+      if (isOccupied) {
+        return {
+          label: 'Occupied',
+          bg: 'bg-sky-500/10 border-sky-500/40 text-sky-400',
+          badgeBg: 'bg-sky-500/20 text-sky-300 border-sky-500/30',
+          icon: UserCheck,
+          code: 'occupied' as LockerCustomStatus,
+        };
+      }
+
+      return {
+        label: 'Available',
+        bg: 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400',
+        badgeBg: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+        icon: CheckCircle2,
+        code: 'available' as LockerCustomStatus,
+      };
+    },
+    [occupiedLockerMap, dashboard.lockerStatuses]
+  );
+
+  const statusSummary = useMemo(() => {
+    let clean = 0;
+    let repair = 0;
+    let keyLost = 0;
+    let keyNotReturned = 0;
+    let inactive = 0;
+    let occupied = 0;
+    let available = 0;
+
+    lockerList.forEach((num) => {
+      const isOccupied = occupiedLockerMap.has(num);
+      const custom = dashboard.lockerStatuses[num];
+
+      if (custom && custom !== 'available') {
+        if (custom === 'clean') clean++;
+        else if (custom === 'repair') repair++;
+        else if (custom === 'key_lost') keyLost++;
+        else if (custom === 'key_not_returned') keyNotReturned++;
+        else if (custom === 'inactive') inactive++;
+        else if (custom === 'occupied') occupied++;
+      } else if (isOccupied) {
+        occupied++;
+      } else {
+        available++;
+      }
+    });
+
+    return {
+      total: lockerList.length,
+      available,
+      occupied,
+      clean,
+      repair,
+      keyLost,
+      keyNotReturned,
+      inactive,
+    };
+  }, [lockerList, occupiedLockerMap, dashboard.lockerStatuses]);
+
+  const filteredLockerGrid = useMemo(() => {
+    return lockerList.filter((num) => {
+      if (lockerSearchQuery.trim()) {
+        const q = lockerSearchQuery.toLowerCase().trim();
+        const cfg = getLockerStatusConfig(num);
+        const occupant = occupiedLockerMap.get(num) || '';
+        const matchNumber = num.toLowerCase().includes(q);
+        const matchStatus = cfg.label.toLowerCase().includes(q);
+        const matchOccupant = occupant.toLowerCase().includes(q);
+        if (!matchNumber && !matchStatus && !matchOccupant) return false;
+      }
+
+      if (gridFilterStatus !== 'all') {
+        const cfg = getLockerStatusConfig(num);
+        if (cfg.code !== gridFilterStatus) return false;
+      }
+
+      return true;
+    });
+  }, [lockerList, lockerSearchQuery, gridFilterStatus, occupiedLockerMap, getLockerStatusConfig]);
+
+  // Plan Builder State
+  const [categoryTarget, setCategoryTarget] = useState<CategoryTarget>('over18');
+  const [customTitle, setCustomTitle] = useState('');
+  const [specializedLessons, setSpecializedLessons] = useState('');
+  const [durationMonths, setDurationMonths] = useState<number>(1);
+  const [price, setPrice] = useState<number>(0);
+
+  // Nutrients State via central DashboardContext
+  const nutrients = dashboard.nutrients;
+
+  // Search, Stock Filtering, and Batch actions states for Nutrients
+  const [nutrientSearchQuery, setNutrientSearchQuery] = useState('');
+  const [nutrientFilterStock, setNutrientFilterStock] = useState<'all' | 'low' | 'out'>('all');
+  const [selectedNutrientIds, setSelectedNutrientIds] = useState<string[]>([]);
+
+  const filteredNutrients = useMemo(() => {
+    return nutrients.filter((item) => {
+      const matchesSearch =
+        item.name.toLowerCase().includes(nutrientSearchQuery.toLowerCase()) ||
+        (item.flavor && item.flavor.toLowerCase().includes(nutrientSearchQuery.toLowerCase())) ||
+        item.category.toLowerCase().includes(nutrientSearchQuery.toLowerCase());
+
+      if (nutrientFilterStock === 'low') {
+        return matchesSearch && item.stock > 0 && item.stock <= 5;
+      }
+      if (nutrientFilterStock === 'out') {
+        return matchesSearch && item.stock === 0;
+      }
+      return matchesSearch;
+    });
+  }, [nutrients, nutrientSearchQuery, nutrientFilterStock]);
+
+  const lowStockCount = useMemo(() => {
+    return nutrients.filter((item) => item.stock > 0 && item.stock <= 5).length;
+  }, [nutrients]);
+
+  const outOfStockCount = useMemo(() => {
+    return nutrients.filter((item) => item.stock === 0).length;
+  }, [nutrients]);
+
+  // Suppliers & PO states
+  const [isPOModalOpen, setIsPOModalOpen] = useState(false);
+  const [poSupplierId, setPoSupplierId] = useState<string>('');
+  const [poItemsMap, setPoItemsMap] = useState<Record<string, { quantity: number; unitPurchaseCost: number }>>({});
+  
+  // Inline Supplier Form States
+  const [newSupplierForm, setNewSupplierForm] = useState({
+    name: '',
+    contactEmail: '',
+    phone: '',
+    leadTimeDays: 3,
+  });
+
+  const handleOpenPOModal = () => {
+    if (selectedNutrientIds.length === 0) return;
+    if (dashboard.suppliers.length > 0 && !poSupplierId) {
+      setPoSupplierId(dashboard.suppliers[0].id);
+    }
+    const initialMap: Record<string, { quantity: number; unitPurchaseCost: number }> = {};
+    selectedNutrientIds.forEach((id) => {
+      const item = nutrients.find((n) => n.id === id);
+      if (item) {
+        initialMap[id] = {
+          quantity: 20,
+          unitPurchaseCost: Math.round(item.price * 0.5),
+        };
+      }
+    });
+    setPoItemsMap(initialMap);
+    setIsPOModalOpen(true);
+  };
+
+  const handleConfirmPO = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!poSupplierId) {
+      showToast('Please select a supplier');
+      return;
+    }
+    const supplier = dashboard.suppliers.find((s) => s.id === poSupplierId);
+    if (!supplier) return;
+
+    const poItems = selectedNutrientIds.map((id) => {
+      const item = nutrients.find((n) => n.id === id);
+      const values = poItemsMap[id] || { quantity: 10, unitPurchaseCost: 0 };
+      return {
+        id: createUniqueId('poi'),
+        productId: id,
+        productName: item?.name || 'Unknown',
+        quantity: values.quantity,
+        unitPurchaseCost: values.unitPurchaseCost,
+      };
+    });
+
+    const totalCost = poItems.reduce((acc, x) => acc + x.quantity * x.unitPurchaseCost, 0);
+    const uniqueId = createUniqueId('po');
+
+    const newPO = {
+      id: uniqueId,
+      supplierId: supplier.id,
+      supplierName: supplier.name,
+      status: 'ORDERED' as const,
+      items: poItems,
+      totalCost,
+      createdAt: new Date().toISOString(),
+    };
+
+    dashboard.createPurchaseOrder(newPO);
+    setIsPOModalOpen(false);
+    setSelectedNutrientIds([]);
+    showToast(`Purchase Order ${newPO.id} successfully generated & ordered.`);
+  };
+
+  const handleAddSupplier = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newSupplierForm.name.trim()) return;
+    const uniqueId = createUniqueId('sup');
+    dashboard.addSupplier({
+      id: uniqueId,
+      name: newSupplierForm.name.trim(),
+      contactEmail: newSupplierForm.contactEmail.trim() || 'info@supplier.mn',
+      phone: newSupplierForm.phone.trim() || '9900-1122',
+      leadTimeDays: Number(newSupplierForm.leadTimeDays) || 3,
+    });
+    setNewSupplierForm({
+      name: '',
+      contactEmail: '',
+      phone: '',
+      leadTimeDays: 3,
+    });
+    showToast('New nutrient supplier registered.');
+  };
+
+  const handleBatchDelete = () => {
+    if (selectedNutrientIds.length === 0) return;
+    selectedNutrientIds.forEach((id) => {
+      dashboard.deleteNutrient(id);
+    });
+    showToast(`Deleted ${selectedNutrientIds.length} selected products.`);
+    setSelectedNutrientIds([]);
+  };
+
+  const [isNutrientModalOpen, setIsNutrientModalOpen] = useState(false);
+  const [nutrientForm, setNutrientForm] = useState<{
+    name: string;
+    category: NutrientProduct['category'];
+    price: number;
+    stock: number;
+    flavor: string;
+    bestBeforeDate: string;
+  }>({
+    name: '',
+    category: 'Supplements',
+    price: 0,
+    stock: 0,
+    flavor: '',
+    bestBeforeDate: '',
+  });
+
+  // Toast feedback
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 3000);
+  };
+
+  const handleSaveLockers = (e: React.FormEvent) => {
+    e.preventDefault();
+    const count = Number(lockerCount) || 0;
+    if (propOnSaveTotalLockers) {
+      propOnSaveTotalLockers(count);
+    } else {
+      dashboard.saveTotalLockers(count);
+    }
+    setLockerSaved(true);
+    showToast(t('lockerCapacitySaved'));
+    setTimeout(() => setLockerSaved(false), 2500);
+  };
+
+  const handleBuildPlan = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const fallbackTitleEn = getDefaultPlanTitle(categoryTarget, false);
+    const fallbackTitleMn = getDefaultPlanTitle(categoryTarget, true);
+
+    const finalTitle = customTitle.trim() || fallbackTitleEn;
+    const finalTitleMn = customTitle.trim() || fallbackTitleMn;
+
+    const uniqueId = typeof window !== 'undefined' && window.crypto ? window.crypto.randomUUID() : 'plan-new';
+    const newPlan: BuiltPlan = {
+      id: `plan-${uniqueId}`,
+      categoryTarget,
+      title: finalTitle,
+      titleMn: finalTitleMn,
+      specializedLessons: specializedLessons.trim() || undefined,
+      durationMonths: Math.max(1, Number(durationMonths) || 1),
+      price: Math.max(0, Number(price) || 0),
+      isCustom: true,
+    };
+
+    if (propOnAddPlan) {
+      propOnAddPlan(newPlan);
+    } else {
+      dashboard.addPlan(newPlan);
+    }
+    showToast(t('planCreated'));
+
+    // Reset inputs
+    setCustomTitle('');
+    setSpecializedLessons('');
+  };
+
+  const handleDeletePlan = (id: string) => {
+    if (propOnDeletePlan) {
+      propOnDeletePlan(id);
+    } else {
+      dashboard.deletePlan(id);
+    }
+    showToast(t('planDeleted'));
+  };
+
+  const handleAddNutrient = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!nutrientForm.name.trim()) return;
+
+    const uniqueNutrId = typeof window !== 'undefined' && window.crypto ? window.crypto.randomUUID() : 'nutr-new';
+    const newProduct: NutrientProduct = {
+      id: `nutr-${uniqueNutrId}`,
+      name: nutrientForm.name.trim(),
+      category: nutrientForm.category,
+      price: Math.max(0, Number(nutrientForm.price) || 0),
+      stock: Math.max(0, Number(nutrientForm.stock) || 0),
+      flavor: nutrientForm.flavor.trim() || undefined,
+      bestBeforeDate: nutrientForm.bestBeforeDate ? nutrientForm.bestBeforeDate : undefined,
+    };
+
+    dashboard.addNutrient(newProduct);
+    setIsNutrientModalOpen(false);
+    setNutrientForm({
+      name: '',
+      category: 'Supplements',
+      price: 0,
+      stock: 0,
+      flavor: '',
+      bestBeforeDate: '',
+    });
+    showToast('Nutrient product added to inventory');
+  };
+
+  const handleDeleteNutrient = (id: string) => {
+    dashboard.deleteNutrient(id);
+    showToast('Product removed from inventory');
+  };
+
+  // Price Update State & Handlers
+  const [editingNutrientId, setEditingNutrientId] = useState<string | null>(null);
+  const [editingPriceValue, setEditingPriceValue] = useState<string>('');
+
+  const handleStartEditingPrice = (item: NutrientProduct) => {
+    setEditingNutrientId(item.id);
+    setEditingPriceValue(item.price.toString());
+  };
+
+  const handleSavePriceUpdate = (id: string) => {
+    const parsedPrice = Math.max(0, Number(editingPriceValue) || 0);
+    dashboard.updateNutrientPrice(id, parsedPrice);
+    setEditingNutrientId(null);
+    showToast('Updated product price. Past sales records retain their original sale prices.');
+  };
+
+  // Sale Recording State & Handlers
+  const [isSaleModalOpen, setIsSaleModalOpen] = useState(false);
+  const [saleProduct, setSaleProduct] = useState<NutrientProduct | null>(null);
+  const [saleQuantity, setSaleQuantity] = useState<number>(1);
+  const [salePaymentMethod, setSalePaymentMethod] = useState<string>('QPay');
+  const [saleMemberName, setSaleMemberName] = useState<string>('');
+
+  const handleOpenSaleModal = (product: NutrientProduct) => {
+    if (product.stock <= 0) {
+      showToast('Cannot sell product: Item is out of stock.');
+      return;
+    }
+    setSaleProduct(product);
+    setSaleQuantity(1);
+    setSalePaymentMethod('QPay');
+    setSaleMemberName('');
+    setIsSaleModalOpen(true);
+  };
+
+  const handleConfirmSale = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!saleProduct) return;
+
+    if (saleQuantity <= 0) {
+      showToast('Please enter a valid sale quantity.');
+      return;
+    }
+
+    if (saleQuantity > saleProduct.stock) {
+      showToast(`Cannot sell more than available stock (${saleProduct.stock} units).`);
+      return;
+    }
+
+    const unitPrice = saleProduct.price; // Locked at current listed price
+    const totalPrice = unitPrice * saleQuantity;
+
+    dashboard.recordNutrientSale({
+      productId: saleProduct.id,
+      productName: saleProduct.name,
+      category: saleProduct.category,
+      quantity: saleQuantity,
+      unitPrice,
+      totalPrice,
+      paymentMethod: salePaymentMethod,
+      memberName: saleMemberName.trim() || 'Walk-in Customer',
+      staffLogged: currentUser?.name || 'Staff',
+    });
+
+    setIsSaleModalOpen(false);
+    setSaleProduct(null);
+    showToast(`Logged sale of ${saleQuantity}x ${saleProduct.name} at ${formatCurrency(unitPrice)} each (Total: ${formatCurrency(totalPrice)}). Locked for analytics.`);
+  };
+
+  const getCategoryBadgeVariant = (cat: CategoryTarget): 'warning' | 'success' | 'info' => {
+    switch (cat) {
+      case 'under18':
+        return 'warning';
+      case 'over18':
+        return 'success';
+      case 'organization':
+        return 'info';
+    }
+  };
+
+  const getCategoryBadgeLabel = (cat: CategoryTarget) => {
+    switch (cat) {
+      case 'under18':
+        return t('badgeUnder18');
+      case 'over18':
+        return t('badgeOver18');
+      case 'organization':
+        return t('badgeOrg');
+    }
+  };
+
+  if (!isAdmin) {
+    return (
+      <div id="inventory-access-denied" className="w-full py-12 flex flex-col items-center justify-center text-center space-y-4">
+        <div className="w-12 h-12 rounded-2xl bg-muted border border-border flex items-center justify-center text-muted-foreground">
+          <Lock className="w-6 h-6" />
+        </div>
+        <div className="space-y-1">
+          <h2 className="text-lg font-bold text-foreground">{t('adminOnly') || 'Admin Access Only'}</h2>
+          <p className="text-xs text-muted-foreground max-w-sm">
+            {t('inventoryAdminRestricted') || 'Inventory and plan configuration are restricted to Admin accounts.'}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div id="inventory-view-root" className="w-full space-y-6">
+      {/* Toast Notification */}
+      <Toast id="inventory-toast" message={toastMessage} type="success" />
+
+      {/* Top Header */}
+      <div className="space-y-4">
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">
+          {t('title') || 'Inventory Management'}
+        </h1>
+
+        {/* Navigation Underline Tabs */}
+        <div className="flex items-center gap-6 border-b border-border/80 text-xs font-mono font-bold tracking-wider overflow-x-auto select-none pt-1">
+          <button
+            type="button"
+            onClick={() => setActiveTab('plan-builder')}
+            className={cn(
+              'pb-2.5 px-0.5 border-b-2 transition-all cursor-pointer whitespace-nowrap',
+              activeTab === 'plan-builder'
+                ? 'text-[#D4FF00] border-[#D4FF00]'
+                : 'text-muted-foreground hover:text-foreground border-transparent'
+            )}
+          >
+            {t('tabPlanBuilder') || 'MEMBERSHIP PLAN BUILDER'}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('locker-management')}
+            className={cn(
+              'pb-2.5 px-0.5 border-b-2 transition-all cursor-pointer whitespace-nowrap',
+              activeTab === 'locker-management'
+                ? 'text-[#D4FF00] border-[#D4FF00]'
+                : 'text-muted-foreground hover:text-foreground border-transparent'
+            )}
+          >
+            {t('tabLockerManagement') || 'LOCKER MANAGEMENT'}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('nutrients')}
+            className={cn(
+              'pb-2.5 px-0.5 border-b-2 transition-all cursor-pointer whitespace-nowrap',
+              activeTab === 'nutrients'
+                ? 'text-[#D4FF00] border-[#D4FF00]'
+                : 'text-muted-foreground hover:text-foreground border-transparent'
+            )}
+          >
+            {t('tabNutrients') || 'NUTRIENTS'}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('purchase-orders')}
+            className={cn(
+              'pb-2.5 px-0.5 border-b-2 transition-all cursor-pointer whitespace-nowrap',
+              activeTab === 'purchase-orders'
+                ? 'text-[#D4FF00] border-[#D4FF00]'
+                : 'text-muted-foreground hover:text-foreground border-transparent'
+            )}
+          >
+            {t('tabPurchaseOrders') || 'SUPPLIERS & PO'}
+          </button>
+        </div>
+      </div>
+
+      {/* 1. MEMBERSHIP PLAN BUILDER TAB */}
+      {activeTab === 'plan-builder' && (
+        <div className="space-y-6">
+          <div
+            id="card-plan-builder"
+            className="bg-[#0B132B]/80 dark:bg-[#0D1527] border border-border/80 rounded-2xl p-6 sm:p-7 space-y-6 shadow-xl"
+          >
+            {/* Header */}
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-xl bg-[#070D1E] border border-border/80 flex items-center justify-center shrink-0 text-[#D4FF00]">
+                <Package className="w-5 h-5" strokeWidth={2.2} />
+              </div>
+              <div>
+                <h2 className="text-base sm:text-lg font-bold text-foreground leading-tight">
+                  {t('planBuilderTitle')}
+                </h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {t('planBuilderSubtitle')}
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleBuildPlan} className="space-y-6">
+              {/* STEP 1: SELECT BLOCK 1 (CATEGORY TARGET) */}
+              <div id="block-1-category-target" className="space-y-3">
+                <div className="flex items-center gap-2 text-[#D4FF00] font-mono font-bold text-xs tracking-wider uppercase">
+                  <Layers className="w-3.5 h-3.5 text-[#D4FF00]" />
+                  <span>{t('block1Title')}</span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+                  {/* Option 1: Under 18 */}
+                  <div
+                    id="cat-target-under18"
+                    onClick={() => setCategoryTarget('under18')}
+                    className={cn(
+                      'p-4 rounded-xl border transition-all cursor-pointer flex items-start gap-3 select-none',
+                      categoryTarget === 'under18'
+                        ? 'bg-[#070D1E] border-[#D4FF00] ring-1 ring-[#D4FF00]'
+                        : 'bg-[#070D1E]/60 border-border/70 hover:border-border hover:bg-[#070D1E]'
+                    )}
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-muted/40 border border-border/50 flex items-center justify-center shrink-0 mt-0.5">
+                      <Award className="w-4 h-4 text-[#D4FF00]" />
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-[10px] font-bold text-[#D4FF00] font-mono leading-none">
+                        18-
+                      </span>
+                      <span className="text-xs font-bold text-foreground mt-1 leading-tight">
+                        {t('catUnder18Title')}
+                      </span>
+                      <span className="text-[11px] text-muted-foreground mt-1 leading-normal">
+                        {t('catUnder18Desc')}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Option 2: Over 18 (Adult) */}
+                  <div
+                    id="cat-target-over18"
+                    onClick={() => setCategoryTarget('over18')}
+                    className={cn(
+                      'p-4 rounded-xl border transition-all cursor-pointer flex items-start gap-3 select-none',
+                      categoryTarget === 'over18'
+                        ? 'bg-[#070D1E] border-[#D4FF00] ring-1 ring-[#D4FF00]'
+                        : 'bg-[#070D1E]/60 border-border/70 hover:border-border hover:bg-[#070D1E]'
+                    )}
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-muted/40 border border-border/50 flex items-center justify-center shrink-0 mt-0.5">
+                      <UserCheck className="w-4 h-4 text-[#D4FF00]" />
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-[10px] font-bold text-[#D4FF00] font-mono leading-none">
+                        18+
+                      </span>
+                      <span className="text-xs font-bold text-foreground mt-1 leading-tight">
+                        {t('catOver18Title')}
+                      </span>
+                      <span className="text-[11px] text-muted-foreground mt-1 leading-normal">
+                        {t('catOver18Desc')}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Option 3: Organization / Corporate */}
+                  <div
+                    id="cat-target-organization"
+                    onClick={() => setCategoryTarget('organization')}
+                    className={cn(
+                      'p-4 rounded-xl border transition-all cursor-pointer flex items-start gap-3 select-none',
+                      categoryTarget === 'organization'
+                        ? 'bg-[#070D1E] border-[#D4FF00] ring-1 ring-[#D4FF00]'
+                        : 'bg-[#070D1E]/60 border-border/70 hover:border-border hover:bg-[#070D1E]'
+                    )}
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-muted/40 border border-border/50 flex items-center justify-center shrink-0 mt-0.5">
+                      <Building2 className="w-4 h-4 text-[#D4FF00]" />
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-[10px] font-bold text-[#D4FF00] font-mono leading-none">
+                        ORG
+                      </span>
+                      <span className="text-xs font-bold text-foreground mt-1 leading-tight">
+                        {t('catOrgTitle')}
+                      </span>
+                      <span className="text-[11px] text-muted-foreground mt-1 leading-normal">
+                        {t('catOrgDesc')}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* STEP 2: BLOCK 2 (CUSTOM TITLE & SPECIALIZED TRAINING LESSONS) */}
+              <div id="block-2-custom-inputs" className="space-y-3">
+                <div className="flex items-center gap-2 text-[#D4FF00] font-mono font-bold text-xs tracking-wider uppercase">
+                  <Sparkles className="w-3.5 h-3.5 text-[#D4FF00]" />
+                  <span>{t('block2Title')}</span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div id="field-custom-plan-title" className="space-y-2">
+                    <label
+                      htmlFor="input-custom-plan-title"
+                      className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase font-mono"
+                    >
+                      {t('customPlanTitleLabel')}
+                    </label>
+                    <input
+                      id="input-custom-plan-title"
+                      type="text"
+                      placeholder={t('customPlanTitlePlaceholder')}
+                      value={customTitle}
+                      onChange={(e) => setCustomTitle(e.target.value)}
+                      className="w-full bg-[#070D1E] border border-border/80 focus:border-[#D4FF00] focus:ring-1 focus:ring-[#D4FF00] text-sm text-foreground placeholder:text-muted-foreground/60 rounded-xl px-4 py-3 outline-none transition-all"
+                    />
+                  </div>
+
+                  <div id="field-specialized-lessons" className="space-y-2">
+                    <label
+                      htmlFor="input-specialized-lessons"
+                      className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase font-mono"
+                    >
+                      {t('specializedLessonsLabel')}
+                    </label>
+                    <input
+                      id="input-specialized-lessons"
+                      type="text"
+                      placeholder={t('specializedLessonsPlaceholder')}
+                      value={specializedLessons}
+                      onChange={(e) => setSpecializedLessons(e.target.value)}
+                      className="w-full bg-[#070D1E] border border-border/80 focus:border-[#D4FF00] focus:ring-1 focus:ring-[#D4FF00] text-sm text-foreground placeholder:text-muted-foreground/60 rounded-xl px-4 py-3 outline-none transition-all"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* STEP 3: BLOCK 3 (DURATION & PRICING) */}
+              <div id="block-3-duration-pricing" className="space-y-3">
+                <div className="flex items-center gap-2 text-[#D4FF00] font-mono font-bold text-xs tracking-wider uppercase">
+                  <DollarSign className="w-3.5 h-3.5 text-[#D4FF00]" />
+                  <span>{t('block3Title')}</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3.5 items-end">
+                  <div id="field-duration-months" className="sm:col-span-3 space-y-2">
+                    <label
+                      htmlFor="input-duration-months"
+                      className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase font-mono"
+                    >
+                      {t('durationMonthsLabel')}
+                    </label>
+                    <input
+                      id="input-duration-months"
+                      type="number"
+                      min="1"
+                      max="36"
+                      required
+                      value={durationMonths}
+                      onChange={(e) => setDurationMonths(Number(e.target.value))}
+                      className="w-full bg-[#070D1E] border border-border/80 focus:border-[#D4FF00] focus:ring-1 focus:ring-[#D4FF00] text-sm text-foreground font-mono rounded-xl px-4 py-3 outline-none transition-all"
+                    />
+                  </div>
+
+                  <div id="field-price-usd" className="sm:col-span-4 space-y-2">
+                    <label
+                      htmlFor="input-price-usd"
+                      className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase font-mono"
+                    >
+                      {t('priceUsdLabel')}
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground font-mono text-sm">
+                        ₮
+                      </span>
+                      <input
+                        id="input-price-usd"
+                        type="number"
+                        min="0"
+                        step="1000"
+                        required
+                        value={price}
+                        onChange={(e) => setPrice(Number(e.target.value))}
+                        className="w-full bg-[#070D1E] border border-border/80 focus:border-[#D4FF00] focus:ring-1 focus:ring-[#D4FF00] text-sm text-foreground font-mono pl-8 pr-4 py-3 rounded-xl outline-none transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="sm:col-span-5">
+                    <button
+                      id="btn-build-save-plan"
+                      type="submit"
+                      className="w-full h-11 bg-[#D4FF00] hover:bg-[#c3eb00] text-black font-extrabold text-xs tracking-wider rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-[#D4FF00]/10 active:scale-[0.99]"
+                    >
+                      <Plus className="w-4 h-4 stroke-[3]" />
+                      <span>{t('buildSavePlanBtn')}</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </form>
+          </div>
+
+          {/* ACTIVE BUILT PLANS INVENTORY */}
+          <div id="section-active-plans-inventory" className="space-y-3 pt-2">
+            <div className="text-[11px] font-bold tracking-wider text-muted-foreground uppercase font-mono">
+              {t('activeBuiltPlansTitle', { count: plans.length })}
+            </div>
+
+            {plans.length === 0 ? (
+              <div className="bg-[#0B132B]/40 border border-border/60 rounded-2xl p-8 text-center text-muted-foreground text-xs font-mono">
+                No active membership plans built yet. Fill out the form above to add plans.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {plans.map((plan) => {
+                  const durationText = `${plan.durationMonths} ${
+                    plan.durationMonths === 1 ? 'Month' : 'Months'
+                  }`;
+
+                  return (
+                    <div
+                      key={plan.id}
+                      id={`inventory-plan-${plan.id}`}
+                      className="bg-[#0B132B]/80 dark:bg-[#0D1527] border border-border/80 rounded-2xl p-5 flex flex-col justify-between gap-4 relative group hover:border-[#D4FF00]/40 transition-all shadow-md"
+                    >
+                      {/* Top badges & Title */}
+                      <div>
+                        <div className="flex items-center justify-between gap-2 mb-2.5">
+                          <div className="flex items-center gap-1.5">
+                            <Badge variant={getCategoryBadgeVariant(plan.categoryTarget)}>
+                              {getCategoryBadgeLabel(plan.categoryTarget)}
+                            </Badge>
+                            <span className="text-[10px] font-mono text-muted-foreground">
+                              {durationText}
+                            </span>
+                          </div>
+
+                          {isAdmin && (
+                            <button
+                              id={`btn-delete-plan-${plan.id}`}
+                              type="button"
+                              onClick={() => handleDeletePlan(plan.id)}
+                              title="Delete plan"
+                              className="h-7 w-7 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 flex items-center justify-center transition-all cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+
+                        <h3 className="text-sm font-bold text-foreground tracking-wide">
+                          {plan.title}
+                        </h3>
+
+                        {plan.specializedLessons && (
+                          <p className="text-[11px] text-muted-foreground mt-1 font-mono italic">
+                            {plan.specializedLessons}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Bottom Price Bar */}
+                      <div className="pt-3 border-t border-border/80 flex items-center justify-between">
+                        <span className="text-[11px] text-muted-foreground font-mono">
+                          {t('planPriceLabel') || 'Plan Price:'}
+                        </span>
+                        <div className="bg-[#070D1E] border border-border/80 rounded-lg px-3 py-1 flex items-center gap-1">
+                          <span className="text-sm font-extrabold text-[#D4FF00] font-mono">
+                            {formatCurrency(plan.price)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 2. LOCKER MANAGEMENT TAB */}
+      {activeTab === 'locker-management' && (
+        <div
+          id="card-locker-capacity"
+          className="bg-[#0B132B]/80 dark:bg-[#0D1527] border border-border/80 rounded-2xl p-6 sm:p-7 space-y-8 shadow-xl"
+        >
+          {/* Header */}
+          <div className="flex items-start justify-between gap-4 border-b border-border/80 pb-5">
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-xl bg-[#070D1E] border border-border/80 flex items-center justify-center shrink-0 text-[#D4FF00]">
+                <Lock className="w-5 h-5" strokeWidth={2.2} />
+              </div>
+              <div>
+                <h2 className="text-base sm:text-lg font-bold text-foreground leading-tight">
+                  {t('lockerCapTitle')} &amp; Status Management
+                </h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Configure total gym locker capacity, assign maintenance states, report lost keys, and manage operational status.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 1: Total Gym Capacity Configuration */}
+          <div id="section-capacity-config" className="space-y-3 bg-[#070D1E]/60 border border-border/70 rounded-xl p-4 sm:p-5">
+            <div className="flex items-center gap-2 text-[#D4FF00] font-mono font-bold text-xs tracking-wider uppercase">
+              <SlidersHorizontal className="w-3.5 h-3.5 text-[#D4FF00]" />
+              <span>Locker Capacity Settings</span>
+            </div>
+
+            <form onSubmit={handleSaveLockers} className="space-y-3 pt-1">
+              <label
+                htmlFor="input-total-lockers"
+                className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase font-mono"
+              >
+                {t('totalGymLockersLabel')}
+              </label>
+
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                <div className="relative flex-1 max-w-md">
+                  <input
+                    id="input-total-lockers"
+                    type="number"
+                    min="1"
+                    max="200"
+                    value={lockerCount}
+                    onChange={(e) => setLockerCount(Number(e.target.value))}
+                    required
+                    className="w-full bg-[#070D1E] border border-border/80 focus:border-[#D4FF00] focus:ring-1 focus:ring-[#D4FF00] text-sm text-foreground font-mono rounded-xl px-4 py-2.5 outline-none transition-all"
+                  />
+                </div>
+
+                <button
+                  id="btn-save-lockers"
+                  type="submit"
+                  className="h-10 bg-[#D4FF00] hover:bg-[#c3eb00] text-black font-extrabold text-xs tracking-wider px-6 rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-[#D4FF00]/10 active:scale-[0.99]"
+                >
+                  <Check className="w-4 h-4 stroke-[3]" />
+                  <span>{lockerSaved ? 'Saved!' : t('saveLockerBtn')}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* Section 2: Real-time Status Overview Pills */}
+          <div id="section-locker-status-overview" className="space-y-3">
+            <div className="flex items-center justify-between text-xs font-mono font-bold uppercase tracking-wider text-muted-foreground">
+              <span>Current Status Metrics ({statusSummary.total} Lockers)</span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
+              <div className="bg-[#070D1E] border border-border/80 rounded-xl p-2.5 text-center">
+                <span className="text-[10px] font-mono text-muted-foreground block uppercase">Total</span>
+                <span className="text-base font-extrabold font-mono text-foreground">{statusSummary.total}</span>
+              </div>
+              <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-2.5 text-center">
+                <span className="text-[10px] font-mono text-emerald-400 block uppercase">Available</span>
+                <span className="text-base font-extrabold font-mono text-emerald-400">{statusSummary.available}</span>
+              </div>
+              <div className="bg-sky-500/10 border border-sky-500/30 rounded-xl p-2.5 text-center">
+                <span className="text-[10px] font-mono text-sky-400 block uppercase">Occupied</span>
+                <span className="text-base font-extrabold font-mono text-sky-400">{statusSummary.occupied}</span>
+              </div>
+              <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-2.5 text-center">
+                <span className="text-[10px] font-mono text-amber-400 block uppercase">Clean</span>
+                <span className="text-base font-extrabold font-mono text-amber-400">{statusSummary.clean}</span>
+              </div>
+              <div className="bg-orange-500/10 border border-orange-500/30 rounded-xl p-2.5 text-center">
+                <span className="text-[10px] font-mono text-orange-400 block uppercase">Repair Fix</span>
+                <span className="text-base font-extrabold font-mono text-orange-400">{statusSummary.repair}</span>
+              </div>
+              <div className="bg-rose-500/10 border border-rose-500/30 rounded-xl p-2.5 text-center">
+                <span className="text-[10px] font-mono text-rose-400 block uppercase">Key Lost</span>
+                <span className="text-base font-extrabold font-mono text-rose-400">{statusSummary.keyLost}</span>
+              </div>
+              <div className="bg-purple-500/10 border border-purple-500/30 rounded-xl p-2.5 text-center">
+                <span className="text-[10px] font-mono text-purple-400 block uppercase font-sans">Key Overdue</span>
+                <span className="text-base font-extrabold font-mono text-purple-400">{statusSummary.keyNotReturned}</span>
+              </div>
+              <div className="bg-slate-500/10 border border-slate-500/30 rounded-xl p-2.5 text-center">
+                <span className="text-[10px] font-mono text-slate-400 block uppercase">Inactive</span>
+                <span className="text-base font-extrabold font-mono text-slate-400">{statusSummary.inactive}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 3: Update Specific Locker Status Form */}
+          <div id="section-update-locker-status" className="bg-[#070D1E]/80 border border-border/80 rounded-2xl p-5 space-y-4">
+            <div className="flex items-center gap-2 text-[#D4FF00] font-mono font-bold text-xs tracking-wider uppercase">
+              <Wrench className="w-4 h-4 text-[#D4FF00]" />
+              <span>Update Locker Logic &amp; Status</span>
+            </div>
+
+            <form onSubmit={handleUpdateSingleLockerStatus} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
+                {/* Target Locker Selector */}
+                <div className="md:col-span-4 space-y-1.5">
+                  <label className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase font-mono">
+                    Select Locker Number
+                  </label>
+                  <select
+                    value={targetLockerNumber}
+                    onChange={(e) => setTargetLockerNumber(e.target.value)}
+                    className="w-full bg-[#070D1E] border border-border/80 focus:border-[#D4FF00] text-sm font-mono text-foreground rounded-xl px-3.5 py-2.5 outline-none"
+                  >
+                    {lockerList.map((num) => {
+                      const cfg = getLockerStatusConfig(num);
+                      return (
+                        <option key={num} value={num}>
+                          {num} - [{cfg.label}]
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+
+                {/* Status Selection Buttons */}
+                <div className="md:col-span-8 space-y-1.5">
+                  <label className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase font-mono">
+                    New Locker Status
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setTargetStatus('clean')}
+                      className={cn(
+                        'flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-mono font-bold border transition-all cursor-pointer text-left',
+                        targetStatus === 'clean'
+                          ? 'bg-amber-500/20 border-amber-500 text-amber-300 ring-1 ring-amber-500'
+                          : 'bg-[#070D1E] border-border/70 text-muted-foreground hover:text-foreground hover:border-amber-500/50'
+                      )}
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                      <span>Clean / Needs Cleaning</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setTargetStatus('repair')}
+                      className={cn(
+                        'flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-mono font-bold border transition-all cursor-pointer text-left',
+                        targetStatus === 'repair'
+                          ? 'bg-orange-500/20 border-orange-500 text-orange-300 ring-1 ring-orange-500'
+                          : 'bg-[#070D1E] border-border/70 text-muted-foreground hover:text-foreground hover:border-orange-500/50'
+                      )}
+                    >
+                      <Wrench className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+                      <span>Repair / Fix Needed</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setTargetStatus('key_lost')}
+                      className={cn(
+                        'flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-mono font-bold border transition-all cursor-pointer text-left',
+                        targetStatus === 'key_lost'
+                          ? 'bg-rose-500/20 border-rose-500 text-rose-300 ring-1 ring-rose-500'
+                          : 'bg-[#070D1E] border-border/70 text-muted-foreground hover:text-foreground hover:border-rose-500/50'
+                      )}
+                    >
+                      <KeyRound className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                      <span>Key Lost</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setTargetStatus('key_not_returned')}
+                      className={cn(
+                        'flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-mono font-bold border transition-all cursor-pointer text-left',
+                        targetStatus === 'key_not_returned'
+                          ? 'bg-purple-500/20 border-purple-500 text-purple-300 ring-1 ring-purple-500'
+                          : 'bg-[#070D1E] border-border/70 text-muted-foreground hover:text-foreground hover:border-purple-500/50'
+                      )}
+                    >
+                      <Key className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                      <span>Key Not Returned</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setTargetStatus('inactive')}
+                      className={cn(
+                        'flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-mono font-bold border transition-all cursor-pointer text-left',
+                        targetStatus === 'inactive'
+                          ? 'bg-slate-500/20 border-slate-500 text-slate-300 ring-1 ring-slate-500'
+                          : 'bg-[#070D1E] border-border/70 text-muted-foreground hover:text-foreground hover:border-slate-500/50'
+                      )}
+                    >
+                      <AlertCircle className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                      <span>Inactive</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setTargetStatus('available')}
+                      className={cn(
+                        'flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-mono font-bold border transition-all cursor-pointer text-left',
+                        targetStatus === 'available'
+                          ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300 ring-1 ring-emerald-500'
+                          : 'bg-[#070D1E] border-border/70 text-muted-foreground hover:text-foreground hover:border-emerald-500/50'
+                      )}
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      <span>Available</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Notes & Submit Row */}
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end pt-1">
+                <div className="sm:col-span-8 space-y-1">
+                  <label className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase font-mono">
+                    Status Notes / Repair Details (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Lock mechanism replaced, key reissued, door misaligned..."
+                    value={statusNotes}
+                    onChange={(e) => setStatusNotes(e.target.value)}
+                    className="w-full bg-[#070D1E] border border-border/80 focus:border-[#D4FF00] text-xs text-foreground placeholder:text-muted-foreground/50 rounded-xl px-3.5 py-2.5 outline-none"
+                  />
+                </div>
+
+                <div className="sm:col-span-4">
+                  <button
+                    type="submit"
+                    className="w-full h-10 bg-[#D4FF00] hover:bg-[#c3eb00] text-black font-extrabold text-xs tracking-wider rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-[#D4FF00]/10 active:scale-[0.99]"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    <span>Apply Status Change</span>
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+
+          {/* Section 4: Interactive Floor Grid */}
+          <div id="section-locker-grid-inventory" className="space-y-4 pt-2 border-t border-border/80">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="space-y-0.5">
+                <h3 className="text-sm font-bold text-foreground">Interactive Locker Status Grid</h3>
+                <p className="text-[11px] text-muted-foreground font-mono">
+                  Click any locker to select it for quick status update. Showing {filteredLockerGrid.length} of {lockerList.length} lockers.
+                </p>
+              </div>
+
+              {/* Search & Filter */}
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    type="text"
+                    placeholder="Search locker #..."
+                    value={lockerSearchQuery}
+                    onChange={(e) => setLockerSearchQuery(e.target.value)}
+                    className="bg-[#070D1E] border border-border/80 focus:border-[#D4FF00] text-xs font-mono text-foreground placeholder:text-muted-foreground/60 rounded-xl pl-8 pr-3 py-1.5 outline-none w-36 sm:w-44"
+                  />
+                </div>
+
+                <select
+                  value={gridFilterStatus}
+                  onChange={(e) => setGridFilterStatus(e.target.value as any)}
+                  className="bg-[#070D1E] border border-border/80 focus:border-[#D4FF00] text-xs font-mono text-foreground rounded-xl px-2.5 py-1.5 outline-none"
+                >
+                  <option value="all">All Statuses</option>
+                  <option value="available">Available</option>
+                  <option value="occupied">Occupied</option>
+                  <option value="clean">Clean / Needs Cleaning</option>
+                  <option value="repair">Repair Fix Needed</option>
+                  <option value="key_lost">Key Lost</option>
+                  <option value="key_not_returned">Key Not Returned</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Grid display */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-10 gap-2.5 max-h-[420px] overflow-y-auto p-1 pr-2">
+              {filteredLockerGrid.map((num) => {
+                const cfg = getLockerStatusConfig(num);
+                const occupant = occupiedLockerMap.get(num);
+                const isSelected = targetLockerNumber === num;
+                const StatusIcon = cfg.icon;
+
+                return (
+                  <div
+                    key={num}
+                    onClick={() => setTargetLockerNumber(num)}
+                    className={cn(
+                      'p-2.5 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-between gap-1.5 select-none relative group',
+                      cfg.bg,
+                      isSelected ? 'ring-2 ring-[#D4FF00] scale-[1.03] z-10' : 'hover:scale-[1.02]'
+                    )}
+                  >
+                    <span className="text-[11px] font-mono font-bold text-foreground tracking-tight">
+                      {num.replace('Locker #', '#')}
+                    </span>
+
+                    <StatusIcon className="w-4 h-4 shrink-0" />
+
+                    <div className={cn('px-1.5 py-0.5 rounded text-[9px] font-mono font-bold uppercase truncate max-w-full', cfg.badgeBg)}>
+                      {cfg.label}
+                    </div>
+
+                    {occupant && (
+                      <span className="text-[9px] text-muted-foreground font-mono truncate max-w-full" title={occupant}>
+                        {occupant}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3. NUTRIENTS TAB */}
+      {activeTab === 'nutrients' && (
+        <div className="space-y-6">
+          <div
+            id="card-nutrient-inventory"
+            className="bg-[#0B132B]/80 dark:bg-[#0D1527] border border-border/80 rounded-2xl p-8 sm:p-10 shadow-xl"
+          >
+            {nutrients.length === 0 ? (
+              <div className="flex flex-col items-center justify-center text-center py-10 space-y-4">
+                <div className="w-16 h-16 rounded-full bg-[#111C38] border border-slate-800/80 flex items-center justify-center text-[#7E8CA3]">
+                  <ShoppingCart className="w-7 h-7" strokeWidth={1.8} />
+                </div>
+                <div className="space-y-1">
+                  <h2 className="text-lg font-bold text-foreground">
+                    {t('nutrientsTitle') || 'Nutrient Inventory'}
+                  </h2>
+                  <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+                    {t('nutrientsSubtitle') ||
+                      'Manage supplements, shakes, and other nutritional products available for members.'}
+                  </p>
+                </div>
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsNutrientModalOpen(true)}
+                    className="border border-[#D4FF00]/40 text-[#D4FF00] hover:bg-[#D4FF00]/10 px-6 py-2.5 rounded-lg text-xs font-mono font-bold tracking-wider transition-all cursor-pointer flex items-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>{t('addProductBtn') || 'Add New Product'}</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-6 animate-in fade-in duration-200">
+                {/* Header Title Section */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border/80">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-[#070D1E] border border-border/80 flex items-center justify-center text-[#D4FF00]">
+                      <ShoppingCart className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h2 className="text-base font-bold text-foreground">
+                        {t('nutrientsTitle') || 'Nutrient Inventory'}
+                      </h2>
+                      <p className="text-xs text-muted-foreground">
+                        {nutrients.length} total nutritional items registered
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsNutrientModalOpen(true)}
+                    className="border border-[#D4FF00]/40 text-[#D4FF00] hover:bg-[#D4FF00]/10 px-4 py-2 rounded-lg text-xs font-mono font-bold tracking-wider transition-all cursor-pointer flex items-center gap-2"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>{t('addProductBtn') || 'Add New Product'}</span>
+                  </button>
+                </div>
+
+                {/* Low Stock and Out of Stock Alerts */}
+                {(lowStockCount > 0 || outOfStockCount > 0) && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {outOfStockCount > 0 && (
+                      <div className="bg-rose-500/10 border-2 border-rose-500/30 text-rose-400 p-4 rounded-xl flex items-start gap-3 shadow-md">
+                        <ShieldAlert className="w-5 h-5 shrink-0 text-rose-400 mt-0.5" />
+                        <div className="space-y-1">
+                          <h4 className="text-xs font-black uppercase tracking-wider font-mono">Critical: Out of Stock Alert!</h4>
+                          <p className="text-[11px] text-muted-foreground font-mono">
+                            There are <strong className="text-rose-400 font-extrabold">{outOfStockCount}</strong> products completely depleted. Members cannot purchase these. Restock immediately.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                    {lowStockCount > 0 && (
+                      <div className="bg-amber-500/10 border-2 border-amber-500/30 text-amber-400 p-4 rounded-xl flex items-start gap-3 shadow-md">
+                        <AlertCircle className="w-5 h-5 shrink-0 text-amber-500 mt-0.5" />
+                        <div className="space-y-1">
+                          <h4 className="text-xs font-black uppercase tracking-wider font-mono">Warning: Low Stock Alert!</h4>
+                          <p className="text-[11px] text-muted-foreground font-mono">
+                            There are <strong className="text-amber-400 font-extrabold">{lowStockCount}</strong> products with less than 5 units remaining. Order refills soon.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Interactive Search, Filters & Batch Action Toolbar */}
+                <div className="bg-[#070D1E]/60 border border-border/80 rounded-xl p-4 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+                  <div className="flex flex-wrap items-center gap-3">
+                    {/* Search Box */}
+                    <div className="relative">
+                      <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                      <input
+                        type="text"
+                        placeholder="Search supplements / flavor / category..."
+                        value={nutrientSearchQuery}
+                        onChange={(e) => setNutrientSearchQuery(e.target.value)}
+                        className="bg-[#070D1E] border border-border/80 focus:border-[#D4FF00] focus:ring-1 focus:ring-[#D4FF00] text-xs font-mono text-foreground placeholder:text-muted-foreground/60 rounded-xl pl-9 pr-4 py-2.5 outline-none w-full sm:w-64 transition-all"
+                      />
+                    </div>
+
+                    {/* Filter Buttons */}
+                    <div className="flex items-center gap-1.5 bg-muted/20 p-1 rounded-lg border border-border/60">
+                      <Button
+                        type="button"
+                        variant={nutrientFilterStock === 'all' ? 'primary' : 'outline'}
+                        onClick={() => setNutrientFilterStock('all')}
+                        className="h-8 text-xs px-3 py-1 font-mono"
+                      >
+                        All Items
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={nutrientFilterStock === 'low' ? 'primary' : 'outline'}
+                        onClick={() => setNutrientFilterStock('low')}
+                        className="h-8 text-xs px-3 py-1 font-mono"
+                      >
+                        Low Stock ({lowStockCount})
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={nutrientFilterStock === 'out' ? 'primary' : 'outline'}
+                        onClick={() => setNutrientFilterStock('out')}
+                        className="h-8 text-xs px-3 py-1 font-mono"
+                      >
+                        Out of Stock ({outOfStockCount})
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Batch Actions section */}
+                  {selectedNutrientIds.length > 0 && (
+                    <div className="flex items-center gap-2 bg-[#D4FF00]/10 border border-[#D4FF00]/30 rounded-lg px-3.5 py-1.5 animate-in fade-in zoom-in-95 duration-150">
+                      <span className="text-[11px] font-mono font-bold text-[#D4FF00]">
+                        {selectedNutrientIds.length} Selected:
+                      </span>
+                      <Button
+                        type="button"
+                        variant="primary"
+                        onClick={handleOpenPOModal}
+                        className="h-7 text-[10px] px-2.5 font-mono"
+                      >
+                        Restock &amp; Purchase Intake
+                      </Button>
+                      {isAdmin && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={handleBatchDelete}
+                          className="h-7 text-[10px] px-2.5 font-mono border-rose-500/40 text-rose-400 hover:bg-rose-500/10"
+                        >
+                          Delete Selected
+                        </Button>
+                      )}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setSelectedNutrientIds([])}
+                        className="h-7 text-[10px] px-2"
+                      >
+                        Clear
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                {filteredNutrients.length === 0 ? (
+                  <div className="bg-[#070D1E]/40 border border-border/80 rounded-xl p-8 text-center text-muted-foreground text-xs font-mono">
+                    No nutrient products match the current filters or search term.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {filteredNutrients.map((item) => {
+                      const expStatus = getNutrientExpiryStatus(item.bestBeforeDate);
+                      const isEditingPrice = editingNutrientId === item.id;
+                      const isSelected = selectedNutrientIds.includes(item.id);
+
+                      // Derive historical sales info for this product
+                      const itemSales = dashboard.nutrientSales.filter((s) => s.productId === item.id);
+                      const unitsSold = itemSales.reduce((acc, s) => acc + s.quantity, 0);
+                      const totalSalesRevenue = itemSales.reduce((acc, s) => acc + s.totalPrice, 0);
+
+                      return (
+                        <div
+                          key={item.id}
+                          onClick={() => {
+                            if (selectedNutrientIds.includes(item.id)) {
+                              setSelectedNutrientIds(selectedNutrientIds.filter((id) => id !== item.id));
+                            } else {
+                              setSelectedNutrientIds([...selectedNutrientIds, item.id]);
+                            }
+                          }}
+                          className={cn(
+                            'bg-[#070D1E] border rounded-xl p-4 flex flex-col justify-between gap-3 relative group shadow-sm transition-all cursor-pointer select-none',
+                            isSelected ? 'border-[#D4FF00] ring-1 ring-[#D4FF00]' : 'border-border/80 hover:border-border'
+                          )}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex items-start gap-2.5">
+                              {/* Batch Select Checkbox */}
+                              <div
+                                className={cn(
+                                  'w-4 h-4 rounded border flex items-center justify-center shrink-0 mt-0.5 transition-all',
+                                  isSelected ? 'bg-[#D4FF00] border-[#D4FF00] text-black' : 'border-muted-foreground/60'
+                                )}
+                              >
+                                {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                              </div>
+
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="text-[9px] font-mono font-bold uppercase tracking-wider text-[#D4FF00]">
+                                    {item.category}
+                                  </span>
+                                  {expStatus === 'expired' && (
+                                    <span className="bg-rose-500/20 text-rose-400 border border-rose-500/40 text-[9px] font-mono px-1.5 py-0.5 rounded font-bold uppercase">
+                                      Expired
+                                    </span>
+                                  )}
+                                  {expStatus === 'expiring_soon' && (
+                                    <span className="bg-amber-500/20 text-amber-400 border border-amber-500/40 text-[9px] font-mono px-1.5 py-0.5 rounded font-bold uppercase">
+                                      Expiring Soon
+                                    </span>
+                                  )}
+                                </div>
+                                <h4 className="text-sm font-bold text-foreground mt-0.5">
+                                  {item.name}
+                                </h4>
+                                {item.flavor && (
+                                  <p className="text-[11px] text-muted-foreground font-mono italic">
+                                    Flavor: {item.flavor}
+                                  </p>
+                                )}
+                                {item.bestBeforeDate && (
+                                  <p
+                                    className={cn(
+                                      'text-[11px] font-mono mt-1 flex items-center gap-1',
+                                      expStatus === 'expired'
+                                        ? 'text-rose-400 font-bold'
+                                        : expStatus === 'expiring_soon'
+                                        ? 'text-amber-400 font-bold'
+                                        : 'text-muted-foreground'
+                                    )}
+                                  >
+                                    <Calendar className="w-3 h-3 shrink-0" />
+                                    <span>Best before: {item.bestBeforeDate}</span>
+                                  </p>
+                                )}
+
+                                {/* Historical Sales Summary Badge */}
+                                <div className="pt-1">
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-mono bg-muted/30 border border-border/60 rounded px-2 py-0.5 text-slate-300">
+                                    <Award className="w-3 h-3 text-[#D4FF00]" />
+                                    {unitsSold > 0
+                                      ? `${unitsSold} sold (${formatCurrency(totalSalesRevenue)} recorded)`
+                                      : 'No sales recorded yet'}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteNutrient(item.id);
+                                }}
+                                className="text-muted-foreground hover:text-destructive p-1 rounded-md transition-colors cursor-pointer"
+                                title="Delete Product"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="pt-3 border-t border-border/60 space-y-2" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center justify-between text-xs font-mono">
+                              <span className="text-muted-foreground">
+                                Stock:{' '}
+                                <strong
+                                  className={cn(
+                                    item.stock === 0
+                                      ? 'text-rose-400 font-bold'
+                                      : item.stock <= 5
+                                      ? 'text-amber-400 font-bold'
+                                      : 'text-foreground'
+                                  )}
+                                >
+                                  {item.stock} units
+                                </strong>
+                              </span>
+
+                              {/* Price Editing vs Display */}
+                              {isEditingPrice ? (
+                                <div className="flex items-center gap-1">
+                                  <input
+                                    type="number"
+                                    value={editingPriceValue}
+                                    onChange={(e) => setEditingPriceValue(e.target.value)}
+                                    className="w-24 bg-[#0B132B] border border-[#D4FF00] text-[#D4FF00] font-mono text-xs px-2 py-1 rounded outline-none"
+                                    autoFocus
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSavePriceUpdate(item.id)}
+                                    className="bg-[#D4FF00] text-black p-1 rounded hover:opacity-90 transition-opacity"
+                                    title="Save Price"
+                                  >
+                                    <Check className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditingNutrientId(null)}
+                                    className="bg-muted text-muted-foreground p-1 rounded hover:text-foreground"
+                                    title="Cancel"
+                                  >
+                                    <X className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-1.5">
+                                  <div className="bg-muted/40 border border-border/60 rounded px-2 py-0.5 text-[#D4FF00] font-bold font-mono flex items-center gap-1">
+                                    <span>{formatCurrency(item.price)}</span>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleStartEditingPrice(item)}
+                                    className="text-muted-foreground hover:text-[#D4FF00] p-1 rounded transition-colors cursor-pointer"
+                                    title="Change Price (Admin)"
+                                  >
+                                    <Edit2 className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Quick Actions Row */}
+                            <div className="flex items-center gap-2 pt-1">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenSaleModal(item)}
+                                disabled={item.stock <= 0}
+                                className={cn(
+                                  'w-full py-1.5 px-3 rounded-lg text-xs font-mono font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer',
+                                  item.stock > 0
+                                    ? 'bg-[#D4FF00]/10 hover:bg-[#D4FF00]/20 text-[#D4FF00] border border-[#D4FF00]/30'
+                                    : 'bg-muted/40 text-muted-foreground border border-border/40 opacity-50 cursor-not-allowed'
+                                )}
+                              >
+                                <ShoppingCart className="w-3.5 h-3.5" />
+                                <span>Record Sale</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 4. SUPPLIERS & PURCHASE ORDERS TAB */}
+      {activeTab === 'purchase-orders' && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Left Column: Suppliers & Registration */}
+            <div className="lg:col-span-4 space-y-6">
+              {/* Add Supplier Form */}
+              <div className="bg-[#0B132B]/80 dark:bg-[#0D1527] border border-border/80 rounded-2xl p-5 space-y-4 shadow-xl">
+                <div className="flex items-center gap-2 border-b border-border/80 pb-2.5">
+                  <Building2 className="w-4 h-4 text-[#D4FF00]" />
+                  <h3 className="text-xs sm:text-sm font-bold font-mono uppercase text-foreground">
+                    Register Supplier
+                  </h3>
+                </div>
+
+                <form onSubmit={handleAddSupplier} className="space-y-4 font-mono text-xs">
+                  <div className="space-y-1.5">
+                    <label className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                      Supplier Name *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Elite Sports Nutrition"
+                      value={newSupplierForm.name}
+                      onChange={(e) => setNewSupplierForm({ ...newSupplierForm, name: e.target.value })}
+                      className="w-full bg-[#070D1E] border border-border/80 focus:border-[#D4FF00] text-xs text-foreground rounded-lg px-3 py-2 outline-none font-sans"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                      Contact Email
+                    </label>
+                    <input
+                      type="email"
+                      placeholder="orders@supplier.com"
+                      value={newSupplierForm.contactEmail}
+                      onChange={(e) => setNewSupplierForm({ ...newSupplierForm, contactEmail: e.target.value })}
+                      className="w-full bg-[#070D1E] border border-border/80 focus:border-[#D4FF00] text-xs text-foreground rounded-lg px-3 py-2 outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                      Phone Number
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="9911-2233"
+                      value={newSupplierForm.phone}
+                      onChange={(e) => setNewSupplierForm({ ...newSupplierForm, phone: e.target.value })}
+                      className="w-full bg-[#070D1E] border border-border/80 focus:border-[#D4FF00] text-xs text-foreground rounded-lg px-3 py-2 outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                      Lead Time (Days)
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      required
+                      value={newSupplierForm.leadTimeDays}
+                      onChange={(e) => setNewSupplierForm({ ...newSupplierForm, leadTimeDays: Number(e.target.value) })}
+                      className="w-full bg-[#070D1E] border border-border/80 focus:border-[#D4FF00] text-xs text-foreground rounded-lg px-3 py-2 outline-none"
+                    />
+                  </div>
+
+                  <Button type="submit" variant="primary" className="w-full text-xs py-2">
+                    <Plus className="w-3.5 h-3.5 mr-1" />
+                    Register Supplier
+                  </Button>
+                </form>
+              </div>
+
+              {/* Suppliers Directory */}
+              <div className="bg-[#0B132B]/80 dark:bg-[#0D1527] border border-border/80 rounded-2xl p-5 space-y-4 shadow-xl">
+                <div className="flex items-center justify-between border-b border-border/80 pb-2.5">
+                  <span className="text-xs sm:text-sm font-bold font-mono uppercase text-foreground">
+                    Suppliers Directory
+                  </span>
+                  <Badge variant="outline">{dashboard.suppliers.length}</Badge>
+                </div>
+
+                <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+                  {dashboard.suppliers.map((sup) => (
+                    <div key={sup.id} className="p-3 bg-[#070D1E] border border-border/60 rounded-xl space-y-1.5 text-xs">
+                      <div className="flex items-center justify-between">
+                        <strong className="text-foreground font-black">{sup.name}</strong>
+                        <Badge variant="outline" className="text-[10px] scale-90 font-mono">
+                          {sup.leadTimeDays}d lead
+                        </Badge>
+                      </div>
+                      <div className="text-[11px] text-muted-foreground font-mono space-y-0.5">
+                        <p>{sup.contactEmail}</p>
+                        <p>{sup.phone}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column: Purchase Orders list */}
+            <div className="lg:col-span-8 space-y-6">
+              <div className="bg-[#0B132B]/80 dark:bg-[#0D1527] border border-border/80 rounded-2xl p-6 space-y-4 shadow-xl">
+                <div className="flex items-center justify-between border-b border-border/80 pb-4">
+                  <div className="flex items-center gap-2">
+                    <Package className="w-5 h-5 text-[#D4FF00]" />
+                    <h2 className="text-base font-bold text-foreground font-mono uppercase">
+                      Purchase Order Pipeline
+                    </h2>
+                  </div>
+                  <Badge variant="info">{dashboard.purchaseOrders.length} Orders</Badge>
+                </div>
+
+                <div className="space-y-4">
+                  {dashboard.purchaseOrders.length === 0 ? (
+                    <p className="text-xs text-muted-foreground italic text-center py-12 font-mono">
+                      No purchase orders recorded yet. Use the Nutrients tab to restock via POs.
+                    </p>
+                  ) : (
+                    [...dashboard.purchaseOrders].reverse().map((po) => (
+                      <div
+                        key={po.id}
+                        className="p-4 bg-[#070D1E] border border-border/80 rounded-xl space-y-3"
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/40 pb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-xs font-bold text-[#D4FF00]">#{po.id}</span>
+                            <span className="text-xs text-muted-foreground font-mono">|</span>
+                            <span className="text-xs text-foreground font-black font-sans">{po.supplierName}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] text-muted-foreground font-mono">
+                              {new Date(po.createdAt).toLocaleDateString()}
+                            </span>
+                            <Badge
+                              variant={
+                                po.status === 'RECEIVED'
+                                  ? 'success'
+                                  : po.status === 'CANCELLED'
+                                  ? 'destructive'
+                                  : 'warning'
+                              }
+                              className="text-[10px] font-mono font-bold"
+                            >
+                              {po.status}
+                            </Badge>
+                          </div>
+                        </div>
+
+                        {/* Items listed */}
+                        <div className="space-y-1.5 pl-2 border-l-2 border-[#D4FF00]/40">
+                          {po.items.map((item) => (
+                            <div key={item.id} className="flex items-center justify-between text-xs font-mono text-slate-300">
+                              <span>
+                                {item.productName} <strong className="text-foreground">x{item.quantity}</strong>
+                              </span>
+                              <span>{formatCurrency(item.unitPurchaseCost)} / unit</span>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Cost & Action footer */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 font-mono text-xs">
+                          <div>
+                            <span className="text-muted-foreground mr-1.5">Total Cost:</span>
+                            <strong className="text-foreground font-extrabold">{formatCurrency(po.totalCost)}</strong>
+                          </div>
+
+                          {po.status === 'ORDERED' && (
+                            <div className="flex items-center gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  dashboard.cancelPurchaseOrder(po.id);
+                                  showToast(`Purchase Order ${po.id} cancelled.`);
+                                }}
+                                className="h-8 text-[11px] font-bold border-rose-500/40 text-rose-400 hover:bg-rose-500/10"
+                              >
+                                Cancel Order
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="primary"
+                                onClick={() => {
+                                  dashboard.receivePurchaseOrder(po.id);
+                                  showToast(`PO ${po.id} received. Restocked items.`);
+                                }}
+                                className="h-8 text-[11px]"
+                              >
+                                Mark Received
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom section: Stock Intake History Logs */}
+          <div className="bg-[#0B132B]/80 dark:bg-[#0D1527] border border-border/80 rounded-2xl p-6 space-y-4 shadow-xl">
+            <div className="flex items-center gap-2 border-b border-border/80 pb-3">
+              <Layers className="w-5 h-5 text-[#D4FF00]" />
+              <h3 className="text-base font-bold text-foreground font-mono uppercase">
+                Stock Intake Logs &amp; Gross Margins
+              </h3>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs font-mono">
+                <thead>
+                  <tr className="border-b border-border/80 text-muted-foreground font-bold">
+                    <th className="py-2.5">Intake Timestamp</th>
+                    <th className="py-2.5">PO Ref</th>
+                    <th className="py-2.5">Product Name</th>
+                    <th className="py-2.5 text-center">Qty</th>
+                    <th className="py-2.5 text-right">Cost Price</th>
+                    <th className="py-2.5 text-right">Sell Price</th>
+                    <th className="py-2.5 text-right text-[#D4FF00]">Gross Margin</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/40 text-slate-300">
+                  {dashboard.stockIntakes.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-6 text-center italic text-muted-foreground">
+                        No intake logs recorded yet. Receiving purchase orders creates logs here.
+                      </td>
+                    </tr>
+                  ) : (
+                    [...dashboard.stockIntakes].reverse().map((log) => {
+                      const profit = log.unitSellingPrice - log.unitPurchaseCost;
+                      const margin = log.unitSellingPrice > 0 ? (profit / log.unitSellingPrice) * 100 : 0;
+                      return (
+                        <tr key={log.id} className="hover:bg-muted/10">
+                          <td className="py-2.5">{new Date(log.timestamp).toLocaleString()}</td>
+                          <td className="py-2.5 text-[#D4FF00]">#{log.purchaseOrderId}</td>
+                          <td className="py-2.5 text-foreground font-sans font-bold">{log.productName}</td>
+                          <td className="py-2.5 text-center">{log.quantity}</td>
+                          <td className="py-2.5 text-right">{formatCurrency(log.unitPurchaseCost)}</td>
+                          <td className="py-2.5 text-right">{formatCurrency(log.unitSellingPrice)}</td>
+                          <td className={`py-2.5 text-right font-black ${margin >= 40 ? 'text-[#D4FF00]' : 'text-amber-400'}`}>
+                            {margin.toFixed(1)}%
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Nutrient Creation Modal */}
+      {isNutrientModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#0B132B] border border-border rounded-2xl w-full max-w-md p-6 space-y-5 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-border/80 pb-3">
+              <div className="flex items-center gap-2.5">
+                <ShoppingCart className="w-4 h-4 text-[#D4FF00]" />
+                <h3 className="text-sm font-bold text-foreground">Add Nutrient Product</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsNutrientModalOpen(false)}
+                className="text-muted-foreground hover:text-foreground cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddNutrient} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase font-mono">
+                  Product Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Whey Isolate Protein Shake"
+                  value={nutrientForm.name}
+                  onChange={(e) => setNutrientForm((f) => ({ ...f, name: e.target.value }))}
+                  className="w-full bg-[#070D1E] border border-border/80 focus:border-[#D4FF00] text-sm text-foreground rounded-xl px-3.5 py-2.5 outline-none font-sans"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase font-mono">
+                    Category
+                  </label>
+                  <select
+                    value={nutrientForm.category}
+                    onChange={(e) =>
+                      setNutrientForm((f) => ({
+                        ...f,
+                        category: e.target.value as NutrientProduct['category'],
+                      }))
+                    }
+                    className="w-full bg-[#070D1E] border border-border/80 focus:border-[#D4FF00] text-xs text-foreground rounded-xl px-3 py-2.5 outline-none font-mono"
+                  >
+                    <option value="Supplements">Supplements</option>
+                    <option value="Shakes">Shakes</option>
+                    <option value="Beverages">Beverages</option>
+                    <option value="Snacks">Snacks</option>
+                    <option value="Vitamins">Vitamins</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase font-mono">
+                    Flavor / Specs
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Vanilla / 500ml"
+                    value={nutrientForm.flavor}
+                    onChange={(e) => setNutrientForm((f) => ({ ...f, flavor: e.target.value }))}
+                    className="w-full bg-[#070D1E] border border-border/80 focus:border-[#D4FF00] text-xs text-foreground rounded-xl px-3 py-2.5 outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase font-mono">
+                    Unit Price (₮ MNT)
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-mono text-xs">
+                      ₮
+                    </span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="500"
+                      required
+                      value={nutrientForm.price}
+                      onChange={(e) =>
+                        setNutrientForm((f) => ({ ...f, price: Number(e.target.value) }))
+                      }
+                      className="w-full bg-[#070D1E] border border-border/80 focus:border-[#D4FF00] text-sm font-mono text-foreground rounded-xl pl-7 pr-3 py-2.5 outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase font-mono">
+                    Initial Stock Count
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    required
+                    value={nutrientForm.stock}
+                    onChange={(e) =>
+                      setNutrientForm((f) => ({ ...f, stock: Number(e.target.value) }))
+                    }
+                    className="w-full bg-[#070D1E] border border-border/80 focus:border-[#D4FF00] text-sm font-mono text-foreground rounded-xl px-3 py-2.5 outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase font-mono">
+                  Best Before Date (Expiry)
+                </label>
+                <input
+                  type="date"
+                  value={nutrientForm.bestBeforeDate}
+                  onChange={(e) => setNutrientForm((f) => ({ ...f, bestBeforeDate: e.target.value }))}
+                  className="w-full bg-[#070D1E] border border-border/80 focus:border-[#D4FF00] text-xs text-foreground rounded-xl px-3 py-2.5 outline-none font-mono"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-border/80">
+                <button
+                  type="button"
+                  onClick={() => setIsNutrientModalOpen(false)}
+                  className="px-4 py-2 text-xs font-mono text-muted-foreground hover:text-foreground cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="bg-[#D4FF00] hover:bg-[#c3eb00] text-black font-extrabold text-xs px-5 py-2.5 rounded-xl cursor-pointer shadow-md transition-all"
+                >
+                  Save Product
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Quick Nutrient Sale Record Modal */}
+      {isSaleModalOpen && saleProduct && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#0B132B] border border-border rounded-2xl w-full max-w-md p-6 space-y-5 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-border/80 pb-3">
+              <div className="flex items-center gap-2.5">
+                <ShoppingCart className="w-4 h-4 text-[#D4FF00]" />
+                <div>
+                  <h3 className="text-sm font-bold text-foreground">Record Nutrient Sale</h3>
+                  <p className="text-[11px] text-muted-foreground font-mono">{saleProduct.name}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsSaleModalOpen(false)}
+                className="text-muted-foreground hover:text-foreground cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmSale} className="space-y-4 font-mono text-xs">
+              <div className="bg-[#070D1E] border border-border/60 rounded-xl p-3.5 space-y-1">
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Current Listed Price:</span>
+                  <strong className="text-[#D4FF00] font-bold">{formatCurrency(saleProduct.price)}</strong>
+                </div>
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Available Stock:</span>
+                  <strong className="text-foreground font-bold">{saleProduct.stock} units</strong>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                  Sale Quantity *
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max={saleProduct.stock}
+                  required
+                  value={saleQuantity}
+                  onChange={(e) => setSaleQuantity(Math.max(1, Number(e.target.value)))}
+                  className="w-full bg-[#070D1E] border border-border/80 focus:border-[#D4FF00] text-sm text-foreground rounded-xl px-3.5 py-2.5 outline-none"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                  Payment Method
+                </label>
+                <select
+                  value={salePaymentMethod}
+                  onChange={(e) => setSalePaymentMethod(e.target.value)}
+                  className="w-full bg-[#070D1E] border border-border/80 focus:border-[#D4FF00] text-xs text-foreground rounded-xl px-3.5 py-2.5 outline-none cursor-pointer"
+                >
+                  <option value="QPay">QPay Instant Digital</option>
+                  <option value="Card">Credit / Debit Card</option>
+                  <option value="Cash">Cash</option>
+                  <option value="Bank Transfer">Bank Wire Transfer</option>
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                  Member / Buyer Name (Optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Walk-in Customer or Member Name"
+                  value={saleMemberName}
+                  onChange={(e) => setSaleMemberName(e.target.value)}
+                  className="w-full bg-[#070D1E] border border-border/80 focus:border-[#D4FF00] text-xs text-foreground rounded-xl px-3.5 py-2.5 outline-none font-sans"
+                />
+              </div>
+
+              <div className="bg-[#111C38]/60 border border-blue-500/30 rounded-xl p-3 space-y-1 text-[11px] text-slate-300">
+                <div className="flex justify-between font-bold text-foreground">
+                  <span>Total Sale Amount:</span>
+                  <span className="text-[#D4FF00]">{formatCurrency(saleProduct.price * saleQuantity)}</span>
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  * Locks unit price at {formatCurrency(saleProduct.price)} in financial revenue records. Changing product price in the future will not modify this sale record.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-border/80">
+                <button
+                  type="button"
+                  onClick={() => setIsSaleModalOpen(false)}
+                  className="px-4 py-2 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="bg-[#D4FF00] hover:bg-[#c3eb00] text-black font-extrabold text-xs px-5 py-2.5 rounded-xl cursor-pointer shadow-md transition-all flex items-center gap-1.5"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>Confirm Sale</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Restock & Purchase Intake / Purchase Order Modal */}
+      {isPOModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#0B132B] border border-border rounded-2xl w-full max-w-lg p-6 space-y-5 shadow-2xl animate-in fade-in zoom-in-95 duration-150 font-sans">
+            <div className="flex items-center justify-between border-b border-border/80 pb-3">
+              <div className="flex items-center gap-2.5">
+                <Package className="w-5 h-5 text-[#D4FF00]" />
+                <h3 className="text-sm font-bold text-foreground uppercase tracking-wide font-mono">Restock &amp; Purchase Intake</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsPOModalOpen(false)}
+                className="text-muted-foreground hover:text-foreground cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmPO} className="space-y-4 font-mono text-xs">
+              {/* Supplier Selection */}
+              <div className="space-y-1.5">
+                <label className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                  Select Registered Supplier
+                </label>
+                <select
+                  value={poSupplierId}
+                  onChange={(e) => setPoSupplierId(e.target.value)}
+                  className="w-full bg-[#070D1E] border border-border/80 focus:border-[#D4FF00] text-xs text-foreground rounded-xl px-3 py-2.5 outline-none font-sans"
+                  required
+                >
+                  <option value="">-- Select Supplier --</option>
+                  {dashboard.suppliers.map((sup) => (
+                    <option key={sup.id} value={sup.id}>
+                      {sup.name} ({sup.leadTimeDays}d lead)
+                    </option>
+                  ))}
+                </select>
+                {dashboard.suppliers.length === 0 && (
+                  <p className="text-[10px] text-rose-400">
+                    * No registered suppliers. Go to &apos;Suppliers &amp; PO&apos; sub-tab to register one first.
+                  </p>
+                )}
+              </div>
+
+              {/* Items in PO */}
+              <div className="space-y-3">
+                <span className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                  Order Items &amp; Unit Costs
+                </span>
+
+                <div className="space-y-3.5 max-h-[220px] overflow-y-auto pr-1">
+                  {selectedNutrientIds.map((id) => {
+                    const item = nutrients.find((n) => n.id === id);
+                    if (!item) return null;
+                    const values = poItemsMap[id] || { quantity: 20, unitPurchaseCost: 0 };
+                    return (
+                      <div key={id} className="p-3 bg-[#070D1E] border border-border/60 rounded-xl space-y-2">
+                        <div className="font-sans font-bold text-foreground text-xs">
+                          {item.name}
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1">
+                            <label className="text-[9px] text-muted-foreground uppercase">Quantity</label>
+                            <input
+                              type="number"
+                              min="1"
+                              required
+                              value={values.quantity}
+                              onChange={(e) => {
+                                const val = Math.max(1, Number(e.target.value) || 1);
+                                setPoItemsMap({
+                                  ...poItemsMap,
+                                  [id]: { ...values, quantity: val },
+                                });
+                              }}
+                              className="w-full bg-[#0B132B] border border-border/60 focus:border-[#D4FF00] text-xs text-foreground rounded px-2 py-1 outline-none font-mono"
+                            />
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="text-[9px] text-muted-foreground uppercase">Unit Purchase Cost (₮)</label>
+                            <input
+                              type="number"
+                              min="0"
+                              required
+                              value={values.unitPurchaseCost}
+                              onChange={(e) => {
+                                const val = Math.max(0, Number(e.target.value) || 0);
+                                setPoItemsMap({
+                                  ...poItemsMap,
+                                  [id]: { ...values, unitPurchaseCost: val },
+                                });
+                              }}
+                              className="w-full bg-[#0B132B] border border-border/60 focus:border-[#D4FF00] text-xs text-foreground rounded px-2 py-1 outline-none font-mono"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Total Summary */}
+              <div className="bg-[#111C38]/60 border border-blue-500/30 rounded-xl p-3 flex justify-between items-center text-[11px] font-bold text-foreground">
+                <span>Total Estimated Cost:</span>
+                <span className="text-[#D4FF00] text-sm">
+                  {formatCurrency(
+                    selectedNutrientIds.reduce((acc, id) => {
+                      const values = poItemsMap[id] || { quantity: 20, unitPurchaseCost: 0 };
+                      return acc + values.quantity * values.unitPurchaseCost;
+                    }, 0)
+                  )}
+                </span>
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-border/80">
+                <button
+                  type="button"
+                  onClick={() => setIsPOModalOpen(false)}
+                  className="px-4 py-2 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={dashboard.suppliers.length === 0}
+                  className="bg-[#D4FF00] disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#c3eb00] text-black font-extrabold text-xs px-5 py-2.5 rounded-xl cursor-pointer shadow-md transition-all flex items-center gap-1.5 font-mono"
+                >
+                  <Check className="w-4 h-4 stroke-[2.5]" />
+                  <span>Submit Purchase Order</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

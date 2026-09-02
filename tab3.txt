@@ -1,0 +1,109 @@
+{/* ================= TAB 3: PLAN (PRODUCT) ANALYTICS ================= */}
+      {activeTab === 'plan' && (
+        <div className="space-y-6">
+          {/* Plan KPIs */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Card className="p-4 shadow-sm">
+              <span className="text-[10px] font-mono text-muted-foreground uppercase font-bold">Total Built Plans</span>
+              <h3 className="text-2xl font-extrabold text-foreground mt-2">{plans.length}</h3>
+              <p className="text-[11px] font-mono text-primary mt-0.5">Active catalog options</p>
+            </Card>
+
+            <Card className="p-4 shadow-sm">
+              <span className="text-[10px] font-mono text-muted-foreground uppercase font-bold">Top Duration</span>
+              <h3 className="text-2xl font-extrabold text-foreground mt-2">{topExtensionPeriod}</h3>
+              <p className="text-[11px] font-mono text-amber-400 mt-0.5">{t('mostSelectedDuration')}</p>
+            </Card>
+
+            <Card className="p-4 shadow-sm">
+              <span className="text-[10px] font-mono text-muted-foreground uppercase font-bold">Renewal Rate</span>
+              <h3 className="text-2xl font-extrabold text-foreground mt-2">{renewalPercentage}</h3>
+              <p className="text-[11px] font-mono text-sky-400 mt-0.5">Recurring members</p>
+            </Card>
+
+            <Card className="p-4 shadow-sm">
+              <span className="text-[10px] font-mono text-muted-foreground uppercase font-bold">Active Subscriptions</span>
+              <h3 className="text-2xl font-extrabold text-foreground mt-2">{activeMembersCount}</h3>
+              <p className="text-[11px] font-mono text-emerald-400 mt-0.5">Enrolled athletes</p>
+            </Card>
+          </div>
+
+          {/* Plan Tier Distribution Chart */}
+          <Card className="p-5 shadow-md space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-bold text-foreground">{t('athletesByPlanTierTitle')}</h3>
+                <p className="text-xs text-muted-foreground font-mono mt-0.5">{t('athletesByPlanTierSubtitle')}</p>
+              </div>
+            </div>
+
+            <div className="h-56 w-full pt-2">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={planTierChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <XAxis dataKey="name" tickLine={false} axisLine={{ stroke: 'var(--border)' }} tick={{ fill: 'var(--muted-foreground)', fontSize: 11, fontFamily: 'monospace' }} />
+                  <YAxis allowDecimals={false} tickLine={false} axisLine={{ stroke: 'var(--border)' }} tick={{ fill: 'var(--muted-foreground)', fontSize: 11, fontFamily: 'monospace' }} />
+                  <Tooltip
+                    cursor={{ fill: 'rgba(255, 255, 255, 0.05)' }}
+                    contentStyle={{
+                      backgroundColor: 'var(--card)',
+                      borderColor: 'var(--border)',
+                      borderRadius: '0.75rem',
+                      color: 'var(--foreground)',
+                      fontFamily: 'monospace',
+                      fontSize: '12px',
+                    }}
+                    formatter={(val: any) => [`${val} Athletes`, 'Count']}
+                  />
+                  <Bar dataKey="count" radius={[6, 6, 0, 0]}>
+                    {planTierChartData.map((entry, index) => (
+                      <Cell key={`tier-${index}`} fill={entry.fill} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+
+          {/* Configured Plans Overview Table */}
+          <Card className="p-5 shadow-md space-y-4">
+            <div className="flex items-center gap-2">
+              <Package className="w-4 h-4 text-primary" />
+              <h3 className="text-sm font-bold text-foreground">Catalog Products & Pricing</h3>
+            </div>
+
+            <div className="overflow-x-auto rounded-xl border border-border">
+              <table className="w-full text-left text-xs font-mono border-collapse">
+                <thead>
+                  <tr className="bg-muted text-muted-foreground text-[10px] uppercase font-bold border-b border-border">
+                    <th className="py-3 px-4">PLAN NAME</th>
+                    <th className="py-3 px-4">CATEGORY TIER</th>
+                    <th className="py-3 px-4">DURATION</th>
+                    <th className="py-3 px-4">PRICE (₮ MNT)</th>
+                    <th className="py-3 px-4 text-right">ENROLLED ATHLETES</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {plans.map((p) => {
+                    const enrolled = members.filter((m) => resolveMemberCategory(m) === p.categoryTarget).length;
+                    return (
+                      <tr key={p.id} className="hover:bg-muted/40 transition-colors">
+                        <td className="py-3 px-4 font-bold text-foreground">{p.title}</td>
+                        <td className="py-3 px-4">
+                          <Badge variant={p.categoryTarget === 'under18' ? 'warning' : p.categoryTarget === 'organization' ? 'info' : 'success'}>
+                            {p.categoryTarget}
+                          </Badge>
+                        </td>
+                        <td className="py-3 px-4 text-muted-foreground">{p.durationMonths} Months</td>
+                        <td className="py-3 px-4 font-bold text-emerald-400">{formatCurrency(p.price)}</td>
+                        <td className="py-3 px-4 text-right font-bold text-primary">{enrolled}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      

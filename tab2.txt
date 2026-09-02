@@ -1,0 +1,141 @@
+{/* ================= TAB 2: OPERATIONAL ANALYTICS ================= */}
+      {activeTab === 'operational' && (
+        <div className="space-y-6">
+          {/* Operational KPIs */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Card className="p-4 relative overflow-hidden shadow-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono font-bold uppercase text-muted-foreground">
+                  {t('totalCheckInsLogged')}
+                </span>
+                <Users className="w-4 h-4 text-sky-400" />
+              </div>
+              <h3 className="text-2xl font-extrabold text-foreground mt-2">{totalCheckInsLogged}</h3>
+              <p className="text-[11px] font-mono text-sky-400 mt-0.5">{t('realFrontDeskActivity')}</p>
+            </Card>
+
+            <Card className="p-4 relative overflow-hidden shadow-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono font-bold uppercase text-muted-foreground">
+                  Peak Hour
+                </span>
+                <Clock className="w-4 h-4 text-amber-400" />
+              </div>
+              <h3 className="text-xl font-extrabold text-foreground mt-2">{peakTrafficHour}</h3>
+              <p className="text-[11px] font-mono text-amber-400 mt-0.5">Highest floor occupancy</p>
+            </Card>
+
+            <Card className="p-4 relative overflow-hidden shadow-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono font-bold uppercase text-muted-foreground">
+                  Retention Rate
+                </span>
+                <Award className="w-4 h-4 text-emerald-400" />
+              </div>
+              <h3 className="text-2xl font-extrabold text-foreground mt-2">{retentionRate}</h3>
+              <p className="text-[11px] font-mono text-emerald-400 mt-0.5">Active member percentage</p>
+            </Card>
+
+            <Card className="p-4 relative overflow-hidden shadow-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono font-bold uppercase text-muted-foreground">
+                  Current Occupants
+                </span>
+                <Activity className="w-4 h-4 text-primary" />
+              </div>
+              <h3 className="text-2xl font-extrabold text-foreground mt-2">{activeOccupants.length}</h3>
+              <p className="text-[11px] font-mono text-primary mt-0.5">Athletes currently in gym</p>
+            </Card>
+          </div>
+
+          {/* Traffic Analysis Integrated Card */}
+          <Card id="card-traffic-analysis" className="p-5 shadow-md space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h3 className="text-sm font-bold text-foreground">
+                  {t('trafficAnalysisTitle', { defaultValue: 'Traffic Analysis' })}
+                </h3>
+                <p className="text-xs text-muted-foreground font-mono mt-0.5">
+                  {t('trafficAnalysisSubtitle', { defaultValue: 'Interactive trends for weekly activity and hourly occupancy' })}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-1 bg-muted/50 border border-border p-1 rounded-xl shrink-0 self-start sm:self-center">
+                <button
+                  type="button"
+                  onClick={() => setTrafficViewMode('weekly')}
+                  className={cn(
+                    'px-3 py-1.5 rounded-lg text-[10px] uppercase font-bold tracking-wider transition-all cursor-pointer',
+                    trafficViewMode === 'weekly' ? 'bg-background text-primary shadow-sm border border-border' : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  {t('weeklyTab', { defaultValue: 'Weekly' })}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTrafficViewMode('hourly')}
+                  className={cn(
+                    'px-3 py-1.5 rounded-lg text-[10px] uppercase font-bold tracking-wider transition-all cursor-pointer',
+                    trafficViewMode === 'hourly' ? 'bg-background text-primary shadow-sm border border-border' : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  {t('hourlyTab', { defaultValue: 'Hourly' })}
+                </button>
+              </div>
+            </div>
+
+            <div className="h-64 w-full pt-2">
+              {trafficViewMode === 'weekly' ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={weeklyDistribution} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <XAxis dataKey="day" tickLine={false} axisLine={{ stroke: 'var(--border)' }} tick={{ fill: 'var(--muted-foreground)', fontSize: 11, fontFamily: 'monospace' }} />
+                    <YAxis allowDecimals={false} tickLine={false} axisLine={{ stroke: 'var(--border)' }} tick={{ fill: 'var(--muted-foreground)', fontSize: 11, fontFamily: 'monospace' }} />
+                    <Tooltip
+                      cursor={{ fill: 'rgba(255, 255, 255, 0.05)' }}
+                      contentStyle={{
+                        backgroundColor: 'var(--card)',
+                        borderColor: 'var(--border)',
+                        borderRadius: '0.75rem',
+                        color: 'var(--foreground)',
+                        fontFamily: 'monospace',
+                        fontSize: '12px',
+                      }}
+                      formatter={(value: any) => [`${value} Check-ins`, 'Activity']}
+                    />
+                    <Bar dataKey="count" fill="var(--primary)" radius={[6, 6, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={hourlyTraffic} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorTraffic" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="var(--primary)" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+                    <XAxis dataKey="hour" tickLine={false} axisLine={{ stroke: 'var(--border)' }} tick={{ fill: 'var(--muted-foreground)', fontSize: 10, fontFamily: 'monospace' }} interval={3} />
+                    <YAxis tickLine={false} axisLine={{ stroke: 'var(--border)' }} tick={{ fill: 'var(--muted-foreground)', fontSize: 10, fontFamily: 'monospace' }} allowDecimals={false} />
+                    <Tooltip
+                      cursor={{ stroke: 'var(--primary)', strokeWidth: 1 }}
+                      contentStyle={{
+                        backgroundColor: 'var(--card)',
+                        borderColor: 'var(--border)',
+                        borderRadius: '0.75rem',
+                        color: 'var(--foreground)',
+                        fontFamily: 'monospace',
+                        fontSize: '12px',
+                      }}
+                      formatter={(value: any) => [`${value} Members`, 'Occupancy']}
+                    />
+                    <Area type="monotone" dataKey="count" stroke="var(--primary)" fillOpacity={1} fill="url(#colorTraffic)" strokeWidth={2} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </Card>
+        </div>
+      )}
+
+      

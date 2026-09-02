@@ -1,76 +1,181 @@
+
 'use client';
 
 import React, { useState, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
-import {
-  Users,
-  Award,
-  RefreshCw,
-  Calendar,
-  DollarSign,
-  Search,
-  Clock,
-  CheckCircle2,
-  Activity,
-  Package,
-  Lock,
-  BarChart3,
-  TrendingUp,
-  Unlock,
-  Database,
-  Layers,
-  ShieldCheck,
-  Sparkles,
-  ShoppingBag,
-  AlertTriangle,
-  Tag,
-  Filter,
-} from 'lucide-react';
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  Cell,
-  AreaChart,
-  Area,
-  CartesianGrid,
-} from 'recharts';
-import { GymMember, AuthUser, BuiltPlan, getMemberFullName } from '@/lib/types';
 import { Card, Badge, Input } from '@/components/ui';
-import { useDashboard } from '@/lib/orchestration';
-import { formatCurrency, CURRENCY_SYMBOL, cn, getNutrientExpiryStatus } from '@/lib/utils';
 import {
-  calculateTotalMembershipValue,
-  calculateWeeklyDistribution,
-  calculateMembersByPlanTier,
-  aggregateExtensionMetrics,
-  calculateHourlyTraffic,
-  calculateOccupancyMetrics,
-  resolveMemberCategory,
-} from '@/lib/services';
+  LineChart, Line, AreaChart, Area, BarChart, Bar,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, Legend
+} from 'recharts';
+import {
+  Activity, Users, DollarSign, Target, Clock, ArrowUpRight, ArrowDownRight, Package, Wrench, Sparkles, KeyRound, Download, Filter, Search, CreditCard, RefreshCw, Layers, ShoppingCart, Calendar, ShieldAlert, LogOut
+, Award, BarChart3, Database, Lock, AlertTriangle } from 'lucide-react';
+import { useDashboard } from '@/lib/orchestration';
+import { useAppLocale } from '@/components/I18nProvider';
+import { cn, formatCurrency, getNutrientExpiryStatus } from '@/lib/utils';
+import { BuiltPlan, GymMember, LockerCustomStatus } from '@/lib/types';
 
-interface AnalyticsViewProps {
-  members?: GymMember[];
-  plans?: BuiltPlan[];
-  currentUser?: AuthUser;
+
+function resolveMemberCategory(member: GymMember): 'under18' | 'over18' | 'organization' {
+  if (member.isOrganization) return 'organization';
+  if (member.dob) {
+    const age = new Date().getFullYear() - new Date(member.dob).getFullYear();
+    if (age < 18) return 'under18';
+  }
+  return 'over18';
+}
+function getMemberFullName(member: GymMember): string {
+  if (member.isOrganization && member.orgName) return member.orgName;
+  return `${member.firstName} ${member.lastName}`.trim();
 }
 
-type AnalyticsTab = 'financial' | 'operational' | 'plan' | 'nutrients' | 'locker' | 'members';
-
+type AnalyticsTab = 'financial' | 'operational' | 'plans' | 'nutrients' | 'lockers' | 'members';
 const PLAN_TIER_COLORS = ['#3b82f6', '#38bdf8', '#10b981', '#f59e0b', '#a78bfa'];
 
-export default function AnalyticsView({
-  members: propMembers,
-  plans: propPlans,
-  currentUser: propCurrentUser,
-}: AnalyticsViewProps) {
-  const dashboard = useDashboard();
-  const members = propMembers ?? dashboard.members;
-  const plans = propPlans ?? dashboard.plans;
-  const currentUser = propCurrentUser ?? dashboard.currentUser;
+function calculateTotalMembershipValue(members: GymMember[], plans: BuiltPlan[]): number {
+  return members.reduce((acc, member) => {
+    if (member.occupancyStatus !== 'Checked In') return acc;
+    const plan = plans.find(p => p.id === member.planTitle);
+    return acc + (plan?.price || 0);
+  }, 0);
+}
+
+function calculateWeeklyDistribution(logs: any[]) {
+  const dist = Array(7).fill(0);
+  logs.forEach(log => {
+    const day = new Date(log.timestamp).getDay();
+    dist[day === 0 ? 6 : day - 1]++;
+  });
+  return [
+    { name: 'Mon', checkIns: dist[0] }, { name: 'Tue', checkIns: dist[1] },
+    { name: 'Wed', checkIns: dist[2] }, { name: 'Thu', checkIns: dist[3] },
+    { name: 'Fri', checkIns: dist[4] }, { name: 'Sat', checkIns: dist[5] },
+    { name: 'Sun', checkIns: dist[6] },
+  ];
+}
+
+function calculateHourlyTraffic(logs: any[]) {
+  const dist = Array(24).fill(0);
+  logs.forEach(log => {
+    const hour = new Date(log.timestamp).getHours();
+    dist[hour]++;
+  });
+  return Array.from({ length: 24 }, (_, i) => ({
+    time: `${i.toString().padStart(2, '0')}:00`,
+    count: dist[i]
+  }));
+}
+
+function calculateMembersByPlanTier(members: GymMember[], plans: BuiltPlan[]) {
+  const counts: Record<string, number> = {};
+  members.forEach(m => {
+    const plan = plans.find(p => p.id === m.planTitle);
+    if (plan) {
+      counts[plan.categoryTarget] = (counts[plan.categoryTarget] || 0) + 1;
+    }
+  });
+  return Object.entries(counts).map(([name, value]) => ({ name, value }));
+}
+
+
+function aggregateExtensionMetrics(members: GymMember[]) {
+  const allLogs: any[] = [];
+  const categoryBreakdown = {
+    under18: { count: 0, revenue: 0 },
+    over18: { count: 0, revenue: 0 },
+    organization: { count: 0, revenue: 0 },
+  };
+  const periodBreakdown = {
+    m1: { count: 0, pct: 0 },
+    m3: { count: 0, pct: 0 },
+    m6: { count: 0, pct: 0 },
+    m12: { count: 0, pct: 0 },
+    other: { count: 0, pct: 0 },
+  };
+  let totalRevenue = 0;
+  const extendedMembers = new Set<string>();
+
+  members.forEach(m => {
+    if (m.extensionHistory && m.extensionHistory.length > 0) {
+      extendedMembers.add(m.id);
+      const cat = resolveMemberCategory(m);
+      m.extensionHistory.forEach(ext => {
+        const log = {
+          ...ext,
+          memberId: m.id,
+          memberName: getMemberFullName(m),
+          memberCategory: cat,
+        };
+        allLogs.push(log);
+        totalRevenue += (ext.feePaid || 0);
+        
+        if (categoryBreakdown[cat]) {
+          categoryBreakdown[cat].count++;
+          categoryBreakdown[cat].revenue += (ext.feePaid || 0);
+        }
+
+        const months = ext.monthsAdded;
+        if (months === 1) periodBreakdown.m1.count++;
+        else if (months === 3) periodBreakdown.m3.count++;
+        else if (months === 6) periodBreakdown.m6.count++;
+        else if (months === 12) periodBreakdown.m12.count++;
+        else periodBreakdown.other.count++;
+      });
+    }
+  });
+
+  const totalTransactions = allLogs.length;
+  const uniqueMembersCount = extendedMembers.size;
+  const renewalPercentage = members.length > 0 ? Math.round((uniqueMembersCount / members.length) * 100) + '%' : '0%';
+  
+  if (totalTransactions > 0) {
+    periodBreakdown.m1.pct = Math.round((periodBreakdown.m1.count / totalTransactions) * 100);
+    periodBreakdown.m3.pct = Math.round((periodBreakdown.m3.count / totalTransactions) * 100);
+    periodBreakdown.m6.pct = Math.round((periodBreakdown.m6.count / totalTransactions) * 100);
+    periodBreakdown.m12.pct = Math.round((periodBreakdown.m12.count / totalTransactions) * 100);
+    periodBreakdown.other.pct = Math.round((periodBreakdown.other.count / totalTransactions) * 100);
+  }
+
+  let topPeriodLabel = '1 Month';
+  let maxCount = periodBreakdown.m1.count;
+  if (periodBreakdown.m3.count > maxCount) { maxCount = periodBreakdown.m3.count; topPeriodLabel = '3 Months'; }
+  if (periodBreakdown.m6.count > maxCount) { maxCount = periodBreakdown.m6.count; topPeriodLabel = '6 Months'; }
+  if (periodBreakdown.m12.count > maxCount) { maxCount = periodBreakdown.m12.count; topPeriodLabel = '12 Months'; }
+
+  return {
+    allLogs,
+    uniqueMembersCount,
+    renewalPercentage,
+    totalTransactions,
+    totalRevenue,
+    topPeriodLabel,
+    categoryBreakdown,
+    periodBreakdown
+  };
+}
+
+function calculateOccupancyMetrics(totalLockers: number, activeOccupantsCount: number, customStatuses: Record<string, LockerCustomStatus>) {
+  let outOfServiceCount = 0;
+  if (customStatuses) {
+    Object.values(customStatuses).forEach(status => {
+      if (status !== 'available' && status !== 'occupied') {
+        outOfServiceCount++;
+      }
+    });
+  }
+  const occupiedCount = activeOccupantsCount;
+  const availableCount = Math.max(0, totalLockers - occupiedCount - outOfServiceCount);
+  const occupancyRate = totalLockers > 0 ? Math.round((occupiedCount / totalLockers) * 100) : 0;
+  return { totalLockers, availableCount, occupiedCount, outOfServiceCount, occupancyRate };
+}
+
+export default function AnalyticsView() {
+const dashboard = useDashboard();
+  const members = dashboard.members;
+  const plans = dashboard.plans;
+  const currentUser = dashboard.currentUser;
 
   const t = useTranslations('Analytics');
   const isAdmin = !currentUser || currentUser.role === 'admin';
@@ -138,22 +243,22 @@ export default function AnalyticsView({
   }, [members, activeMembersCount]);
 
   const weeklyDistribution = useMemo(() => {
-    return calculateWeeklyDistribution(members);
+    return calculateWeeklyDistribution(dashboard.lockerLogs || []);
   }, [members]);
 
   const hourlyTraffic = useMemo(() => {
-    return calculateHourlyTraffic(members);
+    return calculateHourlyTraffic(dashboard.lockerLogs || []);
   }, [members]);
 
   const peakTrafficHour = useMemo(() => {
     if (!hourlyTraffic || hourlyTraffic.length === 0) return 'N/A';
     const sorted = [...hourlyTraffic].sort((a, b) => b.count - a.count);
     const peak = sorted[0];
-    return peak && peak.count > 0 ? `${peak.hour} (${peak.count})` : 'N/A';
+    return peak && peak.count > 0 ? `${peak.time} (${peak.count})` : 'N/A';
   }, [hourlyTraffic]);
 
   const membersByPlanTier = useMemo(() => {
-    return calculateMembersByPlanTier(members);
+    return calculateMembersByPlanTier(members, plans);
   }, [members]);
 
   const extensionSummary = useMemo(() => {
@@ -238,8 +343,8 @@ export default function AnalyticsView({
 
   const planTierChartData = useMemo(() => {
     return membersByPlanTier.map((item, index) => ({
-      name: item.fullName,
-      count: item.count,
+      name: item.name,
+      count: item.value,
       fill: PLAN_TIER_COLORS[index % PLAN_TIER_COLORS.length],
     }));
   }, [membersByPlanTier]);
@@ -416,189 +521,50 @@ export default function AnalyticsView({
   const tabs: { id: AnalyticsTab; label: string; icon: React.ElementType }[] = [
     { id: 'financial', label: t.has('tabFinancial') ? t('tabFinancial') : 'Financial', icon: DollarSign },
     { id: 'operational', label: t.has('tabOperational') ? t('tabOperational') : 'Operational', icon: Activity },
-    { id: 'plan', label: t.has('tabPlan') ? t('tabPlan') : 'Plan (Product)', icon: Package },
+    { id: 'plans', label: t.has('tabPlan') ? t('tabPlan') : 'Plan (Product)', icon: Package },
     { id: 'nutrients', label: t.has('tabNutrients') ? t('tabNutrients') : 'Nutrients', icon: Sparkles },
-    { id: 'locker', label: t.has('tabLocker') ? t('tabLocker') : 'Locker', icon: Lock },
+    { id: 'lockers', label: t.has('tabLocker') ? t('tabLocker') : 'Locker', icon: Lock },
     { id: 'members', label: t.has('tabMembers') ? t('tabMembers') : 'Members', icon: Users },
   ];
 
+
   return (
-    <div id="analytics-view-root" className="space-y-6 pb-16">
-      {/* ================= HEADER & TAB SWITCH NAVIGATION ================= */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-card border border-border rounded-2xl p-5 shadow-sm">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-primary/10 border border-primary/30 flex items-center justify-center text-primary">
-              <BarChart3 className="w-4 h-4" />
-            </div>
-            <h1 className="text-lg font-bold text-foreground tracking-tight">
-              {t('analyticsHeaderTitle', { defaultValue: 'Analytics & Insights' })}
-            </h1>
-          </div>
-          <p className="text-xs text-muted-foreground font-mono">
-            {t('analyticsHeaderSubtitle', {
-              defaultValue: 'Comprehensive performance metrics for financial, operational, product plans, locker usage, and member retention',
-            })}
-          </p>
-        </div>
+    <div id="analytics-view-root" className="w-full space-y-6">
+      {/* Top Header */}
+      <div className="space-y-4">
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">
+          {t('title') || 'Analytics & Insights Dashboard'}
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          {t('subtitle') || 'Comprehensive operational and financial metrics.'}
+        </p>
 
         {/* Switch Tabs Navigation */}
-        <div
-          id="analytics-tabs-navigation"
-          className="flex items-center gap-1 bg-muted/60 border border-border p-1.5 rounded-xl overflow-x-auto self-start md:self-center"
-        >
+        <div className="flex items-center gap-6 border-b border-border/80 text-xs font-mono font-bold tracking-wider overflow-x-auto select-none pt-1">
           {tabs.map((tab) => {
             const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
             return (
               <button
                 key={tab.id}
-                id={`tab-${tab.id}`}
                 type="button"
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => setActiveTab(tab.id as AnalyticsTab)}
                 className={cn(
-                  'flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap',
-                  isActive
-                    ? 'bg-background text-primary shadow-sm border border-border'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-background/40'
+                  'pb-2.5 px-0.5 border-b-2 flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap',
+                  activeTab === tab.id
+                    ? 'text-[#D4FF00] border-[#D4FF00]'
+                    : 'text-muted-foreground hover:text-foreground border-transparent'
                 )}
               >
-                <Icon className={cn('w-3.5 h-3.5', isActive ? 'text-primary' : 'text-muted-foreground')} />
-                <span>{tab.label}</span>
+                <Icon className="w-4 h-4" />
+                {tab.label}
               </button>
             );
           })}
         </div>
       </div>
-
-      {/* ================= HIGH-LEVEL METRICS SUMMARY CARDS ================= */}
-      <div id="analytics-summary-cards" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 animate-in fade-in slide-in-from-top-3 duration-300">
-        {/* Card 1: Gym Occupancy */}
-        <Card id="stat-card-occupancy" className="p-5 flex items-center justify-between shadow-lg relative overflow-hidden group hover:border-primary/40 transition-all">
-          <div className="space-y-1.5 z-10">
-            <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-              <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest font-bold">
-                Live Occupancy
-              </span>
-            </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-black text-foreground font-mono leading-none">
-                {currentGymOccupancy}
-              </span>
-              <span className="text-xs text-emerald-400 font-mono font-bold">
-                Checked In
-              </span>
-            </div>
-            <p className="text-[10px] text-muted-foreground font-mono">
-              Members currently active on floor
-            </p>
-          </div>
-          <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
-            <Activity className="w-5 h-5" />
-          </div>
-        </Card>
-
-        {/* Card 2: Projected Monthly Revenue */}
-        <Card id="stat-card-financials" className="p-5 flex items-center justify-between shadow-lg relative overflow-hidden group hover:border-primary/40 transition-all">
-          <div className="space-y-1.5 z-10">
-            <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest block font-bold">
-              Projected Monthly Value
-            </span>
-            <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-black text-[#D4FF00] font-mono leading-none">
-                {formatCurrency(totalMembershipValue)}
-              </span>
-            </div>
-            <p className="text-[10px] text-muted-foreground font-mono">
-              Active plan tier contracts sum
-            </p>
-          </div>
-          <div className="p-3 rounded-xl bg-[#D4FF00]/10 border border-[#D4FF00]/20 text-[#D4FF00]">
-            <DollarSign className="w-5 h-5" />
-          </div>
-        </Card>
-
-        {/* Card 3: Active Memberships */}
-        <Card id="stat-card-memberships" className="p-5 flex items-center justify-between shadow-lg relative overflow-hidden group hover:border-primary/40 transition-all">
-          <div className="space-y-1.5 z-10">
-            <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest block font-bold">
-              Active Memberships
-            </span>
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-black text-foreground font-mono leading-none">
-                {activeMembersCount}
-              </span>
-              <span className="text-xs text-muted-foreground font-mono">
-                / {members.length} total
-              </span>
-            </div>
-            <p className="text-[10px] text-muted-foreground font-mono">
-              Retention rate is at <strong className="text-sky-400 font-extrabold">{retentionRate}</strong>
-            </p>
-          </div>
-          <div className="p-3 rounded-xl bg-sky-500/10 border border-sky-500/20 text-sky-400">
-            <Users className="w-5 h-5" />
-          </div>
-        </Card>
-
-        {/* Card 4: Supplements Bar Sales */}
-        <Card id="stat-card-bar-sales" className="p-5 flex items-center justify-between shadow-lg relative overflow-hidden group hover:border-primary/40 transition-all">
-          <div className="space-y-1.5 z-10">
-            <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest block font-bold">
-              Supplemental Sales
-            </span>
-            <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-black text-foreground font-mono leading-none">
-                {formatCurrency(totalSupplementsRevenue)}
-              </span>
-            </div>
-            <p className="text-[10px] text-muted-foreground font-mono">
-              Total Shake Bar and snack receipts
-            </p>
-          </div>
-          <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400">
-            <ShoppingBag className="w-5 h-5" />
-          </div>
-        </Card>
-
-        {/* Card 5: Expiring This Week */}
-        <button
-          type="button"
-          onClick={() => {
-            dashboard.setDirectoryFilter('expiring');
-            dashboard.setActiveTab('directory');
-          }}
-          className="text-left w-full cursor-pointer focus:outline-none"
-        >
-          <Card id="stat-card-expiring-soon" className="p-5 flex items-center justify-between shadow-lg relative overflow-hidden group hover:border-red-500/50 hover:bg-red-500/5 transition-all border-red-500/20 h-full">
-            <div className="space-y-1.5 z-10">
-              <div className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse shrink-0" />
-                <span className="text-[10px] font-mono text-red-500 uppercase tracking-widest font-bold">
-                  Expiring This Week
-                </span>
-              </div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-black text-red-500 font-mono leading-none">
-                  {expiringThisWeekCount}
-                </span>
-                <span className="text-xs text-red-400 font-mono font-bold">
-                  Athletes
-                </span>
-              </div>
-              <p className="text-[10px] text-muted-foreground font-mono flex items-center gap-1 text-red-400/80 font-bold group-hover:text-red-400 transition-colors">
-                <span>Click to view and renew ➜</span>
-              </p>
-            </div>
-            <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400">
-              <AlertTriangle className="w-5 h-5" />
-            </div>
-          </Card>
-        </button>
-      </div>
-
-      {/* ================= TAB 1: FINANCIAL ANALYTICS ================= */}
+      {activeTab === 'financial' && (
+      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+{/* ================= TAB 1: FINANCIAL ANALYTICS ================= */}
       {activeTab === 'financial' && (
         <div className="space-y-6">
           {/* KPI Strip */}
@@ -855,7 +821,12 @@ export default function AnalyticsView({
         </div>
       )}
 
-      {/* ================= TAB 2: OPERATIONAL ANALYTICS ================= */}
+      
+      </div>
+      )}
+      {activeTab === 'operational' && (
+      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+{/* ================= TAB 2: OPERATIONAL ANALYTICS ================= */}
       {activeTab === 'operational' && (
         <div className="space-y-6">
           {/* Operational KPIs */}
@@ -995,8 +966,13 @@ export default function AnalyticsView({
         </div>
       )}
 
-      {/* ================= TAB 3: PLAN (PRODUCT) ANALYTICS ================= */}
-      {activeTab === 'plan' && (
+      
+      </div>
+      )}
+      {activeTab === 'plans' && (
+      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+{/* ================= TAB 3: PLAN (PRODUCT) ANALYTICS ================= */}
+      {activeTab === 'plans' && (
         <div className="space-y-6">
           {/* Plan KPIs */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -1103,7 +1079,12 @@ export default function AnalyticsView({
         </div>
       )}
 
-      {/* ================= TAB 4: NUTRIENT INVENTORY ANALYTICS ================= */}
+      
+      </div>
+      )}
+      {activeTab === 'nutrients' && (
+      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+{/* ================= TAB 4: NUTRIENT INVENTORY ANALYTICS ================= */}
       {activeTab === 'nutrients' && (
         <div className="space-y-6">
           {/* Nutrient KPI Strip */}
@@ -1577,8 +1558,13 @@ export default function AnalyticsView({
         </div>
       )}
 
-      {/* ================= TAB 5: LOCKER ANALYTICS ================= */}
-      {activeTab === 'locker' && (
+      
+      </div>
+      )}
+      {activeTab === 'lockers' && (
+      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+{/* ================= TAB 5: LOCKER ANALYTICS ================= */}
+      {activeTab === 'lockers' && (
         <div className="space-y-6">
           {/* Locker Status Consolidated Card */}
           <Card id="locker-status-overview" className="p-6 shadow-xl relative overflow-hidden">
@@ -1712,7 +1698,12 @@ export default function AnalyticsView({
         </div>
       )}
 
-      {/* ================= TAB 5: MEMBERS ANALYTICS ================= */}
+      
+      </div>
+      )}
+      {activeTab === 'members' && (
+      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+{/* ================= TAB 5: MEMBERS ANALYTICS ================= */}
       {activeTab === 'members' && (
         <div className="space-y-6">
           {/* Members KPIs */}
@@ -1845,6 +1836,9 @@ export default function AnalyticsView({
             </div>
           </Card>
         </div>
+      )}
+    
+      </div>
       )}
     </div>
   );

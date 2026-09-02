@@ -79,8 +79,8 @@ export default function Sidebar({
     <aside
       id="sidebar-container"
       className={cn(
-        'bg-background border-r border-border flex flex-col justify-between shrink-0 min-h-screen text-muted-foreground select-none z-20 transition-all duration-300 ease-in-out',
-        isCollapsed ? 'w-[76px]' : 'w-64'
+        'bg-background border-r border-border flex flex-col justify-between shrink-0 min-h-dvh text-muted-foreground select-none z-20 transition-all duration-300 ease-in-out',
+        isCollapsed ? 'w-[76px]' : 'w-[clamp(13rem,16vw,17rem)]'
       )}
     >
       {/* Top Header & Navigation */}
@@ -165,10 +165,10 @@ export default function Sidebar({
                 onClick={() => setActiveTab(item.id)}
                 title={isCollapsed ? item.label : undefined}
                 className={cn(
-                  'flex items-center rounded-xl text-xs font-semibold transition-all cursor-pointer',
+                  'flex items-center rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer',
                   isCollapsed
                     ? 'w-10 h-10 mx-auto justify-center p-0'
-                    : 'w-full gap-3 px-3.5 py-2.5 text-left',
+                    : 'w-full min-h-[2.5rem] gap-3 px-3 py-2 text-left',
                   isActive
                     ? 'bg-muted text-primary border border-border shadow-sm'
                     : 'text-muted-foreground hover:text-foreground hover:bg-muted/50 border border-transparent'

@@ -1,0 +1,376 @@
+
+import React, { useState } from 'react';
+import { useTranslations } from 'next-intl';
+import { Button, Input, Badge } from '@/components/ui';
+import { Trash2, Building2, UserCheck, Sparkles, Layers, DollarSign, Plus, Package, Award } from 'lucide-react';
+import { cn, formatCurrency } from '@/lib/utils';
+import { useDashboard } from '@/lib/orchestration';
+import { CategoryTarget } from '@/lib/types';
+
+interface MembershipPlanBuilderTabProps {
+  showToast: (msg: string) => void;
+}
+
+export function MembershipPlanBuilderTab({ showToast }: MembershipPlanBuilderTabProps) {
+  const t = useTranslations('Inventory');
+  const dashboard = useDashboard();
+  const plans = dashboard.plans;
+  const currentUser = dashboard.currentUser;
+  const isAdmin = !currentUser || currentUser.role === 'admin';
+
+  const [categoryTarget, setCategoryTarget] = useState<CategoryTarget>('over18');
+  const [customTitle, setCustomTitle] = useState('');
+  const [specializedLessons, setSpecializedLessons] = useState('');
+  const [durationMonths, setDurationMonths] = useState<number>(1);
+  const [price, setPrice] = useState<number>(0);
+
+  const handleBuildPlan = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (price <= 0 || durationMonths <= 0) {
+      showToast('Price and Duration must be greater than zero.');
+      return;
+    }
+    const uniqueId = typeof window !== 'undefined' && window.crypto ? window.crypto.randomUUID() : Date.now().toString();
+    const finalTitle = customTitle.trim() || 'Custom Plan';
+    dashboard.addPlan({
+      id: `plan-${uniqueId}`,
+      title: finalTitle,
+      price,
+      durationMonths,
+      categoryTarget,
+    });
+    showToast(`Successfully built '${customTitle || 'Custom Plan'}'`);
+    // Reset
+    setCustomTitle('');
+    setSpecializedLessons('');
+    setDurationMonths(1);
+    setPrice(0);
+  };
+
+  const handleDeletePlan = (id: string) => {
+    dashboard.deletePlan(id);
+    showToast('Plan deleted.');
+  };
+
+  const getCategoryBadgeVariant = (cat: string) => {
+    switch (cat) {
+      case 'under18': return 'secondary';
+      case 'organization': return 'warning';
+      default: return 'primary';
+    }
+  };
+
+  const getCategoryBadgeLabel = (cat: string) => {
+    switch (cat) {
+      case 'under18': return 'Under 18';
+      case 'organization': return 'Organization';
+      default: return 'Over 18 (Adult)';
+    }
+  };
+
+  return (
+    <div className="space-y-6 animate-in fade-in duration-200">
+{/* 1. MEMBERSHIP PLAN BUILDER TAB */}
+      
+        <div className="space-y-6">
+          <div
+            id="card-plan-builder"
+            className="bg-[#0B132B]/80 dark:bg-[#0D1527] border border-border/80 rounded-2xl p-6 sm:p-7 space-y-6 shadow-xl"
+          >
+            {/* Header */}
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-xl bg-[#070D1E] border border-border/80 flex items-center justify-center shrink-0 text-[#D4FF00]">
+                <Package className="w-5 h-5" strokeWidth={2.2} />
+              </div>
+              <div>
+                <h2 className="text-base sm:text-lg font-bold text-foreground leading-tight">
+                  {t('planBuilderTitle')}
+                </h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {t('planBuilderSubtitle')}
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleBuildPlan} className="space-y-6">
+              {/* STEP 1: SELECT BLOCK 1 (CATEGORY TARGET) */}
+              <div id="block-1-category-target" className="space-y-3">
+                <div className="flex items-center gap-2 text-[#D4FF00] font-mono font-bold text-xs tracking-wider uppercase">
+                  <Layers className="w-3.5 h-3.5 text-[#D4FF00]" />
+                  <span>{t('block1Title')}</span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+                  {/* Option 1: Under 18 */}
+                  <div
+                    id="cat-target-under18"
+                    onClick={() => setCategoryTarget('under18')}
+                    className={cn(
+                      'p-4 rounded-xl border transition-all cursor-pointer flex items-start gap-3 select-none',
+                      categoryTarget === 'under18'
+                        ? 'bg-[#070D1E] border-[#D4FF00] ring-1 ring-[#D4FF00]'
+                        : 'bg-[#070D1E]/60 border-border/70 hover:border-border hover:bg-[#070D1E]'
+                    )}
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-muted/40 border border-border/50 flex items-center justify-center shrink-0 mt-0.5">
+                      <Award className="w-4 h-4 text-[#D4FF00]" />
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-[10px] font-bold text-[#D4FF00] font-mono leading-none">
+                        18-
+                      </span>
+                      <span className="text-xs font-bold text-foreground mt-1 leading-tight">
+                        {t('catUnder18Title')}
+                      </span>
+                      <span className="text-[11px] text-muted-foreground mt-1 leading-normal">
+                        {t('catUnder18Desc')}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Option 2: Over 18 (Adult) */}
+                  <div
+                    id="cat-target-over18"
+                    onClick={() => setCategoryTarget('over18')}
+                    className={cn(
+                      'p-4 rounded-xl border transition-all cursor-pointer flex items-start gap-3 select-none',
+                      categoryTarget === 'over18'
+                        ? 'bg-[#070D1E] border-[#D4FF00] ring-1 ring-[#D4FF00]'
+                        : 'bg-[#070D1E]/60 border-border/70 hover:border-border hover:bg-[#070D1E]'
+                    )}
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-muted/40 border border-border/50 flex items-center justify-center shrink-0 mt-0.5">
+                      <UserCheck className="w-4 h-4 text-[#D4FF00]" />
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-[10px] font-bold text-[#D4FF00] font-mono leading-none">
+                        18+
+                      </span>
+                      <span className="text-xs font-bold text-foreground mt-1 leading-tight">
+                        {t('catOver18Title')}
+                      </span>
+                      <span className="text-[11px] text-muted-foreground mt-1 leading-normal">
+                        {t('catOver18Desc')}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Option 3: Organization / Corporate */}
+                  <div
+                    id="cat-target-organization"
+                    onClick={() => setCategoryTarget('organization')}
+                    className={cn(
+                      'p-4 rounded-xl border transition-all cursor-pointer flex items-start gap-3 select-none',
+                      categoryTarget === 'organization'
+                        ? 'bg-[#070D1E] border-[#D4FF00] ring-1 ring-[#D4FF00]'
+                        : 'bg-[#070D1E]/60 border-border/70 hover:border-border hover:bg-[#070D1E]'
+                    )}
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-muted/40 border border-border/50 flex items-center justify-center shrink-0 mt-0.5">
+                      <Building2 className="w-4 h-4 text-[#D4FF00]" />
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-[10px] font-bold text-[#D4FF00] font-mono leading-none">
+                        ORG
+                      </span>
+                      <span className="text-xs font-bold text-foreground mt-1 leading-tight">
+                        {t('catOrgTitle')}
+                      </span>
+                      <span className="text-[11px] text-muted-foreground mt-1 leading-normal">
+                        {t('catOrgDesc')}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* STEP 2: BLOCK 2 (CUSTOM TITLE & SPECIALIZED TRAINING LESSONS) */}
+              <div id="block-2-custom-inputs" className="space-y-3">
+                <div className="flex items-center gap-2 text-[#D4FF00] font-mono font-bold text-xs tracking-wider uppercase">
+                  <Sparkles className="w-3.5 h-3.5 text-[#D4FF00]" />
+                  <span>{t('block2Title')}</span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div id="field-custom-plan-title" className="space-y-2">
+                    <label
+                      htmlFor="input-custom-plan-title"
+                      className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase font-mono"
+                    >
+                      {t('customPlanTitleLabel')}
+                    </label>
+                    <input
+                      id="input-custom-plan-title"
+                      type="text"
+                      placeholder={t('customPlanTitlePlaceholder')}
+                      value={customTitle}
+                      onChange={(e) => setCustomTitle(e.target.value)}
+                      className="w-full bg-[#070D1E] border border-border/80 focus:border-[#D4FF00] focus:ring-1 focus:ring-[#D4FF00] text-sm text-foreground placeholder:text-muted-foreground/60 rounded-xl px-4 py-3 outline-none transition-all"
+                    />
+                  </div>
+
+                  <div id="field-specialized-lessons" className="space-y-2">
+                    <label
+                      htmlFor="input-specialized-lessons"
+                      className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase font-mono"
+                    >
+                      {t('specializedLessonsLabel')}
+                    </label>
+                    <input
+                      id="input-specialized-lessons"
+                      type="text"
+                      placeholder={t('specializedLessonsPlaceholder')}
+                      value={specializedLessons}
+                      onChange={(e) => setSpecializedLessons(e.target.value)}
+                      className="w-full bg-[#070D1E] border border-border/80 focus:border-[#D4FF00] focus:ring-1 focus:ring-[#D4FF00] text-sm text-foreground placeholder:text-muted-foreground/60 rounded-xl px-4 py-3 outline-none transition-all"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* STEP 3: BLOCK 3 (DURATION & PRICING) */}
+              <div id="block-3-duration-pricing" className="space-y-3">
+                <div className="flex items-center gap-2 text-[#D4FF00] font-mono font-bold text-xs tracking-wider uppercase">
+                  <DollarSign className="w-3.5 h-3.5 text-[#D4FF00]" />
+                  <span>{t('block3Title')}</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3.5 items-end">
+                  <div id="field-duration-months" className="sm:col-span-3 space-y-2">
+                    <label
+                      htmlFor="input-duration-months"
+                      className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase font-mono"
+                    >
+                      {t('durationMonthsLabel')}
+                    </label>
+                    <input
+                      id="input-duration-months"
+                      type="number"
+                      min="1"
+                      max="36"
+                      required
+                      value={durationMonths}
+                      onChange={(e) => setDurationMonths(Number(e.target.value))}
+                      className="w-full bg-[#070D1E] border border-border/80 focus:border-[#D4FF00] focus:ring-1 focus:ring-[#D4FF00] text-sm text-foreground font-mono rounded-xl px-4 py-3 outline-none transition-all"
+                    />
+                  </div>
+
+                  <div id="field-price-usd" className="sm:col-span-4 space-y-2">
+                    <label
+                      htmlFor="input-price-usd"
+                      className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase font-mono"
+                    >
+                      {t('priceUsdLabel')}
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground font-mono text-sm">
+                        ₮
+                      </span>
+                      <input
+                        id="input-price-usd"
+                        type="number"
+                        min="0"
+                        step="1000"
+                        required
+                        value={price}
+                        onChange={(e) => setPrice(Number(e.target.value))}
+                        className="w-full bg-[#070D1E] border border-border/80 focus:border-[#D4FF00] focus:ring-1 focus:ring-[#D4FF00] text-sm text-foreground font-mono pl-8 pr-4 py-3 rounded-xl outline-none transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="sm:col-span-5">
+                    <button
+                      id="btn-build-save-plan"
+                      type="submit"
+                      className="w-full h-11 bg-[#D4FF00] hover:bg-[#c3eb00] text-black font-extrabold text-xs tracking-wider rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-[#D4FF00]/10 active:scale-[0.99]"
+                    >
+                      <Plus className="w-4 h-4 stroke-[3]" />
+                      <span>{t('buildSavePlanBtn')}</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </form>
+          </div>
+
+          {/* ACTIVE BUILT PLANS INVENTORY */}
+          <div id="section-active-plans-inventory" className="space-y-3 pt-2">
+            <div className="text-[11px] font-bold tracking-wider text-muted-foreground uppercase font-mono">
+              {t('activeBuiltPlansTitle', { count: plans.length })}
+            </div>
+
+            {plans.length === 0 ? (
+              <div className="bg-[#0B132B]/40 border border-border/60 rounded-2xl p-8 text-center text-muted-foreground text-xs font-mono">
+                No active membership plans built yet. Fill out the form above to add plans.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {plans.map((plan) => {
+                  const durationText = `${plan.durationMonths} ${
+                    plan.durationMonths === 1 ? 'Month' : 'Months'
+                  }`;
+
+                  return (
+                    <div
+                      key={plan.id}
+                      id={`inventory-plan-${plan.id}`}
+                      className="bg-[#0B132B]/80 dark:bg-[#0D1527] border border-border/80 rounded-2xl p-5 flex flex-col justify-between gap-4 relative group hover:border-[#D4FF00]/40 transition-all shadow-md"
+                    >
+                      {/* Top badges & Title */}
+                      <div>
+                        <div className="flex items-center justify-between gap-2 mb-2.5">
+                          <div className="flex items-center gap-1.5">
+                            <Badge variant={getCategoryBadgeVariant(plan.categoryTarget)}>
+                              {getCategoryBadgeLabel(plan.categoryTarget)}
+                            </Badge>
+                            <span className="text-[10px] font-mono text-muted-foreground">
+                              {durationText}
+                            </span>
+                          </div>
+
+                          {isAdmin && (
+                            <button
+                              id={`btn-delete-plan-${plan.id}`}
+                              type="button"
+                              onClick={() => handleDeletePlan(plan.id)}
+                              title="Delete plan"
+                              className="h-7 w-7 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 flex items-center justify-center transition-all cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+
+                        <h3 className="text-sm font-bold text-foreground tracking-wide">
+                          {plan.title}
+                        </h3>
+
+                        {plan.specializedLessons && (
+                          <p className="text-[11px] text-muted-foreground mt-1 font-mono italic">
+                            {plan.specializedLessons}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Bottom Price Bar */}
+                      <div className="pt-3 border-t border-border/80 flex items-center justify-between">
+                        <span className="text-[11px] text-muted-foreground font-mono">
+                          {t('planPriceLabel') || 'Plan Price:'}
+                        </span>
+                        <div className="bg-[#070D1E] border border-border/80 rounded-lg px-3 py-1 flex items-center gap-1">
+                          <span className="text-sm font-extrabold text-[#D4FF00] font-mono">
+                            {formatCurrency(plan.price)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+  );
+}

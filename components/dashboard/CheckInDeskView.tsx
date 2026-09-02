@@ -173,33 +173,33 @@ export default function CheckInDeskView({
       {/* Toast Notification */}
       <Toast id="checkin-toast" message={toastMessage} type="success" />
 
-      {/* Gym Capacity Meter & Active Waitlist */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-muted/30 border border-border rounded-2xl p-5 shadow-sm">
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xs sm:text-sm font-bold tracking-wider text-foreground font-mono uppercase">
+      {/* Gym Capacity Meter & Active Waitlist - Fluid Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-[clamp(0.75rem,1.2vw,1.25rem)] mb-6">
+        {/* GYM CAPACITY MONITORING */}
+        <div className="p-[clamp(1rem,1.4vw,1.5rem)] bg-slate-900/50 rounded-xl border border-white/10 flex flex-col justify-between">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-300">
               Gym Capacity Monitoring
-            </h3>
-            <span className="font-mono text-xs font-bold px-2.5 py-1 rounded-lg bg-primary/10 text-primary border border-primary/20">
+            </span>
+            <span className="px-2.5 py-0.5 text-xs font-mono rounded-full bg-yellow-400/10 text-yellow-400 border border-yellow-400/30">
               {currentlyCheckedInCount} / {dashboard.maxGymCapacity} Members
             </span>
           </div>
 
-          {/* Progress bar */}
-          <div className="w-full bg-muted border border-border h-4 rounded-full overflow-hidden relative">
+          <div className="w-full h-2.5 bg-slate-800 rounded-full my-3.5 overflow-hidden">
             <div
-              className={`h-full transition-all duration-500 rounded-full ${
+              className={`h-full rounded-full transition-all duration-300 ${
                 currentlyCheckedInCount >= dashboard.maxGymCapacity
                   ? 'bg-red-500'
                   : currentlyCheckedInCount >= dashboard.maxGymCapacity * 0.8
-                  ? 'bg-amber-500'
-                  : 'bg-green-500'
+                  ? 'bg-amber-400'
+                  : 'bg-emerald-400'
               }`}
               style={{ width: `${Math.min(100, (currentlyCheckedInCount / dashboard.maxGymCapacity) * 100)}%` }}
             />
           </div>
 
-          <div className="flex items-center justify-between text-xs text-muted-foreground font-mono">
+          <div className="flex justify-between items-center text-xs text-slate-400">
             <span>Remaining slots: {Math.max(0, dashboard.maxGymCapacity - currentlyCheckedInCount)}</span>
             <div className="flex items-center gap-1.5">
               <span>Limit:</span>
@@ -208,43 +208,43 @@ export default function CheckInDeskView({
                 min="1"
                 value={dashboard.maxGymCapacity}
                 onChange={(e) => dashboard.setMaxGymCapacity(Number(e.target.value) || 40)}
-                className="w-16 px-1.5 py-0.5 border border-border rounded-lg bg-background text-foreground font-bold text-center"
+                className="w-14 px-1.5 py-0.5 border border-white/10 rounded-md bg-slate-800 text-slate-200 font-bold text-center text-xs"
               />
             </div>
           </div>
         </div>
 
-        {/* Waitlist Section */}
-        <div className="space-y-3">
+        {/* LOCKER & GYM WAITLIST */}
+        <div className="p-[clamp(1rem,1.4vw,1.5rem)] bg-slate-900/50 rounded-xl border border-white/10 flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <h4 className="text-xs sm:text-sm font-bold tracking-wider text-foreground font-mono uppercase">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-300">
               Locker & Gym Waitlist
-            </h4>
-            <Badge variant="warning">
+            </span>
+            <span className="px-2.5 py-0.5 text-xs font-mono rounded-full bg-slate-800 text-slate-400 border border-white/10">
               {dashboard.waitlist.filter((w) => w.status === 'WAITING').length} Queued
-            </Badge>
+            </span>
           </div>
 
-          <div className="max-h-[140px] overflow-y-auto space-y-1.5 pr-1">
-            {dashboard.waitlist.length === 0 ? (
-              <p className="text-xs text-muted-foreground italic text-center py-4">
-                No active waitlisted members.
-              </p>
-            ) : (
-              dashboard.waitlist.map((entry) => (
+          {dashboard.waitlist.length === 0 ? (
+            <div className="py-4 flex items-center justify-center text-xs sm:text-sm italic text-slate-500">
+              No active waitlisted members.
+            </div>
+          ) : (
+            <div className="max-h-[140px] overflow-y-auto space-y-1.5 pr-1 my-2">
+              {dashboard.waitlist.map((entry) => (
                 <div
                   key={entry.id}
-                  className="flex items-center justify-between text-xs bg-background border border-border px-3 py-2 rounded-xl"
+                  className="flex items-center justify-between text-xs bg-slate-800/60 border border-white/10 px-3 py-2 rounded-lg"
                 >
                   <div>
-                    <span className="font-bold text-foreground mr-1.5">{entry.memberName}</span>
-                    <Badge variant="outline" className="text-[10px] scale-90 origin-left font-mono font-bold">
+                    <span className="font-bold text-white mr-1.5">{entry.memberName}</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-700 text-slate-300 font-mono">
                       {entry.resourceType}
-                    </Badge>
+                    </span>
                   </div>
                   <div className="flex items-center gap-2">
                     {entry.status === 'OFFERED' && (
-                      <span className="text-[10px] text-amber-500 font-extrabold font-mono animate-pulse mr-1">
+                      <span className="text-[10px] text-amber-400 font-bold font-mono animate-pulse mr-1">
                         OFFERED ({entry.offeredLockerNumber})
                       </span>
                     )}
@@ -252,7 +252,7 @@ export default function CheckInDeskView({
                       <button
                         type="button"
                         onClick={() => dashboard.leaveWaitlist(entry.id)}
-                        className="text-red-500 hover:text-red-600 font-bold cursor-pointer"
+                        className="text-red-400 hover:text-red-300 font-medium cursor-pointer"
                       >
                         Remove
                       </button>
@@ -263,38 +263,38 @@ export default function CheckInDeskView({
                           dashboard.claimWaitlistOffer(entry.id);
                           dashboard.checkInMember(entry.memberId, entry.offeredLockerNumber || '');
                         }}
-                        className="text-green-500 hover:text-green-600 font-bold cursor-pointer font-mono"
+                        className="text-emerald-400 hover:text-emerald-300 font-bold cursor-pointer font-mono"
                       >
                         Claim Offer
                       </button>
                     ) : (
-                      <span className="text-muted-foreground font-mono">Claimed</span>
+                      <span className="text-slate-500 font-mono">Claimed</span>
                     )}
                   </div>
                 </div>
-              ))
-            )}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Main Two-Column Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      {/* Main Split Panel Layout */}
+      <div className="flex flex-col lg:flex-row gap-[clamp(1rem,1.5vw,1.5rem)] items-start w-full">
         {/* ================= LEFT COLUMN: LOOKUP ATHLETE ================= */}
-        <div id="left-lookup-column" className="lg:col-span-6 xl:col-span-6 space-y-4">
+        <div id="left-lookup-column" className="w-full lg:flex-[1_1_420px] flex flex-col gap-3">
           {/* Section Title */}
           <div className="flex items-center justify-between">
-            <h2 className="text-xs sm:text-sm font-bold tracking-wider text-muted-foreground uppercase font-mono">
+            <h2 className="text-xs sm:text-sm font-semibold tracking-wider text-slate-400 uppercase font-mono">
               {t('lookupAthleteTitle')}
             </h2>
             <Badge variant="info">{filteredMembers.length} Athletes</Badge>
           </div>
 
-          {/* Search Input Bar */}
-          <div className="relative">
-            <Input
+          {/* Dynamic Search Input Bar */}
+          <div className="relative w-full">
+            <input
               id="input-athlete-search"
-              icon={<Search className="w-4 h-4" />}
+              type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => {
@@ -324,15 +324,17 @@ export default function CheckInDeskView({
                 }
               }}
               placeholder={t('searchPlaceholder')}
+              className="w-full h-[clamp(2.5rem,3.8vh,2.85rem)] px-4 pl-10 text-xs sm:text-sm bg-slate-900/70 border border-white/10 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-yellow-400/40 transition-colors"
               autoFocus
             />
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             {searchQuery && (
               <Button
                 id="btn-clear-search"
                 variant="ghost"
                 size="sm"
                 onClick={() => setSearchQuery('')}
-                className="absolute right-2 top-1 h-8 text-[11px]"
+                className="absolute right-2 top-1/2 -translate-y-1/2 h-7 text-[11px] text-slate-400 hover:text-white"
               >
                 Clear
               </Button>
@@ -340,15 +342,15 @@ export default function CheckInDeskView({
           </div>
 
           {/* Search Results List */}
-          <div id="search-results-list" className="space-y-3">
+          <div id="search-results-list" className="space-y-2.5">
             {members.length === 0 ? (
-              <Card className="text-center py-12 p-6 space-y-3">
-                <div className="w-12 h-12 rounded-2xl bg-muted border border-border mx-auto flex items-center justify-center text-muted-foreground">
+              <Card className="text-center py-12 p-6 space-y-3 bg-slate-900/40 border border-white/10">
+                <div className="w-12 h-12 rounded-2xl bg-slate-800 border border-white/10 mx-auto flex items-center justify-center text-slate-400">
                   <User className="w-6 h-6 stroke-[1.5]" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-foreground">No registered athletes yet</h4>
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <h4 className="text-sm font-bold text-white">No registered athletes yet</h4>
+                  <p className="text-xs text-slate-400 mt-1">
                     Please add athletes using the Registration section.
                   </p>
                 </div>
@@ -365,8 +367,8 @@ export default function CheckInDeskView({
                 )}
               </Card>
             ) : filteredMembers.length === 0 ? (
-              <Card className="text-center py-10 p-6 space-y-2">
-                <p className="text-xs text-muted-foreground font-mono">
+              <Card className="text-center py-10 p-6 space-y-2 bg-slate-900/40 border border-white/10">
+                <p className="text-xs text-slate-400 font-mono">
                   No athletes found matching your search.
                 </p>
               </Card>
@@ -378,105 +380,109 @@ export default function CheckInDeskView({
                 const isSuspended = member.status === 'Suspended';
 
                 return (
-                  <Card
+                  <div
                     key={member.id}
                     id={`athlete-card-${member.id}`}
                     onClick={() => setSelectedMemberId(member.id)}
                     className={`cursor-pointer transition-all ${
                       isSelected
-                        ? 'border-primary ring-1 ring-primary shadow-md'
-                        : 'hover:border-border/80'
+                        ? 'w-full p-3.5 bg-slate-900/80 rounded-xl border-l-[3px] border-l-yellow-400 border-y border-r border-white/10 flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 shadow-lg shadow-black/20'
+                        : 'w-full p-3.5 bg-slate-900/40 hover:bg-slate-900/60 rounded-xl border border-white/10 flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 transition-colors'
                     }`}
                   >
-                    <div className="flex items-center justify-between gap-4 p-4">
-                      {/* Left: Avatar & Info */}
-                      <div className="flex items-center gap-3.5 min-w-0">
-                        <div className="w-12 h-12 rounded-2xl bg-muted border border-border shrink-0 overflow-hidden flex items-center justify-center">
-                          {member.photoUrl || member.profileImage ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={member.photoUrl || member.profileImage}
-                              alt={`${member.firstName} ${member.lastName}`}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <User className="w-6 h-6 text-muted-foreground stroke-[1.5]" />
-                          )}
-                        </div>
-
-                        <div className="min-w-0 space-y-0.5">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-extrabold text-foreground text-sm tracking-wide">
-                              {member.firstName} {member.lastName}
-                            </span>
-                            <Badge variant="primary">{member.id}</Badge>
-                          </div>
-
-                          <div className="text-xs text-muted-foreground font-mono truncate">
-                            {member.planTitle || 'Standard Plan'}
-                          </div>
-
-                          <div className="text-[11px] text-muted-foreground font-mono flex items-center gap-2">
-                            <span>Expires: {member.expirationDate}</span>
-                            {member.phone && <span>• {member.phone}</span>}
-                          </div>
-                        </div>
+                    {/* Left: Avatar & Info */}
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-11 h-11 rounded-xl bg-slate-800 border border-white/10 shrink-0 overflow-hidden flex items-center justify-center">
+                        {member.photoUrl || member.profileImage ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={member.photoUrl || member.profileImage}
+                            alt={`${member.firstName} ${member.lastName}`}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <User className="w-5 h-5 text-slate-400 stroke-[1.5]" />
+                        )}
                       </div>
 
-                      {/* Right: Status Pill & Action Button */}
-                      <div className="flex flex-col items-end gap-2 shrink-0">
-                        <div className="flex gap-1">
-                          {member.status === 'Pending' && (
-                            <Badge variant="warning" className="bg-amber-500/15 text-amber-500 border border-amber-500/30 font-bold uppercase tracking-wider text-[9px]">Payment Due</Badge>
-                          )}
-                          {member.assignedLocker && (
-                            <Badge variant="info" className="bg-blue-500/15 text-blue-400 border border-blue-500/30 font-bold uppercase tracking-wider text-[9px]">Locker {member.assignedLocker}</Badge>
-                          )}
-                          {isCheckedIn ? (
-                            <Badge variant="success">Checked In</Badge>
-                          ) : isExpired ? (
-                            <Badge variant="destructive">Expired</Badge>
-                          ) : isSuspended ? (
-                            <Badge variant="warning">Suspended</Badge>
-                          ) : (
-                            <Badge variant="outline">Offsite</Badge>
-                          )}
+                      <div className="min-w-0 space-y-0.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-bold text-white text-sm tracking-wide">
+                            {member.firstName} {member.lastName}
+                          </span>
+                          <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-yellow-400/10 text-yellow-400 border border-yellow-400/20 font-semibold">
+                            {member.id}
+                          </span>
                         </div>
 
-                        <div>
-                          {isCheckedIn ? (
-                            <Button
-                              id={`btn-checkout-${member.id}`}
-                              variant="destructive"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleCheckOutMember(member);
-                              }}
-                              className="h-8 text-xs font-mono font-bold"
-                            >
-                              <LogOut className="w-3.5 h-3.5 mr-1" />
-                              <span>{t('checkOutBtn')}</span>
-                            </Button>
-                          ) : (
-                            <Button
-                              id={`btn-checkin-${member.id}`}
-                              variant={isExpired || isSuspended ? "destructive" : "primary"}
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleCheckInMember(member);
-                              }}
-                              className="h-8 text-xs font-mono font-bold"
-                            >
-                              <UserCheck className="w-3.5 h-3.5 mr-1 stroke-[2.5]" />
-                              <span>{isExpired || isSuspended ? "Override" : t('checkInBtn')}</span>
-                            </Button>
-                          )}
+                        <div className="text-xs text-slate-400 font-mono truncate">
+                          {member.planTitle || 'Standard Plan'}
+                        </div>
+
+                        <div className="text-[11px] text-slate-500 font-mono flex items-center gap-2">
+                          <span>Expires: {member.expirationDate}</span>
+                          {member.phone && <span>• {member.phone}</span>}
                         </div>
                       </div>
                     </div>
-                  </Card>
+
+                    {/* Right: Status Pill & Action Button */}
+                    <div className="flex flex-col items-end gap-1.5 shrink-0">
+                      <div className="flex gap-1">
+                        {member.status === 'Pending' && (
+                          <span className="bg-amber-500/15 text-amber-400 border border-amber-500/30 font-bold uppercase tracking-wider text-[9px] px-1.5 py-0.5 rounded">
+                            Payment Due
+                          </span>
+                        )}
+                        {member.assignedLocker && (
+                          <span className="bg-blue-500/15 text-blue-400 border border-blue-500/30 font-bold uppercase tracking-wider text-[9px] px-1.5 py-0.5 rounded">
+                            Locker {member.assignedLocker}
+                          </span>
+                        )}
+                        {isCheckedIn ? (
+                          <Badge variant="success">Checked In</Badge>
+                        ) : isExpired ? (
+                          <Badge variant="destructive">Expired</Badge>
+                        ) : isSuspended ? (
+                          <Badge variant="warning">Suspended</Badge>
+                        ) : (
+                          <Badge variant="outline">Offsite</Badge>
+                        )}
+                      </div>
+
+                      <div>
+                        {isCheckedIn ? (
+                          <Button
+                            id={`btn-checkout-${member.id}`}
+                            variant="destructive"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCheckOutMember(member);
+                            }}
+                            className="h-7 text-xs font-mono font-bold px-2.5"
+                          >
+                            <LogOut className="w-3 h-3 mr-1" />
+                            <span>{t('checkOutBtn')}</span>
+                          </Button>
+                        ) : (
+                          <Button
+                            id={`btn-checkin-${member.id}`}
+                            variant={isExpired || isSuspended ? "destructive" : "primary"}
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCheckInMember(member);
+                            }}
+                            className="h-7 text-xs font-mono font-bold px-2.5"
+                          >
+                            <UserCheck className="w-3 h-3 mr-1 stroke-[2.5]" />
+                            <span>{isExpired || isSuspended ? "Override" : t('checkInBtn')}</span>
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 );
               })
             )}
@@ -484,20 +490,24 @@ export default function CheckInDeskView({
         </div>
 
         {/* ================= RIGHT COLUMN: ACTIVE ATHLETE PROFILE ================= */}
-        <div id="right-athlete-profile" className="lg:col-span-6 xl:col-span-6 space-y-4">
+        <div id="right-athlete-profile" className="w-full lg:flex-[1.5_1_520px] space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-xs sm:text-sm font-bold tracking-wider text-muted-foreground uppercase font-mono">
+            <h2 className="text-xs sm:text-sm font-semibold tracking-wider text-slate-400 uppercase font-mono">
               {t('activeAthleteTitle')}
             </h2>
-            {activeMember && <Badge variant="primary">{activeMember.id}</Badge>}
+            {activeMember && (
+              <span className="text-xs font-mono font-semibold px-2 py-0.5 rounded bg-yellow-400/10 text-yellow-400 border border-yellow-400/30">
+                {activeMember.id}
+              </span>
+            )}
           </div>
 
           {activeMember ? (
             <div className="space-y-4">
-              <Card id="active-athlete-profile-card" className="p-6 space-y-6">
+              <div id="active-athlete-profile-card" className="p-[clamp(1rem,1.8vw,1.75rem)] bg-slate-900/40 rounded-xl border border-white/10 space-y-6">
                 {/* Profile Header */}
                 <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4">
-                  <div className="relative w-24 h-24 rounded-3xl bg-muted border-2 border-border overflow-hidden shrink-0 flex items-center justify-center shadow-lg">
+                  <div className="relative w-24 h-24 rounded-2xl bg-slate-800 border border-white/10 overflow-hidden shrink-0 flex items-center justify-center shadow-lg">
                     {activeMember.photoUrl || activeMember.profileImage ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
@@ -506,16 +516,16 @@ export default function CheckInDeskView({
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <User className="w-10 h-10 text-muted-foreground stroke-[1.2]" />
+                      <User className="w-10 h-10 text-slate-400 stroke-[1.2]" />
                     )}
-                    <div className="absolute bottom-1 right-1 p-1 rounded-full bg-background/80 text-muted-foreground">
+                    <div className="absolute bottom-1 right-1 p-1 rounded-full bg-slate-900/80 text-slate-400">
                       <Camera className="w-3 h-3" />
                     </div>
                   </div>
 
                   <div className="space-y-1.5 text-center sm:text-left">
                     <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
-                      <h3 className="text-lg font-black text-foreground uppercase tracking-wide">
+                      <h3 className="text-lg font-bold text-white uppercase tracking-wide">
                         {activeMember.firstName} {activeMember.lastName}
                       </h3>
                       <Badge
@@ -531,36 +541,36 @@ export default function CheckInDeskView({
                       </Badge>
                     </div>
 
-                    <p className="text-xs font-mono text-primary font-bold">
+                    <p className="text-xs font-mono text-yellow-400 font-semibold">
                       {activeMember.planTitle || 'All Access Gym Membership'}
                     </p>
 
-                    <p className="text-xs text-muted-foreground font-mono">
+                    <p className="text-xs text-slate-400 font-mono">
                       {activeMember.email} • {activeMember.phone || 'No phone'}
                     </p>
                   </div>
                 </div>
 
                 {/* Status Details Grid */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-muted/40 border border-border p-4 rounded-xl">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-slate-900/60 border border-white/10 p-4 rounded-xl">
                   <div>
-                    <span className="text-[10px] uppercase font-mono font-bold text-muted-foreground block">
+                    <span className="text-[10px] uppercase font-mono font-semibold text-slate-400 block">
                       {t('colExpiration')}
                     </span>
-                    <span className="text-xs font-mono font-bold text-foreground mt-0.5 block">
+                    <span className="text-xs font-mono font-bold text-white mt-0.5 block">
                       {activeMember.expirationDate}
                     </span>
                   </div>
 
                   <div>
-                    <span className="text-[10px] uppercase font-mono font-bold text-muted-foreground block">
+                    <span className="text-[10px] uppercase font-mono font-semibold text-slate-400 block">
                       {t('colOccupancy')}
                     </span>
                     <span
                       className={`text-xs font-mono font-bold mt-0.5 block ${
                         activeMember.occupancyStatus === 'Checked In'
                           ? 'text-emerald-400'
-                          : 'text-muted-foreground'
+                          : 'text-slate-400'
                       }`}
                     >
                       {activeMember.occupancyStatus || 'Checked Out'}
@@ -568,10 +578,10 @@ export default function CheckInDeskView({
                   </div>
 
                   <div>
-                    <span className="text-[10px] uppercase font-mono font-bold text-muted-foreground block">
+                    <span className="text-[10px] uppercase font-mono font-semibold text-slate-400 block">
                       {t('colLocker')}
                     </span>
-                    <span className="text-xs font-mono font-bold text-primary mt-0.5 block">
+                    <span className="text-xs font-mono font-bold text-yellow-400 mt-0.5 block">
                       {activeMember.assignedLocker || 'None'}
                     </span>
                   </div>
@@ -586,7 +596,7 @@ export default function CheckInDeskView({
                         variant="destructive"
                         size="lg"
                         onClick={() => handleCheckOutMember(activeMember)}
-                        className="flex-1"
+                        className="flex-1 font-mono font-bold"
                       >
                         <LogOut className="w-4 h-4 mr-2" />
                         <span>{t('checkOutBtn')}</span>
@@ -597,7 +607,7 @@ export default function CheckInDeskView({
                         variant={activeMember.status === 'Expired' || activeMember.status === 'Suspended' ? 'destructive' : 'primary'}
                         size="lg"
                         onClick={() => handleCheckInMember(activeMember)}
-                        className="flex-1"
+                        className="flex-1 font-mono font-bold"
                       >
                         <UserCheck className="w-4 h-4 mr-2 stroke-[2.5]" />
                         <span>
@@ -619,6 +629,7 @@ export default function CheckInDeskView({
                           dashboard.joinWaitlist('LOCKER', activeMember.id, `${activeMember.firstName} ${activeMember.lastName}`.trim());
                           triggerToast(`Added ${activeMember.firstName} to Locker Waitlist`);
                         }}
+                        className="text-xs"
                       >
                         Queue for Locker
                       </Button>
@@ -629,18 +640,19 @@ export default function CheckInDeskView({
                           dashboard.joinWaitlist('GYM_FLOOR', activeMember.id, `${activeMember.firstName} ${activeMember.lastName}`.trim());
                           triggerToast(`Added ${activeMember.firstName} to Gym Waitlist`);
                         }}
+                        className="text-xs"
                       >
                         Queue for Gym Floor
                       </Button>
                     </div>
                   )}
                 </div>
-              </Card>
+              </div>
 
               {/* Lobby Check-In Activity Logs */}
-              <Card className="p-5 space-y-4">
-                <div className="flex items-center justify-between border-b border-border pb-3">
-                  <h3 className="text-xs sm:text-sm font-bold tracking-wider text-muted-foreground uppercase font-mono">
+              <div className="p-5 bg-slate-900/40 rounded-xl border border-white/10 space-y-4">
+                <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                  <h3 className="text-xs sm:text-sm font-semibold tracking-wider text-slate-300 uppercase font-mono">
                     Recent Check-In Activity
                   </h3>
                   <Badge variant="outline">Live Logs</Badge>
@@ -648,22 +660,22 @@ export default function CheckInDeskView({
 
                 <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
                   {dashboard.lockerLogs.length === 0 ? (
-                    <p className="text-xs text-muted-foreground italic text-center py-6">
+                    <p className="text-xs text-slate-500 italic text-center py-6">
                       No recent check-in activities logged.
                     </p>
                   ) : (
                     dashboard.lockerLogs.slice(0, 5).map((log) => (
                       <div
                         key={log.id}
-                        className="text-xs border-b border-border/50 pb-2 last:border-b-0 last:pb-0 space-y-1"
+                        className="text-xs border-b border-white/5 pb-2 last:border-b-0 last:pb-0 space-y-1"
                       >
                         <div className="flex items-center justify-between">
-                          <span className="font-bold text-foreground">{log.memberName}</span>
-                          <span className="text-[10px] font-mono text-muted-foreground">{log.timeFormatted || 'Now'}</span>
+                          <span className="font-bold text-white">{log.memberName}</span>
+                          <span className="text-[10px] font-mono text-slate-400">{log.timeFormatted || 'Now'}</span>
                         </div>
-                        <div className="flex items-center justify-between text-muted-foreground">
+                        <div className="flex items-center justify-between text-slate-400">
                           <span>{log.eventDescription}</span>
-                          <span className="font-mono text-[10px] bg-muted px-1.5 py-0.5 rounded text-foreground font-bold">
+                          <span className="font-mono text-[10px] bg-slate-800 px-1.5 py-0.5 rounded text-slate-200 font-semibold border border-white/5">
                             Processed by: {log.staffLogged || 'System'}
                           </span>
                         </div>
@@ -671,7 +683,7 @@ export default function CheckInDeskView({
                     ))
                   )}
                 </div>
-              </Card>
+              </div>
             </div>
           ) : null}
         </div>
