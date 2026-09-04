@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
-import { createSafeAction } from '@/lib/actions/safeAction';
+import { createSafeAction } from '@/server/actions/safeAction';
 
 describe('createSafeAction Middleware & Error Boundary', () => {
   const TestSchema = z.object({

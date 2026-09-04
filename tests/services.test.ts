@@ -5,13 +5,15 @@ import {
   computeNewExpirationDate,
   calculateExtensionFee,
   filterMembers,
-  MembershipStatusService,
   PricingService,
+} from '@/lib/services';
+import {
+  MembershipStatusService,
   RefundService,
   calculateProratedRefund,
-} from '@/lib/services';
+} from '@/server/services';
 import { BuiltPlan, GymMember } from '@/lib/types';
-import { getMemberRepository } from '@/lib/repositories';
+import { getMemberRepository } from '@/server/repositories';
 
 describe('Plan & Member Service Computations', () => {
   it('calculates plan fee based on monthly rate and multiplier', () => {
