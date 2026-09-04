@@ -7,3 +7,5 @@ export * from './modal';
 export * from './toast';
 export * from './tabs';
 export * from './form';
+export * from './table';
+export * from './select';
