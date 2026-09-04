@@ -2,33 +2,17 @@
 
 import React, { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import {
-  ShieldCheck,
-  UserPlus,
-  User,
-  Lock,
-  Eye,
-  EyeOff,
-  KeyRound,
-  Users,
-  Search,
-  CheckCircle2,
-  XCircle,
-  AlertCircle,
-  Clock,
-  Briefcase,
-  Phone,
-  Mail,
-  Trash2,
-  Check,
-  Shield,
-  Bell,
-} from 'lucide-react';
+import { Lock, UserPlus, Bell } from 'lucide-react';
 import { StaffAccount, AuthUser } from '@/lib/types';
-import { Button, Card, Badge, Input } from '@/components/ui';
+import { Toast } from '@/components/ui';
 import { useDashboard } from '@/lib/orchestration';
-import { STAFF_SHIFTS, STAFF_ROLES, DEFAULT_STAFF_PERMISSIONS } from '@/lib/services';
-import { hashPassword } from '@/lib/security/password';
+import { cn } from '@/lib/utils';
+import {
+  StaffRegistrationForm,
+  ApprovalRequestsTab,
+  StaffDirectoryTable,
+  PasswordResetModal,
+} from './staff-approvals';
 
 interface StaffApprovalsViewProps {
   currentUser?: AuthUser;
@@ -51,906 +35,167 @@ export default function StaffApprovalsView({
 
   const t = useTranslations('StaffApprovals');
 
-  // Active view tab for the staff actions card (registration vs notifications/pending)
   const [activeTab, setActiveTab] = useState<'register' | 'notifications'>('register');
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Form State for Registering Staff
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [role, setRole] = useState<StaffAccount['role']>('Front Desk Staff');
-  const [assignedShift, setAssignedShift] = useState<string>(STAFF_SHIFTS[0].labelEn);
-  const [initialStatus, setInitialStatus] = useState<'Active' | 'Pending'>('Active');
-  const [notes, setNotes] = useState('');
-
-  // Custom permissions
-  const [permissions, setPermissions] = useState<string[]>([...DEFAULT_STAFF_PERMISSIONS]);
-
-  // UI Feedback
-  const [successToast, setSuccessToast] = useState<string | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  // Search & Filter State
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'Active' | 'Pending' | 'Suspended'>('all');
-  const [roleFilter, setRoleFilter] = useState<string>('all');
-
-  // Password Reveal / Reset Modal State
-  const [revealedPasswords, setRevealedPasswords] = useState<Record<string, boolean>>({});
-  const [editingStaffId, setEditingStaffId] = useState<string | null>(null);
-  const [newPasswordInput, setNewPasswordInput] = useState('');
-  const [showEditPassword, setShowEditPassword] = useState(false);
+  // Password reset modal state
+  const [resetModalStaff, setResetModalStaff] = useState<StaffAccount | null>(null);
 
   const isAdmin = !currentUser || currentUser.role === 'admin';
 
-  const togglePermission = (perm: string) => {
-    setPermissions((prev) =>
-      prev.includes(perm) ? prev.filter((p) => p !== perm) : [...prev, perm]
-    );
-  };
-
-  const togglePasswordReveal = (id: string) => {
-    setRevealedPasswords((prev) => ({
-      ...prev,
-      [id]: !prev[id],
-    }));
-  };
-
-  const handleRegisterStaff = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMessage(null);
-    setSuccessToast(null);
-
-    const cleanUsername = username.trim().toLowerCase();
-    if (!cleanUsername) {
-      setErrorMessage('Please enter a username.');
-      return;
-    }
-
-    if (cleanUsername.length < 3) {
-      setErrorMessage('Username must be at least 3 characters long.');
-      return;
-    }
-
-    // Check unique username
-    const exists = staffList.some(
-      (s) => s.username.toLowerCase() === cleanUsername
-    );
-    if (exists) {
-      setErrorMessage(`A staff member with username "${cleanUsername}" already exists.`);
-      return;
-    }
-
-    if (!password || password.length < 4) {
-      setErrorMessage('Password must be at least 4 characters long.');
-      return;
-    }
-
-    if (!fullName.trim()) {
-      setErrorMessage('Please provide the staff member full name.');
-      return;
-    }
-
-    // Hash the password prior to account creation
-    const hashedPassword = await hashPassword(password);
-
-    const newStaff: StaffAccount = {
-      id: `staff-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-      username: cleanUsername,
-      passwordHash: hashedPassword,
-      fullName: fullName.trim(),
-      email: email.trim() || undefined,
-      phoneNumber: phoneNumber.trim() || undefined,
-      role,
-      status: initialStatus,
-      registeredAt: new Date().toISOString().split('T')[0],
-      registeredBy: currentUser?.name ? `${currentUser.name} (${currentUser.badge})` : 'Administrator',
-      assignedShift,
-      permissions,
-      notes: notes.trim() || undefined,
-    };
-
-    if (propOnAddStaff) {
-      propOnAddStaff(newStaff);
-    } else {
-      dashboard.addStaff(newStaff);
-    }
-
-    // Reset Form
-    setUsername('');
-    setPassword('');
-    setFullName('');
-    setEmail('');
-    setPhoneNumber('');
-    setNotes('');
-    setSuccessToast(t('staffRegisteredSuccess', { name: `@${cleanUsername}` }));
-
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
     setTimeout(() => {
-      setSuccessToast(null);
-    }, 4000);
+      setToastMessage(null);
+    }, 3000);
   };
 
-  const handleStatusChange = (staff: StaffAccount, newStatus: StaffAccount['status']) => {
-    const updated = {
-      ...staff,
-      status: newStatus,
-    };
-    if (propOnUpdateStaff) {
-      propOnUpdateStaff(updated);
-    } else {
-      dashboard.updateStaff(updated);
-    }
-  };
-
-  const handleSavePasswordReset = async (staff: StaffAccount) => {
-    if (!newPasswordInput || newPasswordInput.length < 4) {
-      alert('Password must be at least 4 characters.');
-      return;
-    }
-
-    const hashedPassword = await hashPassword(newPasswordInput);
-
-    const updated = {
-      ...staff,
-      passwordHash: hashedPassword,
-    };
-
-    if (propOnUpdateStaff) {
-      propOnUpdateStaff(updated);
-    } else {
-      dashboard.updateStaff(updated);
-    }
-
-    setEditingStaffId(null);
-    setNewPasswordInput('');
-    setShowEditPassword(false);
+  const handleAddStaff = (staff: StaffAccount) => {
+    if (propOnAddStaff) propOnAddStaff(staff);
+    else dashboard.addStaff(staff);
   };
 
   const handleDeleteStaff = (id: string) => {
-    if (propOnDeleteStaff) {
-      propOnDeleteStaff(id);
-    } else {
-      dashboard.deleteStaff(id);
-    }
+    if (propOnDeleteStaff) propOnDeleteStaff(id);
+    else dashboard.deleteStaff(id);
+    showToast('Staff account deleted.');
   };
 
-  const filteredStaff = staffList.filter((s) => {
-    const q = searchQuery.toLowerCase();
-    const matchesSearch =
-      s.username.toLowerCase().includes(q) ||
-      s.fullName.toLowerCase().includes(q) ||
-      (s.email && s.email.toLowerCase().includes(q)) ||
-      (s.phoneNumber && s.phoneNumber.includes(q));
+  const handleApproveStaff = (id: string) => {
+    const target = staffList.find((s) => s.id === id);
+    if (!target) return;
+    const updated = { ...target, status: 'Active' as const };
+    if (propOnUpdateStaff) propOnUpdateStaff(updated);
+    else dashboard.updateStaff(updated);
+    showToast(`Approved account for @${target.username}`);
+  };
 
-    const matchesStatus = statusFilter === 'all' || s.status === statusFilter;
-    const matchesRole = roleFilter === 'all' || s.role === roleFilter;
+  const handleRejectStaff = (id: string) => {
+    handleDeleteStaff(id);
+  };
 
-    return matchesSearch && matchesStatus && matchesRole;
-  });
+  const handleConfirmResetPassword = (id: string, newPass: string, hash: string) => {
+    const target = staffList.find((s) => s.id === id);
+    if (!target) return;
+    const updated = {
+      ...target,
+      passwordHash: hash,
+      plainTextPasswordForDemo: newPass,
+    };
+    if (propOnUpdateStaff) propOnUpdateStaff(updated);
+    else dashboard.updateStaff(updated);
+    showToast(`Password updated for @${target.username}`);
+  };
 
-  const totalActive = staffList.filter((s) => s.status === 'Active').length;
-  const totalPending = staffList.filter((s) => s.status === 'Pending').length;
+  if (!isAdmin) {
+    return (
+      <div id="staff-access-denied" className="w-full py-12 flex flex-col items-center justify-center text-center space-y-3 font-sans">
+        <div className="w-10 h-10 rounded-xl bg-muted border border-border flex items-center justify-center text-muted-foreground">
+          <Lock className="w-5 h-5" />
+        </div>
+        <div className="space-y-1">
+          <h2 className="text-sm font-bold text-foreground">{t('adminOnly') || 'Admin Access Only'}</h2>
+          <p className="text-xs text-muted-foreground max-w-sm">
+            Staff account management and registration permissions are restricted to Admin accounts.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const pendingCount = staffList.filter((s) => s.status === 'Pending').length;
 
   return (
-    <div id="staff-approvals-view-root" className="space-y-6 pb-12">
-      {/* Top Banner / Header */}
-      <Card className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 shadow-xl">
-        <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-muted border border-border flex items-center justify-center text-primary shadow-md">
-            <ShieldCheck className="w-6 h-6 stroke-[2.2]" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-extrabold text-foreground tracking-tight">
-                {t('title')}
-              </h1>
-              <Badge variant="primary">
-                {isAdmin ? 'Admin Panel' : 'Staff Access'}
-              </Badge>
-            </div>
-            <p className="text-xs font-mono text-muted-foreground mt-1">
-              {t('subtitle')}
-            </p>
-          </div>
-        </div>
+    <div id="staff-approvals-view-root" className="w-full space-y-4 font-sans">
+      <Toast message={toastMessage} type="success" />
 
-        {/* Quick Stats Pill */}
-        <div className="flex items-center gap-2 bg-background border border-border p-1.5 rounded-2xl">
-          <div className="px-3 py-1.5 rounded-xl bg-muted text-center">
-            <span className="text-[10px] font-mono text-muted-foreground block font-bold">TOTAL</span>
-            <span className="text-sm font-black font-mono text-foreground">{staffList.length}</span>
-          </div>
-          <div className="px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-center">
-            <span className="text-[10px] font-mono text-emerald-400 block font-bold">ACTIVE</span>
-            <span className="text-sm font-black font-mono text-emerald-400">{totalActive}</span>
-          </div>
-          <div className="px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-center">
-            <span className="text-[10px] font-mono text-amber-400 block font-bold">PENDING</span>
-            <span className="text-sm font-black font-mono text-amber-400">{totalPending}</span>
-          </div>
-        </div>
-      </Card>
+      {/* Header */}
+      <div>
+        <h1 className="text-xl font-bold tracking-tight text-foreground">
+          {t('title') || 'Staff Management & System Approvals'}
+        </h1>
+        <p className="text-xs text-muted-foreground font-mono">
+          Register new staff accounts, set shift assignments, configure system permissions, and manage access approvals.
+        </p>
+      </div>
 
-      {/* ================= SECTION 1: ADMIN STAFF CORE ACTIONS (TABS) ================= */}
-      <Card
-        id="card-register-staff-form"
-        className="p-6 shadow-2xl space-y-6"
-      >
-        {/* Tab Switcher Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
-          <div className="flex bg-muted p-1 rounded-xl w-full sm:w-auto self-start">
-            <button
-              type="button"
-              id="tab-btn-register"
-              onClick={() => setActiveTab('register')}
-              className={`flex items-center gap-2 px-4 py-2 text-xs font-bold font-mono rounded-lg transition-all cursor-pointer ${
-                activeTab === 'register'
-                  ? 'bg-background text-primary shadow-sm border border-border/40'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <UserPlus className="w-3.5 h-3.5" />
-              <span>{t('newStaffRegistration')}</span>
-            </button>
-            <button
-              type="button"
-              id="tab-btn-notifications"
-              onClick={() => setActiveTab('notifications')}
-              className={`flex items-center gap-2 px-4 py-2 text-xs font-bold font-mono rounded-lg transition-all relative cursor-pointer ${
-                activeTab === 'notifications'
-                  ? 'bg-background text-primary shadow-sm border border-border/40'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <Bell className="w-3.5 h-3.5" />
-              <span>Notifications</span>
-              {totalPending > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[9px] font-black font-mono text-destructive-foreground animate-pulse">
-                  {totalPending}
-                </span>
-              )}
-            </button>
-          </div>
-          <Badge variant="outline" className="font-mono text-[10px] uppercase font-bold self-start sm:self-auto">
-            {activeTab === 'register' ? 'Registration Panel' : 'Business Approvals Center'}
-          </Badge>
-        </div>
-
-        {/* Tab 1: Staff Registration Form */}
-        {activeTab === 'register' && (
-          <div className="space-y-5 animate-in fade-in duration-200">
-            {/* Feedback alerts */}
-            {errorMessage && (
-              <div className="flex items-center gap-2.5 p-3.5 bg-destructive/10 border border-destructive/30 rounded-2xl text-destructive text-xs font-mono">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>{errorMessage}</span>
-              </div>
+      {/* Primary Actions Card (Tabs for Register vs Approval Queue) */}
+      <div className="bg-[#0B132B]/80 border border-border/80 rounded-xl p-4 space-y-3">
+        <div className="flex items-center gap-3 border-b border-border/80 pb-2.5 text-xs font-mono font-bold">
+          <button
+            type="button"
+            onClick={() => setActiveTab('register')}
+            className={cn(
+              'flex items-center gap-1.5 pb-2 border-b-2 transition-all cursor-pointer',
+              activeTab === 'register'
+                ? 'text-[#D4FF00] border-[#D4FF00]'
+                : 'text-muted-foreground hover:text-foreground border-transparent'
             )}
+          >
+            <UserPlus className="w-3.5 h-3.5" />
+            <span>REGISTER STAFF ACCOUNT</span>
+          </button>
 
-            {successToast && (
-              <div className="flex items-center gap-2.5 p-3.5 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl text-emerald-400 text-xs font-mono">
-                <CheckCircle2 className="w-4 h-4 shrink-0" />
-                <span>{successToast}</span>
-              </div>
+          <button
+            type="button"
+            onClick={() => setActiveTab('notifications')}
+            className={cn(
+              'flex items-center gap-1.5 pb-2 border-b-2 transition-all cursor-pointer relative',
+              activeTab === 'notifications'
+                ? 'text-[#D4FF00] border-[#D4FF00]'
+                : 'text-muted-foreground hover:text-foreground border-transparent'
             )}
+          >
+            <Bell className="w-3.5 h-3.5" />
+            <span>APPROVAL QUEUE</span>
+            {pendingCount > 0 && (
+              <span className="ml-1 text-[9px] px-1.5 py-0.2 bg-amber-500 text-black font-extrabold rounded-full">
+                {pendingCount}
+              </span>
+            )}
+          </button>
+        </div>
 
-            <form onSubmit={handleRegisterStaff} className="space-y-5">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {/* 1. Username */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-mono font-bold text-muted-foreground flex items-center gap-1.5">
-                    <User className="w-3.5 h-3.5 text-primary" />
-                    <span>{t('usernameLabel')}</span>
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-mono text-muted-foreground">
-                      @
-                    </span>
-                    <input
-                      id="input-staff-username"
-                      type="text"
-                      required
-                      placeholder={t('usernamePlaceholder')}
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/\s+/g, ''))}
-                      className="w-full bg-input border border-border focus:border-primary text-foreground text-xs font-mono rounded-xl pl-8 pr-3.5 py-2.5 outline-none transition-all"
-                    />
-                  </div>
-                </div>
-
-                {/* 2. Password */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-mono font-bold text-muted-foreground flex items-center gap-1.5">
-                    <Lock className="w-3.5 h-3.5 text-primary" />
-                    <span>{t('passwordLabel')}</span>
-                  </label>
-                  <div className="relative">
-                    <input
-                      id="input-staff-password"
-                      type={showPassword ? 'text' : 'password'}
-                      required
-                      placeholder={t('passwordPlaceholder')}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="w-full bg-input border border-border focus:border-primary text-foreground text-xs font-mono rounded-xl pl-3.5 pr-10 py-2.5 outline-none transition-all"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                {/* 3. Full Name */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-mono font-bold text-muted-foreground flex items-center gap-1.5">
-                    <Briefcase className="w-3.5 h-3.5 text-sky-400" />
-                    <span>{t('fullNameLabel')}</span>
-                  </label>
-                  <input
-                    id="input-staff-fullname"
-                    type="text"
-                    required
-                    placeholder={t('fullNamePlaceholder')}
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    className="w-full bg-input border border-border focus:border-primary text-foreground text-xs font-mono rounded-xl px-3.5 py-2.5 outline-none transition-all"
-                  />
-                </div>
-
-                {/* 4. Role / Position */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-mono font-bold text-muted-foreground flex items-center gap-1.5">
-                    <Shield className="w-3.5 h-3.5 text-purple-400" />
-                    <span>{t('roleLabel')}</span>
-                  </label>
-                  <select
-                    id="select-staff-role"
-                    value={role}
-                    onChange={(e) => setRole(e.target.value as any)}
-                    className="w-full bg-input border border-border focus:border-primary text-foreground text-xs font-mono rounded-xl px-3 py-2.5 outline-none cursor-pointer"
-                  >
-                    {STAFF_ROLES.map((r) => (
-                      <option key={r} value={r}>
-                        {r}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* 5. Assigned Shift */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-mono font-bold text-muted-foreground flex items-center gap-1.5">
-                    <Clock className="w-3.5 h-3.5 text-amber-400" />
-                    <span>{t('shiftLabel')}</span>
-                  </label>
-                  <select
-                    id="select-staff-shift"
-                    value={assignedShift}
-                    onChange={(e) => setAssignedShift(e.target.value)}
-                    className="w-full bg-input border border-border focus:border-primary text-foreground text-xs font-mono rounded-xl px-3 py-2.5 outline-none cursor-pointer"
-                  >
-                    {STAFF_SHIFTS.map((s) => (
-                      <option key={s.id} value={s.labelEn}>
-                        {s.labelEn}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* 6. Initial Approval Status */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-mono font-bold text-muted-foreground flex items-center gap-1.5">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>{t('initialStatusLabel')}</span>
-                  </label>
-                  <select
-                    id="select-staff-status"
-                    value={initialStatus}
-                    onChange={(e) => setInitialStatus(e.target.value as any)}
-                    className="w-full bg-input border border-border focus:border-primary text-foreground text-xs font-mono rounded-xl px-3 py-2.5 outline-none cursor-pointer"
-                  >
-                    <option value="Active">Active (Approved)</option>
-                    <option value="Pending">Pending Review</option>
-                  </select>
-                </div>
-
-                {/* 7. Contact Email (Optional) */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-mono font-bold text-muted-foreground flex items-center gap-1.5">
-                    <Mail className="w-3.5 h-3.5 text-muted-foreground" />
-                    <span>{t('emailLabel')}</span>
-                  </label>
-                  <input
-                    id="input-staff-email"
-                    type="email"
-                    placeholder={t('emailPlaceholder')}
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full bg-input border border-border focus:border-primary text-foreground text-xs font-mono rounded-xl px-3.5 py-2.5 outline-none transition-all"
-                  />
-                </div>
-
-                {/* 8. Phone Number (Optional) */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-mono font-bold text-muted-foreground flex items-center gap-1.5">
-                    <Phone className="w-3.5 h-3.5 text-muted-foreground" />
-                    <span>{t('phoneLabel')}</span>
-                  </label>
-                  <input
-                    id="input-staff-phone"
-                    type="tel"
-                    placeholder={t('phonePlaceholder')}
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    className="w-full bg-input border border-border focus:border-primary text-foreground text-xs font-mono rounded-xl px-3.5 py-2.5 outline-none transition-all"
-                  />
-                </div>
-
-                {/* 9. Internal Notes */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-mono font-bold text-muted-foreground flex items-center gap-1.5">
-                    <KeyRound className="w-3.5 h-3.5 text-muted-foreground" />
-                    <span>{t('notesLabel')}</span>
-                  </label>
-                  <input
-                    id="input-staff-notes"
-                    type="text"
-                    placeholder={t('notesPlaceholder')}
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    className="w-full bg-input border border-border focus:border-primary text-foreground text-xs font-mono rounded-xl px-3.5 py-2.5 outline-none transition-all"
-                  />
-                </div>
-              </div>
-
-              {/* Permissions Matrix */}
-              <div className="bg-background border border-border rounded-xl p-4 space-y-2">
-                <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-muted-foreground block">
-                  {t('permissionsLabel')}
-                </span>
-                <div className="flex flex-wrap gap-2 pt-1">
-                  {[
-                    'Check-In & Locker Desk',
-                    'Member Registration',
-                    'Directory & Extensions',
-                    'Inventory Management',
-                    'Analytics Viewing',
-                  ].map((perm) => {
-                    const isSelected = permissions.includes(perm);
-                    return (
-                      <button
-                        key={perm}
-                        type="button"
-                        onClick={() => togglePermission(perm)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
-                          isSelected
-                            ? 'bg-primary text-primary-foreground shadow-sm'
-                            : 'bg-muted text-muted-foreground hover:text-foreground border border-border'
-                        }`}
-                      >
-                        {isSelected ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : null}
-                        <span>{perm}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Submit Registration Button */}
-              <div className="flex justify-end pt-2">
-                <Button
-                  id="btn-submit-register-staff"
-                  type="submit"
-                  variant="primary"
-                >
-                  <UserPlus className="w-4 h-4 mr-2 stroke-[2.5]" />
-                  <span>{t('registerBtn')}</span>
-                </Button>
-              </div>
-            </form>
-          </div>
+        {activeTab === 'register' ? (
+          <StaffRegistrationForm
+            staffList={staffList}
+            onAddStaff={handleAddStaff}
+            showToast={showToast}
+          />
+        ) : (
+          <ApprovalRequestsTab
+            staffList={staffList}
+            onApprove={handleApproveStaff}
+            onReject={handleRejectStaff}
+          />
         )}
+      </div>
 
-        {/* Tab 2: Notifications & Approval Requests (Business Layer) */}
-        {activeTab === 'notifications' && (
-          <div className="space-y-4 animate-in fade-in duration-200">
-            {/* Real Staff Requests requiring approval */}
-            {staffList.filter((s) => s.status === 'Pending').length === 0 ? (
-              <div className="flex flex-col items-center justify-center text-center p-12 bg-background/50 rounded-2xl border border-dashed border-border">
-                <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center text-muted-foreground mb-3 shadow-inner">
-                  <Bell className="w-5 h-5 opacity-40" />
-                </div>
-                <p className="text-sm font-bold text-foreground">No Pending Staff Requests</p>
-                <p className="text-xs text-muted-foreground max-w-sm mt-1">
-                  New staff profiles registered with &quot;Pending Review&quot; status, or sent from the floor, will instantly appear here for business layer review.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 px-1 text-[11px] font-mono font-extrabold uppercase text-muted-foreground">
-                  <Clock className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Action Required: Pending Registration Requests ({totalPending})</span>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {staffList
-                    .filter((s) => s.status === 'Pending')
-                    .map((staff) => (
-                      <div
-                        key={staff.id}
-                        className="bg-background border border-border hover:border-border/80 p-4 rounded-xl flex flex-col justify-between gap-3 shadow-md transition-all hover:shadow-lg"
-                      >
-                        <div className="space-y-2">
-                          <div className="flex items-start justify-between">
-                            <div className="flex items-center gap-2.5">
-                              <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-400/20 flex items-center justify-center text-amber-400 font-black text-xs">
-                                {staff.fullName.substring(0, 2).toUpperCase()}
-                              </div>
-                              <div>
-                                <h4 className="text-xs font-black text-foreground">{staff.fullName}</h4>
-                                <p className="text-[10px] text-primary font-mono">@{staff.username}</p>
-                              </div>
-                            </div>
-                            <Badge variant="warning">
-                              Pending Review
-                            </Badge>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-1 bg-muted/40 p-2 rounded-lg text-[10px] font-mono text-muted-foreground">
-                            <div>
-                              <span className="text-foreground/75 block">Role:</span>
-                              <span className="font-bold text-foreground">{staff.role}</span>
-                            </div>
-                            <div>
-                              <span className="text-foreground/75 block">Shift:</span>
-                              <span className="font-bold text-foreground">{staff.assignedShift || 'Day Shift'}</span>
-                            </div>
-                          </div>
-
-                          {staff.notes && (
-                            <p className="text-[10px] font-mono text-muted-foreground italic bg-muted/20 p-2 rounded border border-border/30">
-                              &ldquo; {staff.notes} &rdquo;
-                            </p>
-                          )}
-
-                          <div className="space-y-1">
-                            <span className="text-[9px] font-mono font-bold uppercase tracking-wider text-muted-foreground">Permissions Requested:</span>
-                            <div className="flex flex-wrap gap-1">
-                              {(staff.permissions || []).map((p) => (
-                                <span
-                                  key={p}
-                                  className="text-[9px] font-mono font-semibold px-2 py-0.5 rounded-md bg-muted text-foreground/80 border border-border/40"
-                                >
-                                  {p}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Yes/No Approval Action Pair */}
-                        <div className="flex items-center gap-2 pt-2 border-t border-border/40">
-                          <Button
-                            type="button"
-                            variant="primary"
-                            size="sm"
-                            className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-black font-mono text-[10px] py-1.5 h-auto font-black"
-                            onClick={() => {
-                              handleStatusChange(staff, 'Active');
-                              setSuccessToast(t('staffRegisteredSuccess', { name: `@${staff.username}` }));
-                              setTimeout(() => setSuccessToast(null), 3000);
-                            }}
-                          >
-                            <Check className="w-3 h-3 mr-1.5 stroke-[3]" />
-                            <span>YES, APPROVE</span>
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="flex-1 text-destructive border-destructive/20 hover:bg-destructive/10 font-mono text-[10px] py-1.5 h-auto font-bold"
-                            onClick={() => {
-                              if (confirm(`Reject and dismiss request from @${staff.username}?`)) {
-                                handleDeleteStaff(staff.id);
-                              }
-                            }}
-                          >
-                            <XCircle className="w-3 h-3 mr-1.5" />
-                            <span>NO, DENY</span>
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                </div>
-              </div>
-            )}
-
-            {/* Static System Audit / Policy Notifications to add depth to notifications tab */}
-            <div className="pt-2 border-t border-border/60">
-              <div className="flex items-center gap-1.5 px-1 text-[11px] font-mono font-extrabold uppercase text-muted-foreground mb-2">
-                <ShieldCheck className="w-3.5 h-3.5 text-sky-400" />
-                <span>System Policy & Compliance Auditing</span>
-              </div>
-              <div className="space-y-2">
-                {[
-                  {
-                    id: 'sys-notify-1',
-                    event: 'Policy Enforcement Audit',
-                    time: 'Today, 07:15',
-                    desc: 'Automated scan found 100% role alignment. Front desk personnel limited to registered terminal accesses.',
-                    level: 'Info',
-                  },
-                  {
-                    id: 'sys-notify-2',
-                    event: 'Shift Synchronization Update',
-                    time: 'Yesterday, 18:30',
-                    desc: 'Weekly shift roster synchronization completed with active locker desk check-in registers.',
-                    level: 'Success',
-                  },
-                ].map((item) => (
-                  <div key={item.id} className="bg-muted/30 border border-border/40 rounded-xl p-3 flex gap-3 text-[11px] font-mono">
-                    <div className="w-2.5 h-2.5 rounded-full bg-sky-400 mt-1 shrink-0 animate-pulse" />
-                    <div className="space-y-0.5">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-foreground">{item.event}</span>
-                        <span className="text-[9px] text-muted-foreground">{item.time}</span>
-                      </div>
-                      <p className="text-muted-foreground leading-normal">{item.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-      </Card>
-
-      {/* ================= SECTION 2: REGISTERED STAFF DIRECTORY ================= */}
-      <Card
-        id="card-staff-directory"
-        className="p-6 shadow-xl space-y-5"
-      >
-        {/* Directory Controls Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-4">
-          <div className="flex items-center gap-2.5">
-            <Users className="w-5 h-5 text-sky-400" />
-            <div>
-              <h3 className="text-sm font-extrabold text-foreground">
-                {t('staffDirectoryTitle')}
-              </h3>
-              <p className="text-xs font-mono text-muted-foreground">
-                {t('staffCountBadge', { count: staffList.length })}
-              </p>
-            </div>
-          </div>
-
-          {/* Filter & Search Bar */}
-          <div className="flex flex-wrap items-center gap-2.5">
-            <div className="min-w-[200px]">
-              <Input
-                type="text"
-                placeholder={t('searchStaffPlaceholder')}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                icon={<Search className="w-3.5 h-3.5 text-muted-foreground" />}
-              />
-            </div>
-
-            {/* Status Filter */}
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as any)}
-              className="bg-input border border-border text-foreground text-xs font-mono rounded-xl px-3 py-2 outline-none cursor-pointer"
-            >
-              <option value="all">{t('allStatuses')}</option>
-              <option value="Active">Active</option>
-              <option value="Pending">Pending</option>
-              <option value="Suspended">Suspended</option>
-            </select>
-
-            {/* Role Filter */}
-            <select
-              value={roleFilter}
-              onChange={(e) => setRoleFilter(e.target.value)}
-              className="bg-input border border-border text-foreground text-xs font-mono rounded-xl px-3 py-2 outline-none cursor-pointer"
-            >
-              <option value="all">{t('allRoles')}</option>
-              {STAFF_ROLES.map((r) => (
-                <option key={r} value={r}>
-                  {r}
-                </option>
-              ))}
-            </select>
-          </div>
+      {/* Registered Staff Directory Table */}
+      <div className="bg-[#0B132B]/80 border border-border/80 rounded-xl p-4 space-y-3">
+        <div className="flex items-center justify-between border-b border-border/80 pb-2.5 font-mono">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
+            Registered Staff Directory
+          </h3>
+          <span className="text-[10px] text-muted-foreground">
+            {staffList.length} total staff profiles
+          </span>
         </div>
 
-        {/* Staff Table / Cards */}
-        <div className="overflow-x-auto rounded-2xl border border-border">
-          <table className="w-full text-left text-xs font-mono border-collapse">
-            <thead>
-              <tr className="bg-muted text-muted-foreground text-[10px] uppercase font-bold border-b border-border">
-                <th className="py-3.5 px-4">{t('colStaffMember')}</th>
-                <th className="py-3.5 px-4">{t('colRoleShift')}</th>
-                <th className="py-3.5 px-4">{t('colCredentials')}</th>
-                <th className="py-3.5 px-4">{t('colStatus')}</th>
-                <th className="py-3.5 px-4 text-right">{t('colActions')}</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border bg-card">
-              {filteredStaff.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="py-12 text-center text-muted-foreground font-mono">
-                    <Users className="w-8 h-8 mx-auto mb-2 opacity-30 text-muted-foreground" />
-                    <p className="text-xs font-bold text-foreground">
-                      No staff members match filter criteria.
-                    </p>
-                  </td>
-                </tr>
-              ) : (
-                filteredStaff.map((staff) => {
-                  const isPasswordRevealed = revealedPasswords[staff.id];
-                  const isEditingPassword = editingStaffId === staff.id;
+        <StaffDirectoryTable
+          staffList={staffList}
+          onDeleteStaff={handleDeleteStaff}
+          onOpenResetPasswordModal={(staff) => setResetModalStaff(staff)}
+        />
+      </div>
 
-                  return (
-                    <tr key={staff.id} className="hover:bg-muted/40 transition-colors">
-                      {/* Name & Username */}
-                      <td className="py-3.5 px-4">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400 font-bold text-xs uppercase">
-                            {staff.fullName.substring(0, 2)}
-                          </div>
-                          <div>
-                            <span className="font-bold text-foreground block">{staff.fullName}</span>
-                            <span className="text-[11px] text-primary font-mono">@{staff.username}</span>
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Role & Shift */}
-                      <td className="py-3.5 px-4">
-                        <span className="text-foreground font-semibold block">{staff.role}</span>
-                        <span className="text-[10px] text-muted-foreground block font-mono">
-                          {staff.assignedShift || 'Standard Shift'}
-                        </span>
-                      </td>
-
-                      {/* Password / Reset */}
-                      <td className="py-3.5 px-4">
-                        {isEditingPassword ? (
-                          <div className="flex items-center gap-1.5">
-                            <div className="relative">
-                              <input
-                                type={showEditPassword ? 'text' : 'password'}
-                                placeholder="New password"
-                                value={newPasswordInput}
-                                onChange={(e) => setNewPasswordInput(e.target.value)}
-                                className="bg-background border border-primary text-foreground text-xs font-mono rounded-lg px-2 py-1 w-28 outline-none"
-                              />
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => handleSavePasswordReset(staff)}
-                              className="p-1 rounded bg-emerald-500 text-black hover:bg-emerald-600 transition-colors"
-                              title="Save New Password"
-                            >
-                              <Check className="w-3.5 h-3.5 stroke-[3]" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setEditingStaffId(null);
-                                setNewPasswordInput('');
-                              }}
-                              className="p-1 rounded bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                              title="Cancel"
-                            >
-                              <XCircle className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-2">
-                            <span className="text-muted-foreground font-mono bg-background border border-border px-2 py-0.5 rounded text-[11px]">
-                              {isPasswordRevealed ? staff.passwordHash : '••••••••'}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => togglePasswordReveal(staff.id)}
-                              className="text-muted-foreground hover:text-primary transition-colors cursor-pointer"
-                              title={isPasswordRevealed ? 'Hide password' : 'Show password'}
-                            >
-                              {isPasswordRevealed ? (
-                                <EyeOff className="w-3.5 h-3.5" />
-                              ) : (
-                                <Eye className="w-3.5 h-3.5" />
-                              )}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setEditingStaffId(staff.id);
-                                setNewPasswordInput('');
-                              }}
-                              className="text-[10px] text-sky-400 hover:underline cursor-pointer"
-                            >
-                              Reset
-                            </button>
-                          </div>
-                        )}
-                      </td>
-
-                      {/* Status */}
-                      <td className="py-3.5 px-4">
-                        <Badge
-                          variant={
-                            staff.status === 'Active'
-                              ? 'success'
-                              : staff.status === 'Pending'
-                              ? 'warning'
-                              : 'destructive'
-                          }
-                        >
-                          {staff.status}
-                        </Badge>
-                      </td>
-
-                      {/* Actions */}
-                      <td className="py-3.5 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          {/* Toggle Status Actions */}
-                          {staff.status !== 'Active' && (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleStatusChange(staff, 'Active')}
-                              className="text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 text-[10px]"
-                            >
-                              {t('approveBtn')}
-                            </Button>
-                          )}
-
-                          {staff.status === 'Active' && (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleStatusChange(staff, 'Suspended')}
-                              className="text-destructive border-destructive/30 hover:bg-destructive/10 text-[10px]"
-                            >
-                              {t('suspendBtn')}
-                            </Button>
-                          )}
-
-                          {/* Delete Staff */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (confirm(`Remove staff member @${staff.username}?`)) {
-                                handleDeleteStaff(staff.id);
-                              }
-                            }}
-                            className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
-                            title="Delete staff account"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+      {/* Password Reset Modal */}
+      <PasswordResetModal
+        isOpen={!!resetModalStaff}
+        onClose={() => setResetModalStaff(null)}
+        staff={resetModalStaff}
+        onConfirmReset={handleConfirmResetPassword}
+      />
     </div>
   );
 }

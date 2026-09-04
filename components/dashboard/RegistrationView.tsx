@@ -12,7 +12,8 @@ import {
   RegistrationSchema,
   RegistrationFormData,
   getDefaultRegistrationValues,
-} from '@/features/registration';
+  transformRegistrationToGymMember,
+} from '@/lib/schemas/registration';
 import {
   RegistrationTypeToggle,
   IndividualForm,
@@ -21,7 +22,6 @@ import {
   CameraModal,
 } from './registration';
 import {
-  transformRegistrationToGymMember,
   DURATION_OPTIONS,
 } from '@/lib/registration-utils';
 

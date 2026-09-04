@@ -29,6 +29,8 @@ Only items listed below are exported for external consumption:
 - Tabs, TabsList, TabsTrigger, TabsContent
 - Toast, ToastProvider, ToastViewport, ToastTitle, ToastDescription, ToastClose, ToastAction
 - Form, FormItem, FormLabel, FormControl, FormDescription, FormMessage, FormField
+- Table, TableHeader, TableBody, TableFooter, TableHead, TableRow, TableCell, TableCaption
+- Select, SelectGroup, SelectValue, SelectTrigger, SelectContent, SelectLabel, SelectItem, SelectSeparator, SelectScrollUpButton, SelectScrollDownButton
 
 ## 4. State & Data Lifecycle
 - Pure presentation and Radix uncontrolled/controlled wrappers. Zero domain business logic.

@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Clock } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useDashboard } from '@/lib/orchestration';
 
 export default function StaffClockInOutWidget() {
@@ -61,29 +62,30 @@ export default function StaffClockInOutWidget() {
         </button>
       ) : (
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-          <select
-            value={effectiveStaffId}
-            onChange={(e) => setSelectedStaffId(e.target.value)}
-            className="px-2.5 py-1 bg-background border border-border text-foreground rounded-lg text-xs max-w-[150px]"
-          >
-            <option value="" disabled>Select Staff</option>
-            {staffList.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.fullName}
-              </option>
-            ))}
-          </select>
-          <select
-            value={selectedShiftId}
-            onChange={(e) => setSelectedShiftId(e.target.value)}
-            className="px-2.5 py-1 bg-background border border-border text-foreground rounded-lg text-xs"
-          >
-            {shifts.map((sh) => (
-              <option key={sh.id} value={sh.id}>
-                {sh.name}
-              </option>
-            ))}
-          </select>
+          <Select value={effectiveStaffId} onValueChange={(val) => setSelectedStaffId(val)}>
+            <SelectTrigger className="w-[150px] h-7 text-xs bg-background">
+              <SelectValue placeholder="Select Staff" />
+            </SelectTrigger>
+            <SelectContent>
+              {staffList.map((s) => (
+                <SelectItem key={s.id} value={s.id}>
+                  {s.fullName}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={selectedShiftId} onValueChange={(val) => setSelectedShiftId(val)}>
+            <SelectTrigger className="w-[150px] h-7 text-xs bg-background">
+              <SelectValue placeholder="Select Shift" />
+            </SelectTrigger>
+            <SelectContent>
+              {shifts.map((sh) => (
+                <SelectItem key={sh.id} value={sh.id}>
+                  {sh.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <div className="flex items-center gap-1.5">
             <button
               type="button"

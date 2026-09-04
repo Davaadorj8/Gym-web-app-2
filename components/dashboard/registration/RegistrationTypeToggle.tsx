@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 import { UseFormReturn } from 'react-hook-form';
 import { User, Building2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { RegistrationFormData, createDefaultMember } from '@/features/registration';
+import { RegistrationFormData, createDefaultMember } from '@/lib/schemas/registration';
 
 interface RegistrationTypeToggleProps {
   form: UseFormReturn<RegistrationFormData>;
@@ -18,20 +18,20 @@ export function RegistrationTypeToggle({ form }: RegistrationTypeToggleProps) {
   const handleToggle = (type: 'individual' | 'organization') => {
     form.setValue('registrationType', type, { shouldValidate: true });
     if (type === 'organization') {
-      const curMembers = form.getValues('orgMembers' as any);
-      if (!curMembers || !Array.isArray(curMembers) || curMembers.length === 0) {
-        form.setValue('orgMembers' as any, [createDefaultMember('org-1')]);
+      const formValues = form.getValues();
+      if (!('orgMembers' in formValues) || !Array.isArray(formValues.orgMembers) || formValues.orgMembers.length === 0) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (form.setValue as any)('orgMembers', [createDefaultMember('org-1')]);
       }
-      if (form.getValues('orgName' as any) === undefined) form.setValue('orgName' as any, '');
-      if (form.getValues('orgTaxId' as any) === undefined) form.setValue('orgTaxId' as any, '');
-      if (form.getValues('orgLeadName' as any) === undefined) form.setValue('orgLeadName' as any, '');
-      if (form.getValues('orgLeadEmail' as any) === undefined) form.setValue('orgLeadEmail' as any, '');
-      if (form.getValues('orgLeadPhone' as any) === undefined) form.setValue('orgLeadPhone' as any, '');
-      if (form.getValues('orgAddress' as any) === undefined) form.setValue('orgAddress' as any, '');
+      if (!('orgName' in formValues)) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (form.setValue as any)('orgName', '');
+      }
     } else {
-      const curMember = form.getValues('member' as any);
-      if (!curMember) {
-        form.setValue('member' as any, createDefaultMember('init'));
+      const formValues = form.getValues();
+      if (!('member' in formValues) || !formValues.member) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (form.setValue as any)('member', createDefaultMember('init'));
       }
     }
   };

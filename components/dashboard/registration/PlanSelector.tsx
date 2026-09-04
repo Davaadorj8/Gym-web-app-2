@@ -16,7 +16,7 @@ import {
 import { cn, formatCurrency } from '@/lib/utils';
 import { BuiltPlan, CategoryTarget } from '@/lib/types';
 import { Card, Badge, Button } from '@/components/ui';
-import { RegistrationFormData } from '@/features/registration';
+import { RegistrationFormData } from '@/lib/schemas/registration';
 import {
   calculateExpirationDate,
   formatDateForDisplay,
@@ -146,7 +146,7 @@ export function PlanSelector({
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => setCategoryFilter(tab.id as any)}
+                onClick={() => setCategoryFilter(tab.id as 'all' | 'over18' | 'under18')}
                 className={cn(
                   "flex-1 text-center py-1.5 text-[10px] font-mono font-bold uppercase rounded-lg transition-all",
                   categoryFilter === tab.id

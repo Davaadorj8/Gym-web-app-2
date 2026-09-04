@@ -2,21 +2,15 @@
 
 import React, { useState, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
-import {
-  KeyRound,
-  Lock,
-  Unlock,
-  Clock,
-  Database,
-  Search,
-  ShieldCheck,
-  User,
-} from 'lucide-react';
+import { KeyRound } from 'lucide-react';
 import { GymMember, LockerLog } from '@/lib/types';
-import { Button, Card, Badge, Input, TabsList, type TabItem } from '@/components/ui';
 import { useDashboard } from '@/lib/orchestration';
 import { calculateOccupancyMetrics } from '@/lib/services';
-import { cn } from '@/lib/utils';
+import {
+  LockerOverviewCard,
+  LockerFloorGrid,
+  LockerLogsTable,
+} from './locker-usage';
 
 interface LockerUsageViewProps {
   members?: GymMember[];
@@ -30,7 +24,6 @@ export default function LockerUsageView({
   members: propMembers,
   logs: propLogs,
   totalLockers: propTotalLockers,
-  onNavigateToCheckIn,
 }: LockerUsageViewProps) {
   const dashboard = useDashboard();
   const members = propMembers ?? dashboard.members;
@@ -39,36 +32,23 @@ export default function LockerUsageView({
 
   const t = useTranslations('LockerUsage');
 
-  // Table search & filter state
-  const [searchQuery, setSearchQuery] = useState('');
-  const [logFilter, setLogFilter] = useState<'all' | 'occupied' | 'returns'>('all');
-
-  // Interactive Locker floor map selection state
   const [selectedLockerNumber, setSelectedLockerNumber] = useState<string | null>(null);
 
-  // Currently active occupants (Checked In members who have an assigned locker)
   const activeOccupants = useMemo(() => {
-    return members.filter(
-      (m) => m.occupancyStatus === 'Checked In' && m.assignedLocker
-    );
+    return members.filter((m) => m.occupancyStatus === 'Checked In' && m.assignedLocker);
   }, [members]);
 
-  // Comprehensive map list of all lockers with their computed statuses
   const lockerList = useMemo(() => {
     return Array.from({ length: totalLockers }, (_, i) => {
       const numStr = String(i + 1).padStart(2, '0');
       const lockerName = `Locker #${numStr}`;
-      
-      // Check if occupied
-      const occupant = activeOccupants.find(o => o.assignedLocker === lockerName);
-      
-      // Custom status
+      const occupant = activeOccupants.find((o) => o.assignedLocker === lockerName || o.assignedLocker === numStr);
       const customStatus = dashboard.lockerStatuses[lockerName] || 'available';
 
       return {
         name: lockerName,
         shortName: `L${numStr}`,
-        occupant,
+        occupant: occupant ? { id: occupant.id, name: `${occupant.firstName} ${occupant.lastName}`.trim() } : null,
         status: occupant ? 'occupied' : customStatus,
       };
     });
@@ -78,560 +58,48 @@ export default function LockerUsageView({
     return calculateOccupancyMetrics(totalLockers, activeOccupants.length, dashboard.lockerStatuses);
   }, [totalLockers, activeOccupants.length, dashboard.lockerStatuses]);
 
-  // Specific custom status counts for floor operational awareness
-  const statusCounts = useMemo(() => {
-    const list = Array.from({ length: totalLockers }, (_, i) => `Locker #${String(i + 1).padStart(2, '0')}`);
-    const counts = {
-      clean: 0,
-      repair: 0,
-      key_lost: 0,
-      key_not_returned: 0,
-      inactive: 0,
-    };
-    list.forEach((loc) => {
-      const st = dashboard.lockerStatuses[loc];
-      if (st && st in counts) {
-        counts[st as keyof typeof counts]++;
-      }
-    });
-    return counts;
-  }, [totalLockers, dashboard.lockerStatuses]);
-
-  const { occupiedCount, availableCount, outOfServiceCount, occupancyRate, totalLockers: effectiveTotalLockers } = metrics;
-
-  // Filtered Database Logs
-  const filteredLogs = useMemo(() => {
-    return logs.filter((log) => {
-      // Type Filter
-      if (logFilter === 'occupied' && log.eventType !== 'Checked In') return false;
-      if (logFilter === 'returns' && log.eventType !== 'Checked Out') return false;
-
-      // Search Query
-      if (!searchQuery.trim()) return true;
-      const q = searchQuery.toLowerCase().trim();
-      const matchLocker = log.lockerNumber.toLowerCase().includes(q);
-      const matchName = log.memberName.toLowerCase().includes(q);
-      const matchId = log.memberId.toLowerCase().includes(q);
-      const matchDesc = log.eventDescription.toLowerCase().includes(q);
-      return matchLocker || matchName || matchId || matchDesc;
-    });
-  }, [logs, logFilter, searchQuery]);
-
   return (
-    <div id="locker-usage-root" className="space-y-6 pb-12">
-      {/* Header Bar */}
-      <div
-        id="locker-usage-header"
-        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4"
-      >
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-            <h1 className="text-base sm:text-lg font-extrabold text-foreground tracking-tight">
-              {t('title')}
-            </h1>
-          </div>
-          <p className="text-[11px] font-mono tracking-wider text-muted-foreground uppercase flex items-center gap-2">
-            <Database className="w-3.5 h-3.5 text-sky-400" />
-            <span>{t('subtitle')}</span>
-          </p>
-        </div>
-
-        {/* Top Actions */}
-        <div className="flex items-center gap-2.5">
-          {onNavigateToCheckIn && (
-            <Button
-              id="btn-assign-key-top"
-              type="button"
-              variant="primary"
-              onClick={onNavigateToCheckIn}
-            >
-              <KeyRound className="w-4 h-4 mr-2 stroke-[2.5]" />
-              <span>{t('btnAssignKey')}</span>
-            </Button>
-          )}
-        </div>
+    <div id="locker-usage-view-root" className="w-full space-y-4 font-sans">
+      {/* Header */}
+      <div>
+        <h1 className="text-xl font-bold tracking-tight text-foreground">
+          {t('title') || 'Locker Floor & Occupancy Management'}
+        </h1>
+        <p className="text-xs text-muted-foreground font-mono">
+          Monitor physical locker occupancy, floor status layout, and key return audit histories.
+        </p>
       </div>
 
-      {/* Merged Status Card */}
-      <Card
-        id="locker-status-overview"
-        className="p-6 shadow-xl relative overflow-hidden"
-      >
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-4 flex-1">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/30 flex items-center justify-center text-primary">
-                <Database className="w-5 h-5" />
-              </div>
-              <div className="space-y-0.5">
-                <h3 className="text-sm font-bold text-foreground uppercase tracking-tight">
-                  {t('lockerStatusOverview')}
-                </h3>
-                <p className="text-xs text-muted-foreground font-mono">
-                  {t('lockerStatusBreakdown', {
-                    total: effectiveTotalLockers,
-                    free: availableCount,
-                    occupied: occupiedCount,
-                    out: outOfServiceCount,
-                  })}
-                </p>
-              </div>
-            </div>
+      {/* Overview Stat Cards */}
+      <LockerOverviewCard
+        totalLockers={totalLockers}
+        occupiedCount={metrics.occupiedCount}
+        availableCount={metrics.availableCount}
+        outOfServiceCount={metrics.outOfServiceCount}
+        occupancyRate={metrics.occupancyRate}
+      />
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-2">
-              <div id="stat-total" className="space-y-1">
-                <span className="text-[10px] font-mono text-muted-foreground uppercase">{t('totalCapacity')}</span>
-                <p className="text-2xl font-black text-foreground font-mono">{effectiveTotalLockers}</p>
-              </div>
-              <div id="stat-free" className="space-y-1">
-                <span className="text-[10px] font-mono text-muted-foreground uppercase">{t('lockersAvailable')}</span>
-                <p className="text-2xl font-black text-emerald-400 font-mono">{availableCount}</p>
-              </div>
-              <div id="stat-occupied" className="space-y-1">
-                <span className="text-[10px] font-mono text-muted-foreground uppercase">{t('currentlyOccupied')}</span>
-                <p className="text-2xl font-black text-sky-400 font-mono">{occupiedCount}</p>
-              </div>
-              <div id="stat-out" className="space-y-1">
-                <span className="text-[10px] font-mono text-muted-foreground uppercase">{t('underService')}</span>
-                <p className="text-2xl font-black text-amber-500 font-mono">{outOfServiceCount}</p>
-              </div>
-            </div>
+      {/* Locker Floor Layout Grid */}
+      <LockerFloorGrid
+        lockerList={lockerList}
+        selectedLockerNumber={selectedLockerNumber}
+        onSelectLocker={(name) => setSelectedLockerNumber(name)}
+      />
 
-            {/* Custom Management Status Pills */}
-            <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-border/50 text-[10px] font-mono">
-              <span className="text-muted-foreground uppercase font-bold text-[9px]">Breakdown:</span>
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20">
-                Needs Clean: <strong className="ml-1 font-extrabold">{statusCounts.clean}</strong>
-              </span>
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                Repair Fix: <strong className="ml-1 font-extrabold">{statusCounts.repair}</strong>
-              </span>
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20">
-                Key Lost: <strong className="ml-1 font-extrabold">{statusCounts.key_lost}</strong>
-              </span>
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20">
-                Key Overdue: <strong className="ml-1 font-extrabold">{statusCounts.key_not_returned}</strong>
-              </span>
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-500/10 text-gray-400 border border-gray-500/20">
-                Inactive: <strong className="ml-1 font-extrabold">{statusCounts.inactive}</strong>
-              </span>
-            </div>
-          </div>
-
-          <div className="w-px h-24 bg-border hidden md:block mx-4" />
-
-          <div className="space-y-4 min-w-[200px]">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-mono text-muted-foreground uppercase">{t('utilizationRate')}</span>
-              <span className="text-sm font-black text-sky-400 font-mono">{occupancyRate}%</span>
-            </div>
-            <div className="w-full bg-muted h-3 rounded-full overflow-hidden border border-border">
-              <div
-                className="bg-sky-400 h-full rounded-full transition-all duration-1000"
-                style={{ width: `${occupancyRate}%` }}
-              />
-            </div>
-            <p className="text-[10px] text-muted-foreground font-mono text-right">
-              Based on active key issuance
-            </p>
-          </div>
-        </div>
-      </Card>
-
-      {/* ================= Locker Floor Map Visual Grid ================= */}
-      <Card id="card-locker-floor-map" className="p-6 shadow-xl space-y-4">
-        <div className="border-b border-border pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-              <h2 className="text-sm sm:text-base font-extrabold text-foreground uppercase tracking-wider font-mono">
-                Locker Bay Visual Floor Map
-              </h2>
-            </div>
-            <p className="text-xs text-muted-foreground font-mono">
-              Interactive structural grid of locker bays. Select a locker to edit status or view active key assignments.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap gap-2 text-[10px] font-mono">
-            <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> Available
-            </span>
-            <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20">
-              <span className="w-1.5 h-1.5 rounded-full bg-sky-400" /> Occupied
-            </span>
-            <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20">
-              <span className="w-1.5 h-1.5 rounded-full bg-purple-400" /> Clean
-            </span>
-            <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-400" /> Repair
-            </span>
-            <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-red-500/10 text-red-400 border border-red-500/20">
-              <span className="w-1.5 h-1.5 rounded-full bg-red-500" /> Key Lost
-            </span>
-          </div>
-        </div>
-
-        {/* The Grid */}
-        <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-2.5">
-          {lockerList.map((locker) => {
-            let statusColor = "bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:border-emerald-500/60";
-            if (locker.status === 'occupied') {
-              statusColor = "bg-sky-500/10 text-sky-400 border-sky-500/30 hover:border-sky-500/60";
-            } else if (locker.status === 'clean') {
-              statusColor = "bg-purple-500/10 text-purple-400 border-purple-500/30 hover:border-purple-500/60";
-            } else if (locker.status === 'repair') {
-              statusColor = "bg-amber-500/10 text-amber-400 border-amber-400/30 hover:border-amber-400/60";
-            } else if (locker.status === 'key_lost') {
-              statusColor = "bg-red-500/10 text-red-400 border-red-500/30 hover:border-red-500/60";
-            } else if (locker.status === 'key_not_returned') {
-              statusColor = "bg-rose-500/10 text-rose-400 border-rose-500/30 hover:border-rose-500/60";
-            } else if (locker.status === 'inactive') {
-              statusColor = "bg-zinc-500/10 text-zinc-400 border-zinc-500/30 hover:border-zinc-500/60";
-            }
-
-            return (
-              <button
-                key={locker.name}
-                type="button"
-                onClick={() => setSelectedLockerNumber(locker.name)}
-                className={cn(
-                  "aspect-square p-2 border-2 rounded-xl flex flex-col items-center justify-between text-center transition-all cursor-pointer font-mono shadow-sm",
-                  statusColor,
-                  selectedLockerNumber === locker.name ? "ring-2 ring-primary scale-105" : ""
-                )}
-              >
-                <span className="text-[10px] font-bold text-muted-foreground uppercase">{locker.shortName}</span>
-                {locker.status === 'occupied' ? (
-                  <Lock className="w-4 h-4 text-sky-400" />
-                ) : locker.status === 'repair' ? (
-                  <Lock className="w-4 h-4 text-amber-400" />
-                ) : (
-                  <Unlock className="w-4 h-4" />
-                )}
-                <span className="text-[8px] font-extrabold uppercase tracking-widest leading-none truncate max-w-full">
-                  {locker.status === 'key_not_returned' ? 'Overdue' : locker.status}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Selected Locker Quick Control Panel */}
-        {selectedLockerNumber && (() => {
-          const selectedLockerObj = lockerList.find(l => l.name === selectedLockerNumber);
-          if (!selectedLockerObj) return null;
-
-          return (
-            <div className="bg-muted/40 border border-border p-4 rounded-xl space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-extrabold text-foreground font-mono uppercase tracking-wider">
-                    Quick Control: {selectedLockerNumber}
-                  </h3>
-                  <p className="text-[11px] text-muted-foreground font-mono">
-                    Current Status: <strong className="text-primary uppercase">{selectedLockerObj.status}</strong>
-                  </p>
-                </div>
-                <Button
-                  id="btn-close-locker-controls"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setSelectedLockerNumber(null)}
-                  className="h-7 text-xs"
-                >
-                  Close Controls
-                </Button>
-              </div>
-
-              {selectedLockerObj.occupant && (
-                <div className="bg-background border border-border p-3.5 rounded-xl flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400">
-                      <User className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-bold text-foreground">
-                        {selectedLockerObj.occupant.firstName} {selectedLockerObj.occupant.lastName}
-                      </h4>
-                      <p className="text-[10px] text-muted-foreground font-mono">
-                        Checked In at {selectedLockerObj.occupant.lastCheckInTime || 'Just now'}
-                      </p>
-                    </div>
-                  </div>
-                  <Badge variant="primary" className="font-mono">Active Occupant</Badge>
-                </div>
-              )}
-
-              <div className="flex flex-wrap gap-2 pt-1">
-                <span className="text-[10px] text-muted-foreground font-mono font-bold block w-full mb-1 uppercase">Set Custom Locker Status:</span>
-                {[
-                  { label: 'Available', value: 'available' as any },
-                  { label: 'Needs Clean', value: 'clean' as any },
-                  { label: 'Needs Repair', value: 'repair' as any },
-                  { label: 'Key Lost', value: 'key_lost' as any },
-                  { label: 'Key Overdue', value: 'key_not_returned' as any },
-                  { label: 'Set Inactive', value: 'inactive' as any },
-                ].map((act) => (
-                  <Button
-                    key={act.label}
-                    type="button"
-                    variant={selectedLockerObj.status === act.value ? 'primary' : 'outline'}
-                    size="sm"
-                    disabled={selectedLockerObj.status === 'occupied' && act.value !== 'available'}
-                    onClick={() => {
-                      dashboard.updateLockerStatus(selectedLockerNumber, act.value);
-                    }}
-                    className="h-8 text-xs font-mono font-bold"
-                  >
-                    {act.label}
-                  </Button>
-                ))}
-              </div>
-            </div>
-          );
-        })()}
-      </Card>
-
-      {/* ================= Current Active Locker Occupants ================= */}
-      <Card
-        id="card-active-occupants"
-        className="p-5 sm:p-6 shadow-xl space-y-4"
-      >
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-400" />
-              <h2 className="text-sm sm:text-base font-extrabold text-foreground">
-                {t('activeOccupantsTitle')}
-              </h2>
-            </div>
-            <p className="text-xs text-muted-foreground font-mono">
-              {t('activeOccupantsSubtitle')}
-            </p>
-          </div>
-
-          <Badge variant="primary">
-            {t('realtimeOccupantsCount', { count: activeOccupants.length })}
-          </Badge>
-        </div>
-
-        {activeOccupants.length === 0 ? (
-          /* Empty state for Active Occupants */
-          <div
-            id="empty-active-occupants"
-            className="bg-background border border-border rounded-2xl py-12 px-6 text-center space-y-3"
-          >
-            <div className="w-12 h-12 rounded-2xl bg-muted border border-border mx-auto flex items-center justify-center text-muted-foreground">
-              <KeyRound className="w-6 h-6 stroke-[1.5]" />
-            </div>
-            <h3 className="text-sm font-bold text-foreground">
-              {t('noOccupants')}
+      {/* Audit Logs Table */}
+      <div className="bg-[#0B132B]/80 border border-border/80 rounded-xl p-4 space-y-3">
+        <div className="flex items-center justify-between border-b border-border/80 pb-2.5 font-mono">
+          <div className="flex items-center gap-2">
+            <KeyRound className="w-4 h-4 text-[#D4FF00]" />
+            <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
+              Locker Key &amp; Access Audit Logs
             </h3>
-            <p className="text-xs text-muted-foreground font-mono max-w-md mx-auto">
-              When receptionists check in members at the desk, their locker keys appear here in real-time.
-            </p>
           </div>
-        ) : (
-          /* Active Occupants Grid */
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5 pt-2">
-            {activeOccupants.map((occ) => (
-              <div
-                key={occ.id}
-                id={`occupant-card-${occ.id}`}
-                className="bg-background border border-border hover:border-primary/60 rounded-2xl p-4 transition-all shadow-md flex items-center justify-between gap-3"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  {/* Photo or User Avatar */}
-                  <div className="w-11 h-11 rounded-full bg-muted border border-border shrink-0 overflow-hidden flex items-center justify-center">
-                    {occ.photoUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={occ.photoUrl}
-                        alt={`${occ.firstName} ${occ.lastName}`}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <User className="w-5 h-5 text-muted-foreground" />
-                    )}
-                  </div>
-
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h4 className="text-xs font-bold text-foreground uppercase truncate">
-                        {occ.firstName} {occ.lastName}
-                      </h4>
-                    </div>
-                    <div className="text-[11px] font-mono text-muted-foreground flex items-center gap-2 mt-0.5">
-                      <span className="text-sky-400 font-bold">{occ.id}</span>
-                      <span>•</span>
-                      <span>{occ.lastCheckInTime?.split(' ')[1] || 'Just now'}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="shrink-0 flex flex-col items-end gap-1">
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-sky-500/10 border border-sky-500/30 text-sky-400 text-xs font-mono font-extrabold">
-                    <KeyRound className="w-3 h-3 text-sky-400" />
-                    <span>{occ.assignedLocker}</span>
-                  </span>
-                  <Badge variant="success" className="text-[10px]">
-                    Floor Active
-                  </Badge>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </Card>
-
-      {/* ================= Database Locker Usage Log ================= */}
-      <Card
-        id="card-database-log"
-        className="p-5 sm:p-6 shadow-xl space-y-4"
-      >
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <Database className="w-4 h-4 text-primary" />
-              <h2 className="text-sm sm:text-base font-extrabold text-foreground">
-                {t('databaseLogsTitle')}
-              </h2>
-            </div>
-            <p className="text-xs text-muted-foreground font-mono">
-              {t('databaseLogsSubtitle')}
-            </p>
-          </div>
-
-          {/* Search bar & Filter Pills */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
-            <div className="min-w-[240px]">
-              <Input
-                id="input-search-locker-logs"
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={t('searchPlaceholder')}
-                icon={<Search className="w-3.5 h-3.5 text-muted-foreground" />}
-              />
-            </div>
-
-            <TabsList
-              tabs={[
-                { id: 'all', label: t('filterAll') },
-                { id: 'occupied', label: t('filterOccupied') },
-                { id: 'returns', label: t('filterReturns') },
-              ]}
-              activeTab={logFilter}
-              onTabChange={(tab) => setLogFilter(tab as any)}
-              variant="boxed"
-            />
-          </div>
+          <span className="text-[10px] text-muted-foreground">{logs.length} events logged</span>
         </div>
 
-        {/* Database Table */}
-        <div className="overflow-x-auto rounded-xl border border-border">
-          {filteredLogs.length === 0 ? (
-            /* Empty table state */
-            <div className="py-12 text-center text-xs font-mono text-muted-foreground space-y-2 bg-background">
-              <Database className="w-6 h-6 text-muted-foreground/50 mx-auto mb-1 stroke-[1.5]" />
-              <p>{t('noLogs')}</p>
-            </div>
-          ) : (
-            <table className="w-full text-left text-xs font-mono">
-              <thead>
-                <tr className="bg-muted text-muted-foreground text-[10px] uppercase font-bold border-b border-border">
-                  <th className="py-3 px-4">{t('colLockerNum')}</th>
-                  <th className="py-3 px-4">{t('colAthlete')}</th>
-                  <th className="py-3 px-4">{t('colEventDetails')}</th>
-                  <th className="py-3 px-4">{t('colTimestamp')}</th>
-                  <th className="py-3 px-4">{t('colActionType')}</th>
-                  <th className="py-3 px-4 text-right">{t('colStaff')}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border bg-card">
-                {filteredLogs.map((log) => {
-                  const isCheckIn = log.eventType === 'Checked In';
-
-                  return (
-                    <tr
-                      key={log.id}
-                      className="hover:bg-muted/40 transition-colors group"
-                    >
-                      {/* Locker Key # */}
-                      <td className="py-3.5 px-4 font-bold">
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-sky-500/10 border border-sky-500/30 text-sky-400 font-mono text-xs">
-                          <KeyRound className="w-3 h-3 text-sky-400" />
-                          <span>{log.lockerNumber}</span>
-                        </span>
-                      </td>
-
-                      {/* Athlete / Member */}
-                      <td className="py-3.5 px-4">
-                        <div className="font-bold text-foreground uppercase tracking-wide">
-                          {log.memberName}
-                        </div>
-                        <div className="text-[10px] text-muted-foreground font-mono mt-0.5">
-                          {log.memberId}
-                        </div>
-                      </td>
-
-                      {/* Event Description */}
-                      <td className="py-3.5 px-4 text-muted-foreground">
-                        <span className="font-medium text-foreground">{log.eventDescription}</span>
-                      </td>
-
-                      {/* Timestamp */}
-                      <td className="py-3.5 px-4 text-muted-foreground">
-                        {log.timeFormatted}
-                      </td>
-
-                      {/* Key Status Badge */}
-                      <td className="py-3.5 px-4">
-                        {isCheckIn ? (
-                          <Badge variant="success">
-                            Key Issued (In)
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline">
-                            Key Returned (Out)
-                          </Badge>
-                        )}
-                      </td>
-
-                      {/* Staff Logged */}
-                      <td className="py-3.5 px-4 text-right">
-                        {log.staffRole === 'admin' ||
-                        log.staffLogged?.toLowerCase().includes('admin') ||
-                        log.staffLogged === 'Admin' ? (
-                          <Badge
-                            id={`staff-logged-badge-${log.id}`}
-                            variant="primary"
-                            className="font-mono font-black uppercase tracking-wider"
-                          >
-                            <ShieldCheck className="w-3 h-3 mr-1 text-primary-foreground" />
-                            <span>{log.staffLogged || 'Admin'}</span>
-                          </Badge>
-                        ) : (
-                          <Badge
-                            id={`staff-logged-badge-${log.id}`}
-                            variant="info"
-                            className="font-mono font-black uppercase tracking-wider"
-                          >
-                            <User className="w-3 h-3 mr-1 text-sky-400" />
-                            <span>{log.staffLogged || 'Staff'}</span>
-                          </Badge>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
-        </div>
-      </Card>
+        <LockerLogsTable logs={logs} />
+      </div>
     </div>
   );
 }

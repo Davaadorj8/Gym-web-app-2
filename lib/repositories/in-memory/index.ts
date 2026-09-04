@@ -27,7 +27,7 @@ export class InMemoryRepository<T extends { id: string }> implements CrudReposit
     initialItems.forEach((item) => this.items.set(item.id, { ...item }));
   }
 
-  protected matchesTenant(item: any, ctx?: TenantQueryContext): boolean {
+  protected matchesTenant(item: { tenantId?: string; locationId?: string }, ctx?: TenantQueryContext): boolean {
     if (!ctx) return true;
     if (ctx.tenantId && item.tenantId && item.tenantId !== ctx.tenantId) {
       return false;
@@ -40,7 +40,7 @@ export class InMemoryRepository<T extends { id: string }> implements CrudReposit
 
   async findAll(ctx?: TenantQueryContext): Promise<T[]> {
     return Array.from(this.items.values()).filter((item) => {
-      const anyItem = item as any;
+      const anyItem = item as Record<string, unknown>;
       if (anyItem.deletedAt !== undefined && anyItem.deletedAt !== null) return false;
       return this.matchesTenant(anyItem, ctx);
     });
@@ -51,7 +51,7 @@ export class InMemoryRepository<T extends { id: string }> implements CrudReposit
     const targetId = typeof ctxOrId === 'string' ? ctxOrId : id!;
     const item = this.items.get(targetId);
     if (!item) return null;
-    const anyItem = item as any;
+    const anyItem = item as Record<string, unknown>;
     if (anyItem.deletedAt !== undefined && anyItem.deletedAt !== null) {
       return null;
     }
@@ -63,12 +63,13 @@ export class InMemoryRepository<T extends { id: string }> implements CrudReposit
     const isCtx = typeof ctxOrItem === 'object' && ('tenantId' in ctxOrItem || 'locationId' in ctxOrItem) && !('id' in ctxOrItem);
     const ctx = isCtx ? (ctxOrItem as TenantQueryContext) : undefined;
     const newItem = isCtx ? item! : (ctxOrItem as T);
+    const rec = newItem as Record<string, unknown>;
     const stamped = {
-      tenantId: ctx?.tenantId || (newItem as any).tenantId || 'tenant-arche',
-      locationId: (ctx?.locationId && ctx.locationId !== 'all') ? ctx.locationId : ((newItem as any).locationId || 'loc-downtown'),
+      tenantId: ctx?.tenantId || (rec.tenantId as string) || 'tenant-arche',
+      locationId: (ctx?.locationId && ctx.locationId !== 'all') ? ctx.locationId : ((rec.locationId as string) || 'loc-downtown'),
       ...(newItem as object),
     } as unknown as T;
-    this.items.set((stamped as any).id, { ...stamped });
+    this.items.set((stamped as Record<string, unknown>).id as string, { ...stamped });
     return { ...stamped };
   }
 
@@ -78,7 +79,7 @@ export class InMemoryRepository<T extends { id: string }> implements CrudReposit
     const actualUpdates = typeof ctxOrId === 'string' ? (idOrUpdates as Partial<T>) : updates!;
     const existing = this.items.get(targetId);
     if (!existing) return null;
-    const anyExisting = existing as any;
+    const anyExisting = existing as Record<string, unknown>;
     if (anyExisting.deletedAt !== undefined && anyExisting.deletedAt !== null) {
       return null;
     }
@@ -95,7 +96,7 @@ export class InMemoryRepository<T extends { id: string }> implements CrudReposit
     const existing = this.items.get(targetId);
     if (!existing) return false;
     
-    const anyExisting = existing as any;
+    const anyExisting = existing as Record<string, unknown>;
     if (!this.matchesTenant(anyExisting, ctx)) return false;
     anyExisting.deletedAt = new Date().toISOString();
     if (actor) {
@@ -112,7 +113,7 @@ export class InMemoryRepository<T extends { id: string }> implements CrudReposit
     const existing = this.items.get(targetId);
     if (!existing) return false;
     
-    const anyExisting = existing as any;
+    const anyExisting = existing as Record<string, unknown>;
     if (!this.matchesTenant(anyExisting, ctx)) return false;
     anyExisting.deletedAt = null;
     anyExisting.deletedBy = null;

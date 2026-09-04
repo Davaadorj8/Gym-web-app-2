@@ -77,7 +77,7 @@ export const authConfig = {
               email: staffUser.email || `${staffUser.username}@archegym.com`,
               role: staffUser.role === 'admin' ? 'ADMIN' : 'STAFF',
               permissions: staffUser.permissions || [],
-            } as any;
+            };
           }
         }
 
@@ -88,7 +88,7 @@ export const authConfig = {
             name: "Dev Admin",
             email: inputIdentifier || "admin@dev.local",
             role: "ADMIN",
-          } as any;
+          };
         }
 
         return null;
@@ -99,7 +99,8 @@ export const authConfig = {
     signIn: "/login",
   },
   callbacks: {
-    authorized({ auth, request: { nextUrl } }: { auth: any; request: { nextUrl: any } }) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    authorized({ auth, request: { nextUrl } }: any) {
       const isLoggedIn = !!auth?.user;
       const isDashboard = nextUrl.pathname.startsWith("/dashboard");
       const isLogin = nextUrl.pathname.startsWith("/login");
@@ -115,14 +116,16 @@ export const authConfig = {
       }
       return true;
     },
-    async jwt({ token, user }: { token: any; user: any }) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    async jwt({ token, user }: any) {
       if (user) {
         token.id = user.id;
-        token.role = (user as any).role;
+        token.role = user.role;
       }
       return token;
     },
-    async session({ session, token }: { session: any; token: any }) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    async session({ session, token }: any) {
       if (session.user) {
         session.user.id = token.id as string;
         session.user.role = token.role as string;

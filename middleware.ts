@@ -1,6 +1,6 @@
 import NextAuth from "next-auth";
 import { authConfig } from "./auth.config";
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 
@@ -23,7 +23,7 @@ const ratelimit = redis
 
 const { auth } = NextAuth(authConfig);
 
-export default auth(async (req: any) => {
+export default auth(async (req: NextRequest) => {
   // 1. Edge Rate Limiter
   if (ratelimit) {
     const ip = req.headers.get("x-forwarded-for") ?? "127.0.0.1";

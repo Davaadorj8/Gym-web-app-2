@@ -1,5 +1,4 @@
-import { BuiltPlan, GymMember } from '@/lib/types';
-import { RegistrationFormData } from '@/features/registration/types';
+import { BuiltPlan } from '@/lib/types';
 
 export const DURATION_OPTIONS = [
   { labelEn: '1 Mo', labelMn: '1 Сар', multiplier: 1 },
@@ -52,74 +51,3 @@ export function calculateRegistrationFee(
   return Math.round(monthlyRate * multiplier);
 }
 
-/**
- * Transforms validated registration form data into a GymMember entity.
- */
-export function transformRegistrationToGymMember(
-  data: RegistrationFormData,
-  plans: BuiltPlan[],
-  isMn = false
-): GymMember {
-  const today = new Date();
-  const activePlan = plans.find((p) => p.id === data.selectedPlanId);
-  const expirationDate = calculateExpirationDate(today, data.durationMultiplier);
-
-  const planTitle = activePlan
-    ? isMn && activePlan.titleMn
-      ? activePlan.titleMn
-      : activePlan.title
-    : 'Standard Membership';
-
-  if (data.registrationType === 'individual') {
-    const member = data.member;
-    const memberId = generateMemberId('IP', member.firstName);
-
-    return {
-      id: memberId,
-      firstName: member.firstName,
-      lastName: member.lastName,
-      email: member.email || '',
-      phone: member.phone || '',
-      dob: member.dob || '',
-      gender: member.gender,
-      emergencyContact: member.emergencyContact || 'N/A',
-      medicalNotes: member.medicalNotes || 'None',
-      photoUrl: member.photo || null,
-      planTitle,
-      planCategory: activePlan?.categoryTarget || 'over18',
-      durationMonths: data.durationMultiplier,
-      startDate: today.toISOString().split('T')[0],
-      expirationDate,
-      status: 'Active',
-      isOrganization: false,
-      occupancyStatus: 'Checked Out',
-      assignedLocker: null,
-    };
-  }
-
-  // Organization registration
-  const firstMemberPhoto = data.orgMembers[0]?.photo || null;
-  const orgMemberId = generateMemberId('ORG', data.orgName);
-
-  return {
-    id: orgMemberId,
-    firstName: data.orgName,
-    lastName: data.orgLeadName,
-    email: data.orgLeadEmail || '',
-    phone: data.orgLeadPhone,
-    gender: 'Prefer not to say',
-    emergencyContact: `${data.orgLeadName} (${data.orgLeadPhone})`,
-    medicalNotes: `Corporate group registration (${data.orgMembers.length} roster members)`,
-    photoUrl: firstMemberPhoto,
-    planTitle,
-    planCategory: 'organization',
-    durationMonths: data.durationMultiplier,
-    startDate: today.toISOString().split('T')[0],
-    expirationDate,
-    status: 'Active',
-    isOrganization: true,
-    orgName: data.orgName,
-    occupancyStatus: 'Checked Out',
-    assignedLocker: null,
-  };
-}

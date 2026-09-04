@@ -18,6 +18,8 @@
 
 ## 3. Public API Exports
 - I18nProvider
+- components/data-table/data-table (DataTable)
+- components/stat-card (StatCard)
 - components/ui (Level 1 Primitives)
 - components/dashboard (Dashboard Views & Shell)
 - components/auth (LoginScreen)
@@ -31,3 +33,4 @@
 
 ## 6. Maintenance Log
 - 2026-08-25: Initialized directory specification per Master System Instructions.
+- 2026-09-03: Added DataTable and StatCard Level 2 primitives.
