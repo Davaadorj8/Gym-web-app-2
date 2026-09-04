@@ -19,25 +19,14 @@ import {
 
 interface CheckInDeskViewProps {
   members?: GymMember[];
-  onUpdateMember?: (updatedMember: GymMember) => void;
   onNavigateToRegistration?: () => void;
   totalLockers?: number;
-  onLogLockerEvent?: (event: {
-    lockerNumber: string;
-    memberId: string;
-    memberName: string;
-    eventType: 'Checked In' | 'Checked Out';
-    eventDescription: string;
-    statusLabel: 'Check-In Logged' | 'Key Returned';
-  }) => void;
 }
 
 export default function CheckInDeskView({
   members: propMembers,
-  onUpdateMember: propOnUpdateMember,
   onNavigateToRegistration,
   totalLockers: propTotalLockers,
-  onLogLockerEvent: propOnLogLockerEvent,
 }: CheckInDeskViewProps) {
   const dashboard = useDashboard();
   const members = propMembers ?? dashboard.members;
@@ -82,27 +71,8 @@ export default function CheckInDeskView({
 
   const confirmCheckIn = () => {
     if (!activeMember) return;
-    const nowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const updated: GymMember = {
-      ...activeMember,
-      occupancyStatus: 'Checked In',
-      assignedLocker: selectedLockerNumber,
-      lastCheckInTime: `${new Date().toISOString().split('T')[0]} ${nowStr}`,
-    };
 
-    if (propOnUpdateMember) propOnUpdateMember(updated);
-    else dashboard.updateMember(updated);
-
-    if (propOnLogLockerEvent) {
-      propOnLogLockerEvent({
-        lockerNumber: selectedLockerNumber,
-        memberId: activeMember.id,
-        memberName: `${activeMember.firstName} ${activeMember.lastName}`.trim(),
-        eventType: 'Checked In',
-        eventDescription: `Locker #${selectedLockerNumber} assigned`,
-        statusLabel: 'Check-In Logged',
-      });
-    }
+    dashboard.checkInMember(activeMember.id, selectedLockerNumber);
 
     setIsLockerModalOpen(false);
     showToast(`Checked in ${activeMember.firstName} with Locker #${selectedLockerNumber}.`);
@@ -110,14 +80,8 @@ export default function CheckInDeskView({
 
   const handleCheckOutMember = (member: GymMember) => {
     const assignedLockerNum = member.assignedLocker;
-    const updated: GymMember = {
-      ...member,
-      occupancyStatus: 'Checked Out',
-      assignedLocker: undefined,
-    };
 
-    if (propOnUpdateMember) propOnUpdateMember(updated);
-    else dashboard.updateMember(updated);
+    dashboard.checkOutMember(member.id);
 
     showToast(`Checked out ${member.firstName}. Locker #${assignedLockerNum || 'N/A'} returned.`);
   };

@@ -39,3 +39,7 @@
   `getLockerRepository()` for locker status/capacity (Phase B, Domain 1 of the
   DashboardContext extraction roadmap) — this repository interface was named in this doc
   before the real code existed; it's now accurate.
+- 2026-09-04: `IMemberRepository.updateCheckInStatus` gained its first real caller
+  (`src/features/checkins`, Phase B Domain 2) — it was fully implemented but had zero
+  callers before this; `CheckInDeskView` previously mutated check-in/out state through the
+  generic `.update()` method instead.

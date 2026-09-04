@@ -52,6 +52,7 @@ import {
   getLockerStatusesAction,
   getTotalLockersAction,
 } from '@/features/lockers';
+import { checkInMemberAction, checkOutMemberAction } from '@/features/checkins';
 import { format } from 'date-fns';
 import { createAuditEntry } from '@/lib/utils/audit';
 
@@ -569,6 +570,13 @@ export function DashboardProvider({
       const staffAccount = staffList.find((s) => s.id === finalStaffId);
       const staffName = staffAccount ? staffAccount.fullName : (currentUser.role === 'admin' ? 'Admin' : 'Staff');
 
+      void checkInMemberAction({
+        tenantId: tenantContext.tenantId,
+        locationId: tenantContext.locationId,
+        memberId,
+        lockerNumber,
+      });
+
       logLockerEvent({
         lockerNumber,
         memberId,
@@ -581,7 +589,7 @@ export function DashboardProvider({
         checkedInByStaffId: finalStaffId,
       });
     },
-    [members, logLockerEvent, currentUser, staffList]
+    [members, logLockerEvent, currentUser, staffList, tenantContext]
   );
 
   const checkOutMember = useCallback(
@@ -605,6 +613,12 @@ export function DashboardProvider({
           };
         })
       );
+
+      void checkOutMemberAction({
+        tenantId: tenantContext.tenantId,
+        locationId: tenantContext.locationId,
+        memberId,
+      });
 
       logLockerEvent({
         lockerNumber: releasedLocker,
@@ -660,7 +674,7 @@ export function DashboardProvider({
         return prevWaitlist;
       });
     },
-    [members, logLockerEvent, currentUser]
+    [members, logLockerEvent, currentUser, tenantContext]
   );
 
   // Plan Domain Actions
