@@ -2,6 +2,7 @@
   "name": "ai-studio-applet",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "npm@10.8.2",
   "scripts": {
     "dev": "AUTH_SECRET=dev-secret-bypass next dev --turbopack -p 3000 -H 0.0.0.0",
     "build": "prisma generate && next build",
@@ -33,7 +34,7 @@
     "@reduxjs/toolkit": "^2.12.0",
     "@sentry/nextjs": "^10.70.0",
     "@t3-oss/env-nextjs": "^0.13.11",
-    "@tanstack/react-table": "^9.2.4",
+    "@tanstack/react-table": "^8.20.6",
     "@upstash/ratelimit": "^2.0.8",
     "@upstash/redis": "^1.38.2",
     "autoprefixer": "^10.4.21",

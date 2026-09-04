@@ -88,7 +88,7 @@ export default function LoginScreen({
       {/* Main Login Card */}
       <div
         id="login-card"
-        className="relative w-full max-w-[420px] bg-card border border-border rounded-xl shadow-xl p-5 sm:p-6 z-10 overflow-hidden"
+        className="relative w-full max-w-[420px] bg-card border border-border rounded-2xl shadow-xl p-6 sm:p-7 z-10 overflow-hidden"
       >
         {/* Top Glow Accent Bar */}
         <div

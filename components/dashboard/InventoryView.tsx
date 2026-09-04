@@ -281,7 +281,7 @@ export default function InventoryView({
         <div className="space-y-4">
           <div
             id="card-nutrient-inventory"
-            className="bg-[#0B132B]/80 dark:bg-[#0D1527] border border-border/80 rounded-xl p-4 shadow-lg"
+            className="bg-[#0B132B]/80 dark:bg-[#0D1527] border border-border/80 rounded-xl p-5 shadow-lg"
           >
             {nutrients.length === 0 ? (
               <div className="flex flex-col items-center justify-center text-center py-8 space-y-3">

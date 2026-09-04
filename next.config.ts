@@ -2,7 +2,7 @@ import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
   allowedDevOrigins: [
-    "*.asia-northeast1.run.app",
+    "ais-dev-k4gvyp56abrwbbg7sb6hfm-208150764139.asia-northeast1.run.app",
     "*.run.app",
   ],
   output: 'standalone',
