@@ -270,7 +270,32 @@ export function LoginForm() {
           id="login-github-btn"
           type="button"
           variant="outline"
-          onClick={() => loginWithGitHub()}
+          onClick={async () => {
+            setError("");
+            setLoading(true);
+            try {
+              const res = await loginWithGitHub();
+              if (res && !res.success && res.error) {
+                setError(res.error);
+              }
+            } catch (err: unknown) {
+              if (
+                err &&
+                typeof err === "object" &&
+                "digest" in err &&
+                String((err as { digest?: string }).digest).startsWith("NEXT_REDIRECT")
+              ) {
+                throw err;
+              }
+              setError(
+                locale === "mn"
+                  ? "GitHub нэвтрэлт тохируулагдаагүй байна."
+                  : "GitHub OAuth is not configured or failed to connect."
+              );
+            } finally {
+              setLoading(false);
+            }
+          }}
           className="w-full h-10 bg-background hover:bg-muted border-border text-foreground font-medium rounded-xl text-xs flex items-center justify-center gap-2 cursor-pointer"
         >
           <svg className="h-4 w-4 fill-current shrink-0" viewBox="0 0 24 24">

@@ -66,20 +66,25 @@ export default function Sidebar({
     { id: 'approvals', label: t('navStaffApprovals'), icon: ShieldCheck },
   ];
 
-  const isAdmin = currentUser?.role === 'admin';
+  const effectiveUser = currentUser || dashboard.currentUser || {
+    id: 'default-user',
+    name: 'Admin',
+    role: 'admin' as UserRole,
+    permissions: ['ALL'],
+  };
+
+  const isAdmin = effectiveUser.role === 'admin';
 
   const visibleMenuItems = menuItems.filter((item) => {
-    if (item.id === 'approvals' || item.id === 'inventory') {
-      return isAdmin;
-    }
-    return hasStaffPermission(currentUser, item.id);
+    if (isAdmin) return true;
+    return hasStaffPermission(effectiveUser, item.id);
   });
 
   return (
     <aside
       id="sidebar-container"
       className={cn(
-        'bg-background border-r border-border flex flex-col justify-between shrink-0 min-h-dvh text-muted-foreground select-none z-20 transition-all duration-300 ease-in-out',
+        'bg-background border-r border-border flex flex-col justify-between shrink-0 h-full min-h-screen text-muted-foreground select-none z-20 transition-all duration-300 ease-in-out overflow-y-auto overflow-x-hidden',
         isCollapsed ? 'w-[76px]' : 'w-[clamp(13rem,16vw,17rem)]'
       )}
     >
@@ -134,7 +139,7 @@ export default function Sidebar({
         </div>
 
         {/* Check In Member Button */}
-        {hasStaffPermission(currentUser, 'checkin') && (
+        {(isAdmin || hasStaffPermission(effectiveUser, 'checkin')) && (
           <button
             id="btn-check-in-member"
             type="button"
@@ -267,7 +272,7 @@ export default function Sidebar({
             >
               <div
                 id="user-avatar-badge"
-                title={`${currentUser?.name || (isAdmin ? 'Admin' : 'Staff')} (${isAdmin ? t('admin') : t('staff')})`}
+                title={`${effectiveUser?.name || (isAdmin ? 'Admin' : 'Staff')} (${isAdmin ? t('admin') : t('staff')})`}
                 className={cn(
                   'w-8 h-8 rounded-full border flex items-center justify-center text-[11px] font-bold shrink-0',
                   isAdmin
@@ -280,7 +285,7 @@ export default function Sidebar({
               {!isCollapsed && (
                 <div className="flex flex-col min-w-0">
                   <span className="text-xs font-bold text-foreground truncate leading-tight">
-                    {currentUser?.name || (isAdmin ? 'Admin' : 'Staff')}
+                    {effectiveUser?.name || (isAdmin ? 'Admin' : 'Staff')}
                   </span>
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <span

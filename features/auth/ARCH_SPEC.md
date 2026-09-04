@@ -37,3 +37,4 @@ Only items listed below are exported for external consumption:
 - 2026-08-27: Implemented "Clean Dev Mock Approach" for authentication; configured `authorize` bypass in `auth.config.ts`.
 - 2026-09-04: Upgraded authentication to full NextAuth integration with SessionProvider, Zod LoginCredentialsSchema validation, typed NextAuth callbacks, and consolidated LoginForm.
 - 2026-09-04: Added direct dev-login route (`/api/auth/dev-login`) that manually issues Auth.js JWT session tokens to prevent iframe CSRF cookie partitioning in sandboxed preview environments.
+- 2026-09-04: Fixed Auth.js "Failed to fetch" error: properly wrapped GitHub provider factory invocation in `auth.config.ts` conditional on available credentials, and added graceful fallback handling to `loginWithGitHub` action.

@@ -153,7 +153,7 @@ export default function DashboardShell({
       )}
 
       {/* Desktop Persistent Sidebar */}
-      <div className="hidden md:flex shrink-0">
+      <div className="hidden md:flex shrink-0 sticky top-0 h-screen z-20">
         <Sidebar
           activeTab={activeTab}
           setActiveTab={setActiveTab}

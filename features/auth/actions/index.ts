@@ -10,7 +10,26 @@ export const loginWithCredentials = createSafeAction(LoginSchema, async (data) =
 });
 
 export async function loginWithGitHub() {
-  await signIn("github", { redirectTo: "/dashboard" });
+  if (!process.env.AUTH_GITHUB_ID && !process.env.GITHUB_ID) {
+    return {
+      success: false,
+      error: "GitHub OAuth credentials are not configured in environment variables.",
+    };
+  }
+  try {
+    await signIn("github", { redirectTo: "/dashboard" });
+    return { success: true };
+  } catch (error) {
+    if (
+      error &&
+      typeof error === "object" &&
+      "digest" in error &&
+      String((error as { digest?: string }).digest).startsWith("NEXT_REDIRECT")
+    ) {
+      throw error;
+    }
+    return { success: false, error: "Failed to connect to GitHub OAuth provider." };
+  }
 }
 
 export async function logoutUser() {

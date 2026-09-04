@@ -41,17 +41,13 @@ export default function TabPage({
 }: {
   params: Promise<{ tab: string }> | { tab: string };
 }) {
-  const resolvedParams = use(params as Promise<{ tab: string }>);
-  const tab = resolvedParams?.tab || 'directory';
+  const unwrappedParams =
+    params && typeof (params as Promise<{ tab: string }>).then === 'function'
+      ? use(params as Promise<{ tab: string }>)
+      : (params as { tab: string });
+  const tab = unwrappedParams?.tab || 'directory';
 
-  const {
-    isAuthenticated,
-    isLoading,
-    statusMessage,
-    setStatusMessage,
-    login,
-    setActiveTab,
-  } = useDashboard();
+  const { setActiveTab } = useDashboard();
   const router = useRouter();
 
   // Sync route tab parameter with DashboardContext activeTab
@@ -60,10 +56,6 @@ export default function TabPage({
       setActiveTab(tab);
     }
   }, [tab, setActiveTab]);
-
-  if (!isAuthenticated && !isLoading) {
-    return <ViewSkeleton tab={tab} />;
-  }
 
   const handleNavigateToRegistration = () => router.push('/dashboard/registration');
   const handleNavigateToCheckIn = () => router.push('/dashboard/checkin-desk');

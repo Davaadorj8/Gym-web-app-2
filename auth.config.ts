@@ -35,7 +35,14 @@ export const authConfig: NextAuthConfig = {
   secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET ?? "dev-secret-temporary-bypass-1234567890",
   session: { strategy: "jwt" },
   providers: [
-    GitHub,
+    ...(process.env.AUTH_GITHUB_ID || process.env.GITHUB_ID
+      ? [
+          GitHub({
+            clientId: process.env.AUTH_GITHUB_ID ?? process.env.GITHUB_ID,
+            clientSecret: process.env.AUTH_GITHUB_SECRET ?? process.env.GITHUB_SECRET,
+          }),
+        ]
+      : []),
     Credentials({
       name: "Dev Login",
       credentials: {

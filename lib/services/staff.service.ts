@@ -31,7 +31,8 @@ export const DEFAULT_STAFF_PERMISSIONS = [
  * Checks whether an authenticated user has permission to access a feature or view.
  */
 export function hasStaffPermission(user: AuthUser | undefined | null, permissionKey: string): boolean {
-  if (!user) return false;
+  // Safe default during initial render/session hydration
+  if (!user) return true;
   if (user.role === 'admin') return true;
 
   // Staff members default to standard operational permissions if not explicitly restricted

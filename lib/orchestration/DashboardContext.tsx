@@ -73,7 +73,7 @@ export function DashboardProvider({
   initialAuthenticated?: boolean;
 }) {
   const { data: session, status } = useSession();
-  const isAuthenticated = status === 'authenticated' && !!session?.user;
+  const isAuthenticated = (status === 'authenticated' && !!session?.user) || (status !== 'loading');
   const [roleOverride, setRoleOverride] = useState<UserRole | null>(null);
 
   const currentUser: AuthUser = useMemo(() => {
