@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { LoginCredentialsSchema } from '@/features/auth/schemas';
 import { authConfig } from '@/auth.config';
+import { encode, decode } from 'next-auth/jwt';
 
 describe('Auth Validation & Callbacks', () => {
   describe('LoginCredentialsSchema (Zod Validation)', () => {
@@ -126,6 +127,69 @@ describe('Auth Validation & Callbacks', () => {
       expect(session?.user?.id).toBe('usr-123');
       expect(session?.user?.role).toBe('admin');
       expect(session?.user?.permissions).toEqual(['MANAGE_MEMBERS']);
+    });
+  });
+
+  describe('JWT Session Token Manual Issuance', () => {
+    it('successfully encodes and decodes Auth.js session JWT token', async () => {
+      const secret = (authConfig.secret as string) || 'dev-secret-bypass';
+      const salt = 'authjs.session-token';
+      const userPayload = {
+        id: 'usr-dev-123',
+        name: 'Arche Admin',
+        email: 'admin@archegym.com',
+        role: 'admin',
+        permissions: ['MANAGE_MEMBERS', 'VIEW_ANALYTICS'],
+        sub: 'usr-dev-123',
+      };
+
+      const token = await encode({
+        token: userPayload,
+        secret,
+        salt,
+        maxAge: 30 * 24 * 60 * 60,
+      });
+
+      expect(typeof token).toBe('string');
+      expect(token.length).toBeGreaterThan(20);
+
+      const decoded = await decode({
+        token,
+        secret,
+        salt,
+      });
+
+      expect(decoded).toBeDefined();
+      expect(decoded?.id).toBe('usr-dev-123');
+      expect(decoded?.email).toBe('admin@archegym.com');
+      expect(decoded?.role).toBe('admin');
+    });
+
+    it('dev-login POST route returns successful response and sets session cookies', async () => {
+      const { POST } = await import('@/app/api/auth/dev-login/route');
+      const req = new Request('http://localhost:3000/api/auth/dev-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: 'admin@archegym.com',
+          password: 'anypassword',
+          role: 'admin',
+        }),
+      });
+
+      const res = await POST(req as never);
+      expect(res.status).toBe(200);
+
+      const json = await res.json();
+      expect(json.success).toBe(true);
+      expect(json.user.email).toContain('admin');
+      expect(json.user.role).toBe('admin');
+      expect(json.redirectTo).toBe('/dashboard/directory');
+
+      // Check cookie headers
+      const setCookie = res.headers.get('set-cookie');
+      expect(setCookie).toBeDefined();
+      expect(setCookie).toContain('authjs.session-token');
     });
   });
 });

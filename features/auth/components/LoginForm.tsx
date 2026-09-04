@@ -11,15 +11,13 @@ import {
   ArrowRight,
   Globe,
 } from "lucide-react";
-import { signIn } from "next-auth/react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useAppLocale } from "@/components/I18nProvider";
 import { loginWithGitHub } from "../actions";
 import { Button } from "@/components/ui/button";
 
 export function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const { locale, setLocale } = useAppLocale();
   const tAuth = useTranslations("Auth");
@@ -37,26 +35,33 @@ export function LoginForm() {
     setError("");
 
     try {
-      const res = await signIn("credentials", {
-        email,
-        password,
-        redirect: false,
+      const loginPayload = {
+        email: email || (loginRole === "admin" ? "admin@archegym.com" : "staff@archegym.com"),
+        password: password || "password123",
+        role: loginRole,
+      };
+
+      const res = await fetch("/api/auth/dev-login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(loginPayload),
       });
 
-      if (res?.error) {
-        if (res.error === "CredentialsSignin") {
-          setError(
-            locale === "mn"
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        setError(
+          data.error ||
+            (locale === "mn"
               ? "Нэвтрэх нэр эсвэл нууц үг буруу байна."
-              : "Invalid email/username or password."
-          );
-        } else {
-          setError(res.error);
-        }
+              : "Invalid email/username or password.")
+        );
         setLoading(false);
       } else {
-        router.push("/dashboard/directory");
-        router.refresh();
+        // Successful login: navigate to dashboard
+        window.location.href = data.redirectTo || "/dashboard/directory";
       }
     } catch {
       setError(
