@@ -190,7 +190,7 @@ export default function DashboardShell({
         </header>
 
         <Suspense fallback={<ViewSkeleton tab={activeTab} />}>
-          {children ?? <ViewSkeleton tab={activeTab} />}
+          {children}
         </Suspense>
       </main>
     </div>

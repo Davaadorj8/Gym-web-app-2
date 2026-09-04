@@ -59,4 +59,5 @@
 - 2026-09-04: Phase 1 & Phase 2 Structural Cleanup and Shared Primitives for InventoryView: Extracted NutrientModal, NutrientSaleModal, and PurchaseOrderModal into components/dashboard/inventory/, reducing InventoryView monolith to a clean ~200 lines. Built Level 2 shared StatCard and DataTable primitives in components/dashboard/. Tightened spacing scale to compact defaults (p-3/p-4, gap-2).
 - 2026-09-04: Phase 4 Dynamic Rendering & Route-Based Code Splitting: Converted activeTab client switch into real Next.js App Router dynamic routes (`app/dashboard/[tab]/page.tsx`). Converted all 7 tab views to lazy dynamic imports via `next/dynamic` with Suspense fallback skeleton loaders (`ViewSkeleton`). Enabled deep-linking and full browser history / back-button navigation per tab while maintaining single-source DashboardContext orchestration.
 - 2026-09-04: Cleaned up redundant dynamic imports and dead fallback ternary chain in DashboardShell.tsx, passing route children cleanly from layout.tsx.
+- 2026-09-04: Deleted dead scaffold directory /app/applet/ and simplified children rendering in DashboardShell.tsx.
 
