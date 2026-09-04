@@ -45,6 +45,13 @@ import {
 } from '@/lib/services';
 import { MembershipStatusService, RefundService } from '@/server/services';
 import { getMemberRepository, getMembershipTransactionRepository } from '@/server/repositories';
+import {
+  updateLockerStatusAction,
+  setTotalLockersAction,
+  logLockerEventAction,
+  getLockerStatusesAction,
+  getTotalLockersAction,
+} from '@/features/lockers';
 import { format } from 'date-fns';
 import { createAuditEntry } from '@/lib/utils/audit';
 
@@ -168,17 +175,29 @@ export function DashboardProvider({
   const [lockerLogs, setLockerLogs] = useState<LockerLog[]>(initialLockerLogs);
   const [staffList, setStaffList] = useState<StaffAccount[]>(initialStaff);
   const [totalLockers, setTotalLockers] = useState<number>(initialTotalLockers);
-  const [lockerStatuses, setLockerStatuses] = useState<Record<string, LockerCustomStatus>>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem('arche_locker_custom_statuses');
-        if (saved) return JSON.parse(saved);
-      } catch {
-        // ignore
+  const [lockerStatuses, setLockerStatuses] = useState<Record<string, LockerCustomStatus>>({});
+
+  // Locker status/capacity now live in the server-side repository (src/features/lockers)
+  // instead of localStorage — fetch on mount and whenever tenant/location changes.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const [statusesResult, totalResult] = await Promise.all([
+        getLockerStatusesAction(tenantContext),
+        getTotalLockersAction(tenantContext),
+      ]);
+      if (cancelled) return;
+      if (statusesResult.success && statusesResult.data) {
+        setLockerStatuses(statusesResult.data as Record<string, LockerCustomStatus>);
       }
-    }
-    return {};
-  });
+      if (totalResult.success && typeof totalResult.data === 'number') {
+        setTotalLockers(totalResult.data);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [tenantContext]);
 
   const [nutrients, setNutrients] = useState<NutrientProduct[]>(() => {
     if (typeof window !== 'undefined') {
@@ -366,8 +385,22 @@ export function DashboardProvider({
       };
 
       setLockerLogs((prev) => [newLog, ...prev]);
+
+      void logLockerEventAction({
+        tenantId: tenantContext.tenantId,
+        locationId: tenantContext.locationId,
+        lockerNumber: event.lockerNumber,
+        memberId: event.memberId,
+        memberName: event.memberName,
+        eventType: event.eventType,
+        eventDescription: event.eventDescription,
+        statusLabel: event.statusLabel,
+        staffLogged: staffBadge,
+        staffRole: event.staffRole || currentUser.role,
+        checkedInByStaffId: event.checkedInByStaffId,
+      });
     },
-    [currentUser]
+    [currentUser, tenantContext]
   );
 
   // Member Domain Actions
@@ -640,21 +673,26 @@ export function DashboardProvider({
   }, []);
 
   const saveTotalLockers = useCallback((count: number) => {
-    setTotalLockers(Math.max(1, count));
-  }, []);
+    const normalized = Math.max(1, count);
+    setTotalLockers(normalized);
+    void setTotalLockersAction({
+      tenantId: tenantContext.tenantId,
+      locationId: tenantContext.locationId,
+      count: normalized,
+    });
+  }, [tenantContext]);
 
   const updateLockerStatus = useCallback(
     (lockerNumber: string, status: LockerCustomStatus, notes?: string) => {
-      setLockerStatuses((prev) => {
-        const updated = { ...prev, [lockerNumber]: status };
-        if (typeof window !== 'undefined') {
-          try {
-            localStorage.setItem('arche_locker_custom_statuses', JSON.stringify(updated));
-          } catch {
-            // ignore
-          }
-        }
-        return updated;
+      setLockerStatuses((prev) => ({ ...prev, [lockerNumber]: status }));
+
+      void updateLockerStatusAction({
+        tenantId: tenantContext.tenantId,
+        locationId: tenantContext.locationId,
+        lockerNumber,
+        status,
+        notes,
+        updatedBy: currentUser.name || currentUser.id,
       });
 
       const now = new Date();
@@ -680,7 +718,7 @@ export function DashboardProvider({
         staffRole: currentUser.role,
       });
     },
-    [currentUser, logLockerEvent]
+    [currentUser, logLockerEvent, tenantContext]
   );
 
   // Staff Domain Actions

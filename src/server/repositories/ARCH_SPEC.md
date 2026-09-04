@@ -16,8 +16,11 @@
 - Redux store
 
 ## 3. Public API Exports (index.ts)
-- Repositories: memberRepository, planRepository, lockerRepository, staffRepository, analyticsRepository
-- Types & interfaces: IMemberRepository, IPlanRepository, ILockerRepository, IStaffRepository, IAnalyticsRepository
+- Getters (module-level singletons): getMemberRepository, getPlanRepository,
+  getLockerLogRepository, getLockerRepository, getStaffRepository,
+  getMembershipTransactionRepository
+- Types & interfaces: TenantQueryContext, CrudRepository, IMemberRepository, IPlanRepository,
+  ILockerLogRepository, ILockerRepository, IStaffRepository, IMembershipTransactionRepository
 
 ## 4. State & Data Lifecycle
 - Server-side persistence via repository pattern.
@@ -30,3 +33,9 @@
 ## 6. Maintenance Log
 - 2026-08-25: Initialized directory specification per Master System Instructions.
 - 2026-08-28: Updated interfaces and InMemoryRepository to support Phase 4 TenantQueryContext (tenantId & locationId) scoping across all domain entities.
+- 2026-09-04: Corrected the Public API Exports list to match reality (`index.ts` exports
+  zero-arg getter functions returning singletons, not bare instance names; there was never
+  an `analyticsRepository`/`IAnalyticsRepository`). Added `ILockerRepository` /
+  `getLockerRepository()` for locker status/capacity (Phase B, Domain 1 of the
+  DashboardContext extraction roadmap) — this repository interface was named in this doc
+  before the real code existed; it's now accurate.

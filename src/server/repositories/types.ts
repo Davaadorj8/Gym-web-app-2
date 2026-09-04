@@ -2,6 +2,8 @@ import {
   GymMember,
   BuiltPlan,
   LockerLog,
+  LockerStatusDetail,
+  LockerCustomStatus,
   StaffAccount,
   MembershipExtensionLog,
   MembershipTransaction,
@@ -45,6 +47,18 @@ export interface IPlanRepository extends CrudRepository<BuiltPlan, string> {
 export interface ILockerLogRepository extends CrudRepository<LockerLog, string> {
   findRecentLogs(ctxOrLimit?: TenantQueryContext | number, limit?: number): Promise<LockerLog[]>;
   findLogsByMember(ctxOrMemberId: TenantQueryContext | string, memberId?: string): Promise<LockerLog[]>;
+}
+
+export interface ILockerRepository extends CrudRepository<LockerStatusDetail, string> {
+  upsertStatus(
+    ctx: TenantQueryContext,
+    lockerNumber: string,
+    status: LockerCustomStatus,
+    notes?: string,
+    updatedBy?: string
+  ): Promise<LockerStatusDetail>;
+  getTotalCapacity(ctx?: TenantQueryContext): Promise<number>;
+  setTotalCapacity(ctx: TenantQueryContext, count: number): Promise<number>;
 }
 
 export interface IStaffRepository extends CrudRepository<StaffAccount, string> {

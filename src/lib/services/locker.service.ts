@@ -1,7 +1,6 @@
-import { GymMember, LockerCustomStatus } from '@/lib/types';
+import { GymMember, LockerCustomStatus, DEFAULT_LOCKER_CAPACITY, LOCKER_PREFIX } from '@/lib/types';
 
-export const DEFAULT_LOCKER_CAPACITY = 60;
-export const LOCKER_PREFIX = 'Locker #';
+export { DEFAULT_LOCKER_CAPACITY, LOCKER_PREFIX };
 
 /**
  * Formats a locker index (1-based) into a standard formatted string, e.g. "Locker #01".

@@ -15,6 +15,15 @@ export function LockerCapacityCard({
   showToast,
 }: LockerCapacityCardProps) {
   const [lockerCount, setLockerCount] = useState<number>(totalLockers);
+  // totalLockers now resolves asynchronously (fetched from the server on mount), so it can
+  // change after this component's local state was first initialized. Adjust state directly
+  // during render (React's recommended pattern for this) rather than in an effect, which
+  // would cause an extra render pass.
+  const [prevTotalLockers, setPrevTotalLockers] = useState(totalLockers);
+  if (totalLockers !== prevTotalLockers) {
+    setPrevTotalLockers(totalLockers);
+    setLockerCount(totalLockers);
+  }
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();

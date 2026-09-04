@@ -1,5 +1,12 @@
 import { UserRole } from './staff.types';
 
+// Default physical locker count and display prefix for a location that hasn't
+// configured its own capacity yet. Lives here (not in a service file) so both
+// the pure lib/services helpers and the server/repositories layer can use it
+// without server code importing from lib/services.
+export const DEFAULT_LOCKER_CAPACITY = 60;
+export const LOCKER_PREFIX = 'Locker #';
+
 export type LockerCustomStatus =
   | 'available'
   | 'occupied'
@@ -10,6 +17,7 @@ export type LockerCustomStatus =
   | 'inactive';
 
 export interface LockerStatusDetail {
+  id: string;
   lockerNumber: string;
   tenantId?: string;
   locationId?: string;

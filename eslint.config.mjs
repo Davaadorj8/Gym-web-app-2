@@ -117,10 +117,14 @@ export default defineConfig([
               ],
             },
             {
-              // Tracked exception — see the "orchestration" element note above.
+              // "feature" here is the target flow (DashboardContext calling a feature's
+              // actions, same as any other caller). "server" remains a tracked exception —
+              // see the "orchestration" element note above — for the domains that haven't
+              // been extracted into a feature module yet.
               from: { element: { type: "orchestration" } },
               allow: [
                 { to: { element: { type: "orchestration" } } },
+                { to: { element: { type: "feature" } } },
                 { to: { element: { type: "server" } } },
                 { to: { element: { type: "lib" } } },
               ],
