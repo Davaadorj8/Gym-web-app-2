@@ -2,8 +2,8 @@ import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
   allowedDevOrigins: [
-    'ais-dev-yksuropc4ty6er5bdq3y77-378144986638.asia-northeast1.run.app',
-    'ais-pre-yksuropc4ty6er5bdq3y77-378144986638.asia-northeast1.run.app',
+    'ais-dev-77d5y2znpprd5cz7hxyu27-208150764139.asia-northeast1.run.app',
+    'ais-pre-77d5y2znpprd5cz7hxyu27-208150764139.asia-northeast1.run.app',
     '*.run.app',
   ],
   output: 'standalone',

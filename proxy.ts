@@ -23,7 +23,7 @@ const ratelimit = redis
 
 const { auth } = NextAuth(authConfig);
 
-export default auth(async (req: NextRequest) => {
+export const proxy = auth(async (req: NextRequest) => {
   // 1. Edge Rate Limiter
   if (ratelimit) {
     const ip = req.headers.get("x-forwarded-for") ?? "127.0.0.1";
@@ -40,6 +40,8 @@ export default auth(async (req: NextRequest) => {
   // Auth logic is handled by the 'authorized' callback in authConfig
   return NextResponse.next();
 });
+
+export default proxy;
 
 export const config = {
   matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
