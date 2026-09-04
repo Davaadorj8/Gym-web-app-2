@@ -75,7 +75,7 @@ export function MembershipPlanBuilderTab({ showToast }: MembershipPlanBuilderTab
         <div className="space-y-4">
           <div
             id="card-plan-builder"
-            className="bg-[#0B132B]/80 dark:bg-[#0D1527] border border-border/80 rounded-xl p-4 sm:p-5 space-y-4 shadow-xl"
+            className="bg-[#0B132B]/80 dark:bg-[#0D1527] border border-border/80 rounded-xl p-4 space-y-4 shadow-xl"
           >
             {/* Header */}
             <div className="flex items-start gap-4">
@@ -301,7 +301,7 @@ export function MembershipPlanBuilderTab({ showToast }: MembershipPlanBuilderTab
             </div>
 
             {plans.length === 0 ? (
-              <div className="bg-[#0B132B]/40 border border-border/60 rounded-xl p-5 text-center text-muted-foreground text-xs font-mono">
+              <div className="bg-[#0B132B]/40 border border-border/60 rounded-xl p-4 text-center text-muted-foreground text-xs font-mono">
                 No active membership plans built yet. Fill out the form above to add plans.
               </div>
             ) : (
