@@ -48,7 +48,7 @@ export function OrganizationForm({ form, onOpenCamera }: OrganizationFormProps) 
   };
 
   return (
-    <Card id="card-org-info" className="p-6 shadow-xl space-y-6 bg-[#0B132B]/80 border-border/80">
+    <Card id="card-org-info" className="p-4 shadow-xl space-y-4 bg-[#0B132B]/80 border-border/80">
       {/* Section Header */}
       <div className="flex items-center gap-2 text-primary font-mono font-bold text-xs sm:text-sm tracking-wider uppercase border-b border-border/80 pb-3">
         <Building2 className="w-4 h-4 text-[#D4FF00]" />

@@ -45,7 +45,7 @@ export function LoginForm() {
   };
 
   return (
-    <div id="login-form-card" className="w-full max-w-md p-8 bg-zinc-900/90 border border-zinc-800 rounded-2xl shadow-xl backdrop-blur-md">
+    <div id="login-form-card" className="w-full max-w-md p-5 sm:p-6 bg-zinc-900/90 border border-zinc-800 rounded-xl shadow-xl backdrop-blur-md">
       <div className="mb-6 text-center">
         <h2 className="text-2xl font-bold text-white tracking-tight">Welcome Back</h2>
         <p className="text-sm text-zinc-400 mt-1">Sign in to your dashboard to continue</p>

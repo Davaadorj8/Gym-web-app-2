@@ -69,13 +69,13 @@ export function MembershipPlanBuilderTab({ showToast }: MembershipPlanBuilderTab
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-200">
+    <div className="space-y-4 animate-in fade-in duration-200">
 {/* 1. MEMBERSHIP PLAN BUILDER TAB */}
       
-        <div className="space-y-6">
+        <div className="space-y-4">
           <div
             id="card-plan-builder"
-            className="bg-[#0B132B]/80 dark:bg-[#0D1527] border border-border/80 rounded-2xl p-6 sm:p-7 space-y-6 shadow-xl"
+            className="bg-[#0B132B]/80 dark:bg-[#0D1527] border border-border/80 rounded-xl p-4 sm:p-5 space-y-4 shadow-xl"
           >
             {/* Header */}
             <div className="flex items-start gap-4">
@@ -301,11 +301,11 @@ export function MembershipPlanBuilderTab({ showToast }: MembershipPlanBuilderTab
             </div>
 
             {plans.length === 0 ? (
-              <div className="bg-[#0B132B]/40 border border-border/60 rounded-2xl p-8 text-center text-muted-foreground text-xs font-mono">
+              <div className="bg-[#0B132B]/40 border border-border/60 rounded-xl p-5 text-center text-muted-foreground text-xs font-mono">
                 No active membership plans built yet. Fill out the form above to add plans.
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
                 {plans.map((plan) => {
                   const durationText = `${plan.durationMonths} ${
                     plan.durationMonths === 1 ? 'Month' : 'Months'
@@ -315,7 +315,7 @@ export function MembershipPlanBuilderTab({ showToast }: MembershipPlanBuilderTab
                     <div
                       key={plan.id}
                       id={`inventory-plan-${plan.id}`}
-                      className="bg-[#0B132B]/80 dark:bg-[#0D1527] border border-border/80 rounded-2xl p-5 flex flex-col justify-between gap-4 relative group hover:border-[#D4FF00]/40 transition-all shadow-md"
+                      className="bg-[#0B132B]/80 dark:bg-[#0D1527] border border-border/80 rounded-xl p-3.5 flex flex-col justify-between gap-3 relative group hover:border-[#D4FF00]/40 transition-all shadow-md"
                     >
                       {/* Top badges & Title */}
                       <div>

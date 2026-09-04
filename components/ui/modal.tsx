@@ -34,15 +34,15 @@ export function Modal({
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent id={id} maxWidth={maxWidth} className="overflow-hidden p-0 gap-0">
-        <DialogHeader className="p-5 border-b border-border">
+        <DialogHeader className="p-3.5 sm:p-4 border-b border-border">
           <DialogTitle>{title}</DialogTitle>
           {description && <DialogDescription>{description}</DialogDescription>}
         </DialogHeader>
 
-        <div className="p-5 overflow-y-auto max-h-[75vh]">{children}</div>
+        <div className="p-3.5 sm:p-4 overflow-y-auto max-h-[75vh]">{children}</div>
 
         {footer && (
-          <DialogFooter className="p-4 bg-muted/40 border-t border-border mt-0">
+          <DialogFooter className="p-3 sm:p-3.5 bg-muted/40 border-t border-border mt-0">
             {footer}
           </DialogFooter>
         )}

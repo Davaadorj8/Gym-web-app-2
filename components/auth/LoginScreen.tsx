@@ -88,7 +88,7 @@ export default function LoginScreen({
       {/* Main Login Card */}
       <div
         id="login-card"
-        className="relative w-full max-w-[440px] bg-card border border-border rounded-[28px] shadow-2xl p-7 sm:p-9 z-10 overflow-hidden"
+        className="relative w-full max-w-[420px] bg-card border border-border rounded-2xl shadow-xl p-6 sm:p-7 z-10 overflow-hidden"
       >
         {/* Top Glow Accent Bar */}
         <div
@@ -101,7 +101,7 @@ export default function LoginScreen({
           {/* Logo Icon */}
           <div
             id="brand-logo-badge"
-            className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-primary flex items-center justify-center shadow-lg shadow-primary/30 transition-transform hover:scale-105"
+            className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/30 transition-transform hover:scale-105"
           >
             <Zap className="w-8 h-8 text-primary-foreground fill-primary-foreground" strokeWidth={2.5} />
           </div>

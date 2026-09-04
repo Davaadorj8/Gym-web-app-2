@@ -44,9 +44,9 @@ export function IndividualForm({ form, onOpenCamera }: IndividualFormProps) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* 1. PERSONAL DETAILS CARD */}
-      <Card id="card-personal-info" className="p-6 shadow-xl space-y-5">
+      <Card id="card-personal-info" className="p-4 shadow-xl space-y-4">
         <div className="flex items-center gap-2 text-primary font-mono font-bold text-xs sm:text-sm tracking-wider uppercase">
           <User className="w-4 h-4 text-primary" />
           <span>{t('sec1Title')}</span>
@@ -239,17 +239,17 @@ export function IndividualForm({ form, onOpenCamera }: IndividualFormProps) {
       </Card>
 
       {/* 2. ATHLETE PROFILE PHOTO CARD */}
-      <Card id="card-profile-photo" className="p-6 shadow-xl">
-        <div className="flex items-center gap-2 text-primary font-mono font-bold text-xs sm:text-sm tracking-wider uppercase mb-5">
+      <Card id="card-profile-photo" className="p-4 shadow-xl">
+        <div className="flex items-center gap-2 text-primary font-mono font-bold text-xs sm:text-sm tracking-wider uppercase mb-4">
           <Camera className="w-4 h-4 text-primary" />
           <span>{t('profilePhotoTitle')}</span>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5">
+        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4">
           {/* Photo Box */}
           <div
             id="photo-preview-box"
-            className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-background border border-border flex flex-col items-center justify-center shrink-0 overflow-hidden relative group"
+            className="w-24 h-24 sm:w-28 sm:h-28 rounded-xl bg-background border border-border flex flex-col items-center justify-center shrink-0 overflow-hidden relative group"
           >
             {capturedPhoto ? (
               <>

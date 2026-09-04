@@ -84,7 +84,7 @@ export default function Sidebar({
       )}
     >
       {/* Top Header & Navigation */}
-      <div className={cn('flex flex-col gap-4', isCollapsed ? 'p-3' : 'p-4 sm:p-5')}>
+      <div className={cn('flex flex-col gap-3', isCollapsed ? 'p-2.5' : 'p-3 sm:p-3.5')}>
         {/* Brand Header & Toggle */}
         <div
           id="sidebar-brand"

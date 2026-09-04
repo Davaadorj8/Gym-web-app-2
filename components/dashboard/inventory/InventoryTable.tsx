@@ -66,7 +66,7 @@ export function InventoryTable({
               }
             }}
             className={cn(
-              'bg-[#0B132B]/80 dark:bg-[#0D1527] border rounded-2xl p-4 flex flex-col justify-between gap-4 transition-all cursor-pointer group shadow-sm',
+              'bg-[#0B132B]/80 dark:bg-[#0D1527] border rounded-xl p-3.5 flex flex-col justify-between gap-3 transition-all cursor-pointer group shadow-sm',
               isSelected
                 ? 'border-[#D4FF00] ring-1 ring-[#D4FF00]'
                 : 'border-border/60 hover:border-[#D4FF00]/40'

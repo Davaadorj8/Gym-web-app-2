@@ -37,7 +37,7 @@ export function MemberExtensionModal({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 font-sans">
-      <div className="bg-[#0B132B] border border-border rounded-xl w-full max-w-md p-5 space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+      <div className="bg-[#0B132B] border border-border rounded-xl w-full max-w-md p-4 sm:p-5 space-y-3.5 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
         <div className="flex items-center justify-between border-b border-border/80 pb-3">
           <div className="flex items-center gap-2">
             <Calendar className="w-4 h-4 text-[#D4FF00]" />

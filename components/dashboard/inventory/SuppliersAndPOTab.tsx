@@ -58,23 +58,23 @@ export function SuppliersAndPOTab({ showToast }: SuppliersAndPOTabProps) {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-200">
+    <div className="space-y-4 animate-in fade-in duration-200">
       {/* 4. SUPPLIERS & PURCHASE ORDERS TAB */}
       
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
             {/* Left Column: Suppliers & Registration */}
-            <div className="lg:col-span-4 space-y-6">
+            <div className="lg:col-span-4 space-y-4">
               {/* Add Supplier Form */}
-              <div className="bg-[#0B132B]/80 dark:bg-[#0D1527] border border-border/80 rounded-2xl p-5 space-y-4 shadow-xl">
-                <div className="flex items-center gap-2 border-b border-border/80 pb-2.5">
+              <div className="bg-[#0B132B]/80 dark:bg-[#0D1527] border border-border/80 rounded-xl p-3.5 space-y-3.5 shadow-xl">
+                <div className="flex items-center gap-2 border-b border-border/80 pb-2">
                   <Building2 className="w-4 h-4 text-[#D4FF00]" />
                   <h3 className="text-xs sm:text-sm font-bold font-mono uppercase text-foreground">
                     Register Supplier
                   </h3>
                 </div>
 
-                <form onSubmit={handleAddSupplier} className="space-y-4 font-mono text-xs">
+                <form onSubmit={handleAddSupplier} className="space-y-3 font-mono text-xs">
                   <div className="space-y-1.5">
                     <label className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
                       Supplier Name *
@@ -137,8 +137,8 @@ export function SuppliersAndPOTab({ showToast }: SuppliersAndPOTabProps) {
               </div>
 
               {/* Suppliers Directory */}
-              <div className="bg-[#0B132B]/80 dark:bg-[#0D1527] border border-border/80 rounded-2xl p-5 space-y-4 shadow-xl">
-                <div className="flex items-center justify-between border-b border-border/80 pb-2.5">
+              <div className="bg-[#0B132B]/80 dark:bg-[#0D1527] border border-border/80 rounded-xl p-3.5 space-y-3.5 shadow-xl">
+                <div className="flex items-center justify-between border-b border-border/80 pb-2">
                   <span className="text-xs sm:text-sm font-bold font-mono uppercase text-foreground">
                     Suppliers Directory
                   </span>
@@ -147,7 +147,7 @@ export function SuppliersAndPOTab({ showToast }: SuppliersAndPOTabProps) {
 
                 <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
                   {dashboard.suppliers.map((sup) => (
-                    <div key={sup.id} className="p-3 bg-[#070D1E] border border-border/60 rounded-xl space-y-1.5 text-xs">
+                    <div key={sup.id} className="p-2.5 bg-[#070D1E] border border-border/60 rounded-lg space-y-1 text-xs">
                       <div className="flex items-center justify-between">
                         <strong className="text-foreground font-black">{sup.name}</strong>
                         <Badge variant="outline" className="text-[10px] scale-90 font-mono">
@@ -165,12 +165,12 @@ export function SuppliersAndPOTab({ showToast }: SuppliersAndPOTabProps) {
             </div>
 
             {/* Right Column: Purchase Orders list */}
-            <div className="lg:col-span-8 space-y-6">
-              <div className="bg-[#0B132B]/80 dark:bg-[#0D1527] border border-border/80 rounded-2xl p-6 space-y-4 shadow-xl">
-                <div className="flex items-center justify-between border-b border-border/80 pb-4">
+            <div className="lg:col-span-8 space-y-4">
+              <div className="bg-[#0B132B]/80 dark:bg-[#0D1527] border border-border/80 rounded-xl p-4 space-y-3.5 shadow-xl">
+                <div className="flex items-center justify-between border-b border-border/80 pb-3">
                   <div className="flex items-center gap-2">
-                    <Package className="w-5 h-5 text-[#D4FF00]" />
-                    <h2 className="text-base font-bold text-foreground font-mono uppercase">
+                    <Package className="w-4 h-4 text-[#D4FF00]" />
+                    <h2 className="text-sm font-bold text-foreground font-mono uppercase">
                       Purchase Order Pipeline
                     </h2>
                   </div>
@@ -268,10 +268,10 @@ export function SuppliersAndPOTab({ showToast }: SuppliersAndPOTabProps) {
           </div>
 
           {/* Bottom section: Stock Intake History Logs */}
-          <div className="bg-[#0B132B]/80 dark:bg-[#0D1527] border border-border/80 rounded-2xl p-6 space-y-4 shadow-xl">
-            <div className="flex items-center gap-2 border-b border-border/80 pb-3">
-              <Layers className="w-5 h-5 text-[#D4FF00]" />
-              <h3 className="text-base font-bold text-foreground font-mono uppercase">
+          <div className="bg-[#0B132B]/80 dark:bg-[#0D1527] border border-border/80 rounded-xl p-4 space-y-3.5 shadow-xl">
+            <div className="flex items-center gap-2 border-b border-border/80 pb-2.5">
+              <Layers className="w-4 h-4 text-[#D4FF00]" />
+              <h3 className="text-sm font-bold text-foreground font-mono uppercase">
                 Stock Intake Logs &amp; Gross Margins
               </h3>
             </div>

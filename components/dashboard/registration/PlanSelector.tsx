@@ -114,7 +114,7 @@ export function PlanSelector({
   return (
     <div className="space-y-6">
       {/* 1. SELECT AVAILABLE MEMBERSHIP PLAN */}
-      <Card id="card-membership-plan" className="p-6 shadow-xl">
+      <Card id="card-membership-plan" className="p-4 shadow-xl">
         <div className="flex items-center justify-between mb-1">
           <div className="flex items-center gap-2 text-primary font-mono font-bold text-xs sm:text-sm tracking-wider uppercase">
             <Box className="w-4 h-4 text-primary" />
@@ -260,7 +260,7 @@ export function PlanSelector({
       </Card>
 
       {/* 2. SELECT DURATION & SUMMARY */}
-      <Card id="card-duration-summary" className="p-6 shadow-xl space-y-4">
+      <Card id="card-duration-summary" className="p-4 shadow-xl space-y-3.5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-primary font-mono font-bold text-xs sm:text-sm tracking-wider uppercase">
             <Clock className="w-4 h-4 text-primary" />
@@ -270,7 +270,7 @@ export function PlanSelector({
         </div>
 
         {/* Stepper Box */}
-        <div className="bg-background border border-border rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="bg-background border border-border rounded-xl p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div>
             <h3 className="text-sm font-bold text-foreground tracking-wide">
               {t('membershipDurationTitle')}
@@ -328,7 +328,7 @@ export function PlanSelector({
         {/* Breakdown Box */}
         <div
           id="plan-breakdown-box"
-          className="bg-background border border-border rounded-2xl p-4 sm:p-5 space-y-3 font-mono text-xs"
+          className="bg-background border border-border rounded-xl p-3.5 space-y-3 font-mono text-xs"
         >
           <div className="flex items-center justify-between">
             <span className="text-muted-foreground">{t('selectedPlanLabel')}</span>
@@ -363,7 +363,7 @@ export function PlanSelector({
       </Card>
 
       {/* 3. PAYMENT STATUS & METHOD */}
-      <Card id="card-payment-status" className="p-5 shadow-xl space-y-4">
+      <Card id="card-payment-status" className="p-4 shadow-xl space-y-3.5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-foreground font-bold text-xs">
             <CreditCard className="w-4 h-4 text-primary" />

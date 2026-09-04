@@ -119,7 +119,7 @@ export function CameraModal({
         </>
       }
     >
-      <div className="w-full aspect-square bg-background rounded-2xl overflow-hidden relative flex items-center justify-center border border-border">
+      <div className="w-full aspect-square bg-background rounded-xl overflow-hidden relative flex items-center justify-center border border-border">
         {cameraError ? (
           <div className="p-4 text-center text-xs text-destructive font-mono">
             {cameraError}
