@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
+import { useSession, signOut as nextAuthSignOut, signIn as nextAuthSignIn } from 'next-auth/react';
 import {
   AuthUser,
   BuiltPlan,
@@ -46,7 +47,6 @@ import {
 } from '@/lib/services';
 import { getMemberRepository, getMembershipTransactionRepository } from '@/lib/repositories';
 import { format } from 'date-fns';
-import { verifyPassword } from '@/lib/security/password';
 import { createAuditEntry } from '@/lib/utils/audit';
 
 import { DashboardContextValue, DEFAULT_ADMIN_USER } from './types';
@@ -72,8 +72,35 @@ export function DashboardProvider({
   initialUser?: AuthUser;
   initialAuthenticated?: boolean;
 }) {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(initialAuthenticated);
-  const [currentUser, setCurrentUser] = useState<AuthUser>(initialUser);
+  const { data: session, status } = useSession();
+  const isAuthenticated = status === 'authenticated' && !!session?.user;
+  const [roleOverride, setRoleOverride] = useState<UserRole | null>(null);
+
+  const currentUser: AuthUser = useMemo(() => {
+    if (session?.user) {
+      const rawRole = (session.user as { role?: string })?.role?.toLowerCase();
+      const sessionRole: UserRole = rawRole === 'staff' ? 'staff' : 'admin';
+      const effectiveRole: UserRole = roleOverride ?? sessionRole;
+      return {
+        id: session.user.id || 'usr-session',
+        name: session.user.name || (effectiveRole === 'admin' ? 'Arche Owner' : 'Reception Staff'),
+        role: effectiveRole,
+        roleTitle: effectiveRole === 'admin' ? 'Owner (Admin)' : 'Front Desk Staff',
+        badge: effectiveRole === 'admin' ? 'Admin' : 'Staff',
+        email: session.user.email || (effectiveRole === 'admin' ? 'admin@archegym.com' : 'staff@archegym.com'),
+        permissions: (session.user as { permissions?: string[] })?.permissions || (effectiveRole === 'staff' ? DEFAULT_STAFF_PERMISSIONS : undefined),
+      };
+    }
+    const effectiveRole: UserRole = roleOverride ?? (initialUser?.role || (initialAuthenticated ? 'admin' : 'admin'));
+    return {
+      ...(initialUser || DEFAULT_ADMIN_USER),
+      role: effectiveRole,
+      roleTitle: effectiveRole === 'admin' ? 'Owner (Admin)' : 'Front Desk Staff',
+      badge: effectiveRole === 'admin' ? 'Admin' : 'Staff',
+      permissions: effectiveRole === 'staff' ? DEFAULT_STAFF_PERMISSIONS : undefined,
+    };
+  }, [session, roleOverride, initialUser, initialAuthenticated]);
+
   const [activeTab, setActiveTabState] = useState<string>('directory');
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
@@ -252,125 +279,44 @@ export function DashboardProvider({
     async (
       identifier: string,
       password?: string,
-      loginRole: UserRole = 'admin',
-      locale: string = 'en'
+      _loginRole: UserRole = 'admin',
+      _locale: string = 'en'
     ) => {
       setIsLoading(true);
       setStatusMessage(null);
 
-      const cleanInput = identifier.trim().toLowerCase();
-
-      const matchedStaff = staffList.find(
-        (s) =>
-          s.username.toLowerCase() === cleanInput ||
-          (s.email && s.email.toLowerCase() === cleanInput)
-      );
-
-      if (matchedStaff) {
-        if (matchedStaff.status === 'Suspended') {
-          setStatusMessage(
-            locale === 'mn'
-              ? 'Энэ ажилтны эрх түдгэлзсэн байна.'
-              : 'This staff account has been suspended.'
-          );
-          setIsLoading(false);
-          return;
-        }
-
-        if (password && matchedStaff.passwordHash) {
-          // Verify with bcrypt, fall back to plain text comparison if password is not hashed
-          let isValid = false;
-          try {
-            isValid = await verifyPassword(password, matchedStaff.passwordHash);
-          } catch {
-            isValid = password === matchedStaff.passwordHash;
-          }
-
-          if (!isValid && password !== matchedStaff.passwordHash) {
-            setStatusMessage(
-              locale === 'mn' ? 'Нууц үг тохирохгүй байна.' : 'Invalid password provided.'
-            );
-            setIsLoading(false);
-            return;
-          }
-        }
-
-        setCurrentUser({
-          id: matchedStaff.id,
-          name: matchedStaff.fullName,
-          role: 'staff',
-          roleTitle: matchedStaff.role || 'Front Desk Staff',
-          badge: 'Staff',
-          email: matchedStaff.email || `${matchedStaff.username}@archegym.com`,
-          permissions:
-            matchedStaff.permissions && matchedStaff.permissions.length > 0
-              ? matchedStaff.permissions
-              : DEFAULT_STAFF_PERMISSIONS,
+      try {
+        const res = await nextAuthSignIn('credentials', {
+          email: identifier,
+          password: password || '',
+          redirect: false,
         });
 
-        setTimeout(() => {
-          setIsLoading(false);
-          setIsAuthenticated(true);
-        }, 400);
-        return;
-      }
-
-      const isStaff =
-        loginRole === 'staff' ||
-        cleanInput.includes('staff') ||
-        cleanInput.includes('reception');
-      const effectiveRole: UserRole = isStaff ? 'staff' : 'admin';
-      const rawName = identifier.trim()
-        ? identifier.includes('@')
-          ? identifier.split('@')[0].replace('.', ' ')
-          : identifier
-        : effectiveRole === 'admin'
-        ? 'Arche Owner'
-        : 'Reception Staff';
-      const effectiveName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
-
-      setCurrentUser({
-        id: `usr-${effectiveRole}-${Date.now()}`,
-        name: effectiveName,
-        role: effectiveRole,
-        roleTitle: effectiveRole === 'admin' ? 'Owner (Admin)' : 'Front Desk Staff',
-        badge: effectiveRole === 'admin' ? 'Admin' : 'Staff',
-        email:
-          identifier ||
-          (effectiveRole === 'admin' ? 'admin@archegym.com' : 'staff@archegym.com'),
-        permissions: effectiveRole === 'staff' ? DEFAULT_STAFF_PERMISSIONS : undefined,
-      });
-
-      setTimeout(() => {
+        if (res?.error) {
+          setStatusMessage('Invalid credentials provided.');
+        } else {
+          router.push(`/dashboard/${activeTab || 'directory'}`);
+          router.refresh();
+        }
+      } catch {
+        setStatusMessage('An error occurred during authentication.');
+      } finally {
         setIsLoading(false);
-        setIsAuthenticated(true);
-      }, 400);
+      }
     },
-    [staffList]
+    [activeTab, router]
   );
 
-  const logout = useCallback(() => {
-    setIsAuthenticated(false);
+  const logout = useCallback(async () => {
     setStatusMessage(null);
+    setRoleOverride(null);
+    await nextAuthSignOut({ callbackUrl: '/login' });
   }, []);
 
   const switchRole = useCallback((newRole: UserRole) => {
-    setCurrentUser((prev) => ({
-      ...prev,
-      role: newRole,
-      badge: newRole === 'admin' ? 'Admin' : 'Staff',
-      roleTitle: newRole === 'admin' ? 'Owner (Admin)' : 'Front Desk Staff',
-      name: newRole === 'admin' ? 'Arche Owner' : 'Reception Staff',
-      email: newRole === 'admin' ? 'admin@archegym.com' : 'staff@archegym.com',
-      permissions:
-        newRole === 'staff'
-          ? prev.permissions && prev.permissions.length > 0
-            ? prev.permissions
-            : DEFAULT_STAFF_PERMISSIONS
-          : undefined,
-    }));
+    setRoleOverride(newRole);
     if (newRole === 'staff') {
-      setActiveTabState((prevTab) => (prevTab === 'approvals' ? 'directory' : prevTab));
+      setActiveTabState((prevTab) => (prevTab === 'approvals' || prevTab === 'inventory' ? 'directory' : prevTab));
     }
   }, []);
 

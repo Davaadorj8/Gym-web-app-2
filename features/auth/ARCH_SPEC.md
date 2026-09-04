@@ -3,7 +3,7 @@
 ## 1. Architectural Alignment
 - Layer Level: Level 3 (Business Feature)
 - Zachman Framework Cell: Who (Identity & Access) / Owner (Business Concept)
-- Domain Scope: Manages authentication flows, credential verification, session contracts, and auth UI state.
+- Domain Scope: Manages authentication flows, credential verification, Zod validation contracts, session callbacks, and auth UI state.
 
 ## 2. Dependency Boundaries & Allowed Imports
 **Allowed Imports:**
@@ -20,13 +20,13 @@
 ## 3. Public API Exports (index.ts)
 Only items listed below are exported for external consumption:
 - Components: LoginForm
-- Actions: loginAction, logoutAction
-- Schemas: LoginSchema
-- Types: LoginInput, AuthSessionUser
+- Actions: loginAction, logoutAction, loginWithGitHub
+- Schemas: LoginCredentialsSchema, LoginSchema
+- Types: LoginCredentialsInput, LoginInput, AuthSessionUser
 
 ## 4. State & Data Lifecycle
-- Server Data: Handled via NextAuth / Auth.js server actions and session token verification.
-- Client UI State: Form state managed via react-hook-form and Zod validation.
+- Server Data: Handled via NextAuth / Auth.js `authorize()`, JWT/session callbacks, and server actions.
+- Client UI State: Session state managed via `SessionProvider` and `useSession()`. Credential input validated via Zod schema.
 
 ## 5. Data Source Status
 - [x] Mock data layer (default in-memory credentials & Auth.js handlers)
@@ -34,4 +34,5 @@ Only items listed below are exported for external consumption:
 
 ## 6. Maintenance Log
 - 2026-08-25: Initialized directory specification per Master System Instructions.
-- 2026-08-27: Implemented "Clean Dev Mock Approach" for authentication; configured `authorize` bypass in `auth.config.ts` to allow any credentials in development mode, ensuring smooth hydration and session testing on cloud preview domains.
+- 2026-08-27: Implemented "Clean Dev Mock Approach" for authentication; configured `authorize` bypass in `auth.config.ts`.
+- 2026-09-04: Upgraded authentication to full NextAuth integration with SessionProvider, Zod LoginCredentialsSchema validation, typed NextAuth callbacks, and consolidated LoginForm.

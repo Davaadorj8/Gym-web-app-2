@@ -1,7 +1,8 @@
-import type {Metadata} from 'next';
-import './globals.css'; // Global styles
+import type { Metadata } from 'next';
+import './globals.css';
 import { I18nProvider } from '@/components/I18nProvider';
 import { StoreProvider } from '@/lib/store';
+import { SessionProvider } from 'next-auth/react';
 import { DashboardProvider } from '@/lib/orchestration';
 
 export const metadata: Metadata = {
@@ -9,14 +10,16 @@ export const metadata: Metadata = {
   description: 'Sign in to Arche Gym Ironpulse Management Portal',
 };
 
-export default function RootLayout({children}: {children: React.ReactNode}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body suppressHydrationWarning>
         <StoreProvider>
-          <I18nProvider>
-            <DashboardProvider>{children}</DashboardProvider>
-          </I18nProvider>
+          <SessionProvider>
+            <I18nProvider>
+              <DashboardProvider>{children}</DashboardProvider>
+            </I18nProvider>
+          </SessionProvider>
         </StoreProvider>
       </body>
     </html>

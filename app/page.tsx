@@ -1,30 +1,21 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useDashboard } from '@/lib/orchestration';
-import LoginScreen from '@/components/auth/LoginScreen';
+import { useSession } from 'next-auth/react';
 
-export default function App() {
-  const { isAuthenticated, isLoading, statusMessage, setStatusMessage, login, activeTab } = useDashboard();
+export default function RootPage() {
+  const { data: session, status } = useSession();
   const router = useRouter();
 
   useEffect(() => {
-    if (isAuthenticated) {
-      router.replace(`/dashboard/${activeTab || 'directory'}`);
+    if (status === 'loading') return;
+    if (session?.user) {
+      router.replace('/dashboard/directory');
+    } else {
+      router.replace('/login');
     }
-  }, [isAuthenticated, activeTab, router]);
-
-  if (!isAuthenticated) {
-    return (
-      <LoginScreen
-        onLogin={login}
-        isLoading={isLoading}
-        statusMessage={statusMessage}
-        onClearStatus={() => setStatusMessage(null)}
-      />
-    );
-  }
+  }, [session, status, router]);
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">

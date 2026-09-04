@@ -5,7 +5,6 @@ import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { useDashboard } from '@/lib/orchestration';
 import ViewSkeleton from '@/components/dashboard/ViewSkeleton';
-import LoginScreen from '@/components/auth/LoginScreen';
 
 // Dynamic lazy-loaded views with Suspense skeleton loaders
 const MemberDirectoryView = dynamic(
@@ -62,15 +61,8 @@ export default function TabPage({
     }
   }, [tab, setActiveTab]);
 
-  if (!isAuthenticated) {
-    return (
-      <LoginScreen
-        onLogin={login}
-        isLoading={isLoading}
-        statusMessage={statusMessage}
-        onClearStatus={() => setStatusMessage(null)}
-      />
-    );
+  if (!isAuthenticated && !isLoading) {
+    return <ViewSkeleton tab={tab} />;
   }
 
   const handleNavigateToRegistration = () => router.push('/dashboard/registration');

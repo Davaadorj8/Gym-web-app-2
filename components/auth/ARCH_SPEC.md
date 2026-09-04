@@ -3,7 +3,7 @@
 ## 1. Architectural Alignment
 - Layer Level: Level 2 (Shared Application Primitives)
 - Zachman Framework Cell: Subcontractor (Assembly) / Who
-- Domain Scope: Authentication presentation screen and wrapper components.
+- Domain Scope: Legacy authentication presentation components. Primary auth form consolidated in `features/auth/components/LoginForm`.
 
 ## 2. Dependency Boundaries & Allowed Imports
 **Allowed Imports:**
@@ -16,13 +16,14 @@
 - Direct database instances
 
 ## 3. Public API Exports
-- LoginScreen
+- (Consolidated into @/features/auth)
 
 ## 4. State & Data Lifecycle
-- Login submission handled through @/features/auth actions with loading and error states.
+- Authentication managed through NextAuth / Auth.js `useSession()`, `signIn()`, and `signOut()`.
 
 ## 5. Data Source Status
-- Mock data layer / Auth.js credentials provider
+- Mock data layer / NextAuth credentials provider
 
 ## 6. Maintenance Log
 - 2026-08-25: Initialized directory specification per Master System Instructions.
+- 2026-09-04: Retired LoginScreen presentation component in favor of consolidated `features/auth/components/LoginForm` with NextAuth integration.

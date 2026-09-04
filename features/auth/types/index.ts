@@ -1,11 +1,4 @@
-import { z } from "zod";
-
-export const LoginSchema = z.object({
-  email: z.string().email("Please enter a valid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-});
-
-export type LoginInput = z.infer<typeof LoginSchema>;
+export * from "../schemas";
 
 export interface AuthSessionUser {
   id: string;
@@ -13,4 +6,5 @@ export interface AuthSessionUser {
   email?: string | null;
   image?: string | null;
   role?: string;
+  permissions?: string[];
 }
