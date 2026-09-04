@@ -11,6 +11,8 @@ export interface NutrientProduct {
   servingSize?: string;
   flavor?: string;
   bestBeforeDate?: string;
+  deletedAt?: string | null;
+  deletedBy?: string | null;
 }
 
 export interface NutrientSaleLog {

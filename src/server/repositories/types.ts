@@ -7,6 +7,8 @@ import {
   StaffAccount,
   MembershipExtensionLog,
   MembershipTransaction,
+  NutrientProduct,
+  NutrientSaleLog,
 } from '@/lib/types';
 
 export interface TenantQueryContext {
@@ -69,3 +71,9 @@ export interface IStaffRepository extends CrudRepository<StaffAccount, string> {
 export interface IMembershipTransactionRepository extends CrudRepository<MembershipTransaction, string> {
   findByMemberId(ctxOrMemberId: TenantQueryContext | string, memberId?: string): Promise<MembershipTransaction[]>;
 }
+
+export interface INutrientRepository extends CrudRepository<NutrientProduct, string> {
+  adjustStock(ctx: TenantQueryContext, productId: string, delta: number): Promise<NutrientProduct | null>;
+}
+
+export type INutrientSaleRepository = CrudRepository<NutrientSaleLog, string>;

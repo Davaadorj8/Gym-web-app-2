@@ -8,6 +8,8 @@ import {
   InMemoryLockerRepository,
   InMemoryStaffRepository,
   InMemoryMembershipTransactionRepository,
+  InMemoryNutrientRepository,
+  InMemoryNutrientSaleRepository,
 } from './in-memory';
 
 // Singleton instances for repository access
@@ -17,6 +19,8 @@ const lockerLogRepository = new InMemoryLockerLogRepository();
 const lockerRepository = new InMemoryLockerRepository();
 const staffRepository = new InMemoryStaffRepository();
 const transactionRepository = new InMemoryMembershipTransactionRepository();
+const nutrientRepository = new InMemoryNutrientRepository();
+const nutrientSaleRepository = new InMemoryNutrientSaleRepository();
 
 export const getMemberRepository = () => memberRepository;
 export const getPlanRepository = () => planRepository;
@@ -24,3 +28,5 @@ export const getLockerLogRepository = () => lockerLogRepository;
 export const getLockerRepository = () => lockerRepository;
 export const getStaffRepository = () => staffRepository;
 export const getMembershipTransactionRepository = () => transactionRepository;
+export const getNutrientRepository = () => nutrientRepository;
+export const getNutrientSaleRepository = () => nutrientSaleRepository;

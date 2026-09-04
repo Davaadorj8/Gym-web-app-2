@@ -8,7 +8,8 @@ import {
 import { NutrientProduct, NutrientSaleLog } from '@/lib/types';
 import { StatCard } from '../StatCard';
 import { DataTable, Column } from '../DataTable';
-import { formatCurrency, getNutrientExpiryStatus } from '@/lib/utils';
+import { formatCurrency } from '@/lib/utils';
+import { getNutrientExpiryStatus } from '@/lib/services';
 
 interface NutrientsTabProps {
   nutrients: NutrientProduct[];

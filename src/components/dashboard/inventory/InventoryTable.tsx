@@ -3,7 +3,8 @@
 import React from 'react';
 import { ShoppingCart, Edit2, Trash2, Check, X, Calendar, Award } from 'lucide-react';
 import { NutrientProduct } from '@/lib/types';
-import { cn, formatCurrency, getNutrientExpiryStatus } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
+import { getNutrientExpiryStatus } from '@/lib/services';
 import { useDashboard } from '@/lib/orchestration';
 
 interface InventoryTableProps {

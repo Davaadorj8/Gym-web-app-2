@@ -6,6 +6,8 @@ import {
   ILockerRepository,
   IStaffRepository,
   IMembershipTransactionRepository,
+  INutrientRepository,
+  INutrientSaleRepository,
   TenantQueryContext,
 } from '../types';
 import {
@@ -18,10 +20,14 @@ import {
   StaffAccount,
   MembershipExtensionLog,
   MembershipTransaction,
+  NutrientProduct,
+  NutrientSaleLog,
   MOCK_GYM_MEMBERS,
   MOCK_BUILT_PLANS,
   MOCK_LOCKER_LOGS,
   MOCK_STAFF_ACCOUNTS,
+  MOCK_NUTRIENT_PRODUCTS,
+  MOCK_NUTRIENT_SALES,
 } from '@/lib/types';
 
 export class InMemoryRepository<T extends { id: string }> implements CrudRepository<T, string> {
@@ -355,6 +361,32 @@ export class InMemoryMembershipTransactionRepository
     return Array.from(this.items.values()).filter(
       (tx) => tx.memberId === targetMemberId && this.matchesTenant(tx, ctx)
     );
+  }
+}
+
+export class InMemoryNutrientRepository
+  extends InMemoryRepository<NutrientProduct>
+  implements INutrientRepository
+{
+  constructor() {
+    super(MOCK_NUTRIENT_PRODUCTS);
+  }
+
+  async adjustStock(ctx: TenantQueryContext, productId: string, delta: number): Promise<NutrientProduct | null> {
+    const existing = this.items.get(productId);
+    if (!existing || existing.deletedAt || !this.matchesTenant(existing, ctx)) return null;
+    const updated = { ...existing, stock: Math.max(0, existing.stock + delta) };
+    this.items.set(productId, updated);
+    return { ...updated };
+  }
+}
+
+export class InMemoryNutrientSaleRepository
+  extends InMemoryRepository<NutrientSaleLog>
+  implements INutrientSaleRepository
+{
+  constructor() {
+    super(MOCK_NUTRIENT_SALES);
   }
 }
 

@@ -16,29 +16,3 @@ export function formatCurrency(amount: number | string | undefined | null, prefi
   const formatted = Math.round(num).toLocaleString('mn-MN');
   return prefix ? `₮${formatted}` : `${formatted}₮`;
 }
-
-export type ExpiryStatus = 'expired' | 'expiring_soon' | 'fresh' | 'none';
-
-/**
- * Computes the expiry status of a nutrient product based on its best before date.
- */
-export function getNutrientExpiryStatus(bestBeforeDate?: string): ExpiryStatus {
-  if (!bestBeforeDate) return 'none';
-  const target = new Date(bestBeforeDate);
-  if (isNaN(target.getTime())) return 'none';
-
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
-  const targetDay = new Date(target);
-  targetDay.setHours(0, 0, 0, 0);
-
-  const diffMs = targetDay.getTime() - now.getTime();
-  if (diffMs < 0) {
-    return 'expired';
-  }
-  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-  if (diffDays <= 30) {
-    return 'expiring_soon';
-  }
-  return 'fresh';
-}

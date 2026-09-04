@@ -53,6 +53,15 @@ import {
   getTotalLockersAction,
 } from '@/features/lockers';
 import { checkInMemberAction, checkOutMemberAction } from '@/features/checkins';
+import {
+  addNutrientAction,
+  updateNutrientAction,
+  deleteNutrientAction,
+  updateNutrientPriceAction,
+  recordNutrientSaleAction,
+  getNutrientsAction,
+  getNutrientSalesAction,
+} from '@/features/inventory';
 import { format } from 'date-fns';
 import { createAuditEntry } from '@/lib/utils/audit';
 
@@ -200,29 +209,30 @@ export function DashboardProvider({
     };
   }, [tenantContext]);
 
-  const [nutrients, setNutrients] = useState<NutrientProduct[]>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem('arche_nutrient_products');
-        if (saved) return JSON.parse(saved);
-      } catch {
-        // ignore
-      }
-    }
-    return MOCK_NUTRIENT_PRODUCTS;
-  });
+  const [nutrients, setNutrients] = useState<NutrientProduct[]>(MOCK_NUTRIENT_PRODUCTS);
+  const [nutrientSales, setNutrientSales] = useState<NutrientSaleLog[]>(INITIAL_NUTRIENT_SALES);
 
-  const [nutrientSales, setNutrientSales] = useState<NutrientSaleLog[]>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem('arche_nutrient_sales');
-        if (saved) return JSON.parse(saved);
-      } catch {
-        // ignore
+  // Nutrient products/sales now live in the server-side repository (src/features/inventory)
+  // instead of localStorage — fetch on mount and whenever tenant/location changes.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const [productsResult, salesResult] = await Promise.all([
+        getNutrientsAction(tenantContext),
+        getNutrientSalesAction(tenantContext),
+      ]);
+      if (cancelled) return;
+      if (productsResult.success && productsResult.data) {
+        setNutrients(productsResult.data);
       }
-    }
-    return INITIAL_NUTRIENT_SALES;
-  });
+      if (salesResult.success && salesResult.data) {
+        setNutrientSales(salesResult.data);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [tenantContext]);
 
   // Phase 3 States
   const [attendances, setAttendances] = useState<StaffAttendance[]>(() => {
@@ -750,60 +760,55 @@ export function DashboardProvider({
 
   // Nutrient Inventory Actions
   const addNutrient = useCallback((newProduct: NutrientProduct) => {
-    setNutrients((prev) => {
-      const updated = [newProduct, ...prev];
-      if (typeof window !== 'undefined') {
-        try {
-          localStorage.setItem('arche_nutrient_products', JSON.stringify(updated));
-        } catch {
-          // ignore
-        }
-      }
-      return updated;
+    setNutrients((prev) => [newProduct, ...prev]);
+    void addNutrientAction({
+      tenantId: tenantContext.tenantId,
+      locationId: tenantContext.locationId,
+      name: newProduct.name,
+      category: newProduct.category,
+      price: newProduct.price,
+      stock: newProduct.stock,
+      servingSize: newProduct.servingSize,
+      flavor: newProduct.flavor,
+      bestBeforeDate: newProduct.bestBeforeDate,
     });
-  }, []);
+  }, [tenantContext]);
 
   const deleteNutrient = useCallback((id: string) => {
-    setNutrients((prev) => {
-      const updated = prev.filter((n) => n.id !== id);
-      if (typeof window !== 'undefined') {
-        try {
-          localStorage.setItem('arche_nutrient_products', JSON.stringify(updated));
-        } catch {
-          // ignore
-        }
-      }
-      return updated;
+    setNutrients((prev) => prev.filter((n) => n.id !== id));
+    void deleteNutrientAction({
+      tenantId: tenantContext.tenantId,
+      locationId: tenantContext.locationId,
+      id,
     });
-  }, []);
+  }, [tenantContext]);
 
   const updateNutrient = useCallback((updatedProduct: NutrientProduct) => {
-    setNutrients((prev) => {
-      const updated = prev.map((n) => (n.id === updatedProduct.id ? updatedProduct : n));
-      if (typeof window !== 'undefined') {
-        try {
-          localStorage.setItem('arche_nutrient_products', JSON.stringify(updated));
-        } catch {
-          // ignore
-        }
-      }
-      return updated;
+    setNutrients((prev) => prev.map((n) => (n.id === updatedProduct.id ? updatedProduct : n)));
+    void updateNutrientAction({
+      tenantId: tenantContext.tenantId,
+      locationId: tenantContext.locationId,
+      id: updatedProduct.id,
+      name: updatedProduct.name,
+      category: updatedProduct.category,
+      price: updatedProduct.price,
+      stock: updatedProduct.stock,
+      servingSize: updatedProduct.servingSize,
+      flavor: updatedProduct.flavor,
+      bestBeforeDate: updatedProduct.bestBeforeDate,
     });
-  }, []);
+  }, [tenantContext]);
 
   const updateNutrientPrice = useCallback((id: string, newPrice: number) => {
-    setNutrients((prev) => {
-      const updated = prev.map((n) => (n.id === id ? { ...n, price: Math.max(0, newPrice) } : n));
-      if (typeof window !== 'undefined') {
-        try {
-          localStorage.setItem('arche_nutrient_products', JSON.stringify(updated));
-        } catch {
-          // ignore
-        }
-      }
-      return updated;
+    const clampedPrice = Math.max(0, newPrice);
+    setNutrients((prev) => prev.map((n) => (n.id === id ? { ...n, price: clampedPrice } : n)));
+    void updateNutrientPriceAction({
+      tenantId: tenantContext.tenantId,
+      locationId: tenantContext.locationId,
+      id,
+      price: clampedPrice,
     });
-  }, []);
+  }, [tenantContext]);
 
   const recordNutrientSale = useCallback(
     (saleData: Omit<NutrientSaleLog, 'id' | 'timestamp' | 'timeFormatted'>) => {
@@ -819,37 +824,22 @@ export function DashboardProvider({
         timeFormatted: format(now, 'yyyy-MM-dd HH:mm'),
       };
 
-      setNutrientSales((prev) => {
-        const updated = [newSale, ...prev];
-        if (typeof window !== 'undefined') {
-          try {
-            localStorage.setItem('arche_nutrient_sales', JSON.stringify(updated));
-          } catch {
-            // ignore
-          }
-        }
-        return updated;
-      });
+      setNutrientSales((prev) => [newSale, ...prev]);
 
       // Automatically decrement product stock
-      setNutrients((prev) => {
-        const updated = prev.map((n) => {
-          if (n.id === saleData.productId) {
-            return { ...n, stock: Math.max(0, n.stock - saleData.quantity) };
-          }
-          return n;
-        });
-        if (typeof window !== 'undefined') {
-          try {
-            localStorage.setItem('arche_nutrient_products', JSON.stringify(updated));
-          } catch {
-            // ignore
-          }
-        }
-        return updated;
+      setNutrients((prev) =>
+        prev.map((n) =>
+          n.id === saleData.productId ? { ...n, stock: Math.max(0, n.stock - saleData.quantity) } : n
+        )
+      );
+
+      void recordNutrientSaleAction({
+        tenantId: tenantContext.tenantId,
+        locationId: tenantContext.locationId,
+        ...saleData,
       });
     },
-    [currentUser]
+    [currentUser, tenantContext]
   );
 
   // Phase 3 Actions implementation

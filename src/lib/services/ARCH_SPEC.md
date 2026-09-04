@@ -29,6 +29,8 @@
   `calculateMembersByPlanTier`, `aggregateExtensionMetrics`, `calculateHourlyTraffic`
 - Staff: `hasStaffPermission`, `DEFAULT_STAFF_PERMISSIONS`, `STAFF_SHIFTS`, `STAFF_ROLES`
 - Pricing: `PricingService`
+- Inventory: `getNutrientExpiryStatus`, `calculatePOTotal`, `calculateMarginPercent`,
+  `isLowStock`, `isOutOfStock`
 
 ## 4. State & Data Lifecycle
 - Pure functions or stateless logic providers that operate only on data passed in as
@@ -45,3 +47,8 @@
   (`MembershipStatusService`, `RefundService`) moved to `@/server/services`; this
   directory keeps only the pure calculation helpers, consistent with the "no direct DB
   dependency" status this ARCH_SPEC already claimed.
+- 2026-09-04: Added `inventory.service.ts` (Phase B, Domain 3). `getNutrientExpiryStatus`
+  relocated here from `src/lib/utils.ts` (a generic-utilities file, not the right home for
+  domain logic); `calculatePOTotal`/`calculateMarginPercent`/`isLowStock`/`isOutOfStock`
+  are new, replacing calculations that were previously duplicated inline across
+  `InventoryView.tsx`, `PurchaseOrderModal.tsx`, and `analytics/NutrientsTab.tsx`.
