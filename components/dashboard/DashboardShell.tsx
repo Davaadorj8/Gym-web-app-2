@@ -202,12 +202,12 @@ export default function DashboardShell({
         className="flex-1 min-h-screen w-full p-[clamp(0.75rem,1.5vw,1.5rem)] overflow-y-auto"
       >
         {/* Top Header Bar */}
-        <header className="w-full flex flex-wrap items-center justify-between gap-3 mb-[clamp(1rem,2vh,1.75rem)] pb-4 border-b border-white/10">
+        <header className="w-full flex flex-wrap items-center justify-between gap-3 mb-[clamp(1rem,2vh,1.75rem)] pb-4 border-b border-border">
           <div className="flex flex-col">
-            <h1 className="text-[clamp(1.25rem,1.8vw,1.75rem)] font-bold text-white tracking-tight">
+            <h1 className="text-[clamp(1.25rem,1.8vw,1.75rem)] font-bold text-foreground tracking-tight">
               {getTabMeta(activeTab, locale)}
             </h1>
-            <p className="text-xs sm:text-sm text-slate-400">
+            <p className="text-xs sm:text-sm text-muted-foreground">
               Arche.fitness CRM — {locale === 'mn' ? 'Үйл ажиллагааны удирдлага' : 'Operational Management Console'}
             </p>
           </div>
