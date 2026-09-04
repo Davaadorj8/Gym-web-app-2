@@ -8,6 +8,9 @@ import {
   IMembershipTransactionRepository,
   INutrientRepository,
   INutrientSaleRepository,
+  ISupplierRepository,
+  IPurchaseOrderRepository,
+  IStockIntakeRepository,
   TenantQueryContext,
 } from '../types';
 import {
@@ -22,12 +25,18 @@ import {
   MembershipTransaction,
   NutrientProduct,
   NutrientSaleLog,
+  Supplier,
+  PurchaseOrder,
+  StockIntakeLog,
   MOCK_GYM_MEMBERS,
   MOCK_BUILT_PLANS,
   MOCK_LOCKER_LOGS,
   MOCK_STAFF_ACCOUNTS,
   MOCK_NUTRIENT_PRODUCTS,
   MOCK_NUTRIENT_SALES,
+  MOCK_SUPPLIERS,
+  MOCK_PURCHASE_ORDERS,
+  MOCK_STOCK_INTAKES,
 } from '@/lib/types';
 
 export class InMemoryRepository<T extends { id: string }> implements CrudRepository<T, string> {
@@ -387,6 +396,53 @@ export class InMemoryNutrientSaleRepository
 {
   constructor() {
     super(MOCK_NUTRIENT_SALES);
+  }
+}
+
+export class InMemorySupplierRepository
+  extends InMemoryRepository<Supplier>
+  implements ISupplierRepository
+{
+  constructor() {
+    super(MOCK_SUPPLIERS);
+  }
+}
+
+export class InMemoryPurchaseOrderRepository
+  extends InMemoryRepository<PurchaseOrder>
+  implements IPurchaseOrderRepository
+{
+  constructor() {
+    super(MOCK_PURCHASE_ORDERS);
+  }
+
+  async markReceived(ctx: TenantQueryContext, poId: string): Promise<PurchaseOrder | null> {
+    const existing = this.items.get(poId);
+    if (!existing || !this.matchesTenant(existing, ctx)) return null;
+    const updated: PurchaseOrder = {
+      ...existing,
+      status: 'RECEIVED',
+      receivedAt: new Date().toISOString(),
+    };
+    this.items.set(poId, updated);
+    return { ...updated };
+  }
+
+  async markCancelled(ctx: TenantQueryContext, poId: string): Promise<PurchaseOrder | null> {
+    const existing = this.items.get(poId);
+    if (!existing || !this.matchesTenant(existing, ctx)) return null;
+    const updated: PurchaseOrder = { ...existing, status: 'CANCELLED' };
+    this.items.set(poId, updated);
+    return { ...updated };
+  }
+}
+
+export class InMemoryStockIntakeRepository
+  extends InMemoryRepository<StockIntakeLog>
+  implements IStockIntakeRepository
+{
+  constructor() {
+    super(MOCK_STOCK_INTAKES);
   }
 }
 

@@ -12,6 +12,7 @@ import {
   StaffAttendance,
   Supplier,
   PurchaseOrder,
+  POItem,
   StockIntakeLog,
   WaitlistEntry,
 } from '@/lib/types';
@@ -113,7 +114,11 @@ export interface DashboardContextValue {
   addSupplier: (supplier: Supplier) => void;
   updateSupplier: (supplier: Supplier) => void;
   deleteSupplier: (id: string) => void;
-  createPurchaseOrder: (po: PurchaseOrder) => void;
+  createPurchaseOrder: (input: {
+    supplierId: string;
+    supplierName: string;
+    items: Omit<POItem, 'id'>[];
+  }) => Promise<PurchaseOrder | null>;
   receivePurchaseOrder: (id: string) => void;
   cancelPurchaseOrder: (id: string) => void;
   joinWaitlist: (resourceType: 'LOCKER' | 'GYM_FLOOR', memberId: string, memberName: string) => void;

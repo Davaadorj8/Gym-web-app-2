@@ -4,10 +4,10 @@
 - Layer Level: Level 3 (Business Feature)
 - Zachman Framework Cell: Owner (Business Concept) / What
 - Domain Scope: Nutrient/product catalog and POS sales, plus suppliers, purchase orders,
-  and stock intake (added in a follow-up commit — see Maintenance Log). One feature module
-  covers all five entities deliberately: receiving a purchase order must atomically bump
-  matching nutrient stock and write a stock-intake log, so keeping that cascade internal to
-  one feature avoids a cross-feature call for what is really one business operation.
+  and stock intake. One feature module covers all five entities deliberately: receiving a
+  purchase order must atomically bump matching nutrient stock and write a stock-intake log,
+  so keeping that cascade internal to one feature avoids a cross-feature call for what is
+  really one business operation.
 
 ## 2. Dependency Boundaries & Allowed Imports
 **Allowed Imports:**
@@ -29,7 +29,15 @@
   DeleteNutrientSchema, UpdateNutrientPriceSchema, RecordNutrientSaleSchema,
   AddNutrientInput, UpdateNutrientInput, DeleteNutrientInput, UpdateNutrientPriceInput,
   RecordNutrientSaleInput, NutrientProduct, NutrientSaleLog
-- (Suppliers/PO/stock-intake actions and types land in a follow-up commit)
+- Supplier actions: addSupplierAction, updateSupplierAction, deleteSupplierAction,
+  getSuppliersAction
+- Purchase order actions: createPurchaseOrderAction, receivePurchaseOrderAction,
+  cancelPurchaseOrderAction, getPurchaseOrdersAction, getStockIntakesAction
+- Supplier/PO schemas/types: AddSupplierSchema, UpdateSupplierSchema, DeleteSupplierSchema,
+  POItemInputSchema, CreatePurchaseOrderSchema, ReceivePurchaseOrderSchema,
+  CancelPurchaseOrderSchema, AddSupplierInput, UpdateSupplierInput, DeleteSupplierInput,
+  CreatePurchaseOrderInput, ReceivePurchaseOrderInput, CancelPurchaseOrderInput, Supplier,
+  PurchaseOrder, StockIntakeLog
 
 ## 4. State & Data Lifecycle
 - Server Data: Handled via Server Actions and repository access. Every write action
@@ -48,11 +56,13 @@
 
 ## 6. Maintenance Log
 - 2026-09-04: Initialized as Phase B, Domain 3 of the DashboardContext extraction roadmap
-  (nutrients/sales half of the domain — suppliers/purchase-orders/stock-intake follow in
-  a second commit against this same module, since the PO-receive cascade needs the
-  nutrient repository's `adjustStock` to already exist). Unlike check-ins, every one of
-  these callbacks had real, live `useDashboard()` callers already — this was a pure
-  localStorage-to-repository migration, not a dead-code discovery. Fixed a real
-  double-invoke hazard along the way: the old `receivePurchaseOrder` mutated an array from
-  inside a nested React state-updater callback; the new server action does the same work as
-  plain sequential `await`s instead.
+  (commit 1: nutrients/sales half of the domain, landed first since the PO-receive cascade
+  needs the nutrient repository's `adjustStock` to already exist). Unlike check-ins, every
+  one of these callbacks had real, live `useDashboard()` callers already — this was a pure
+  localStorage-to-repository migration, not a dead-code discovery.
+- 2026-09-04: Commit 2 added suppliers, purchase orders, and stock intake, completing the
+  domain. Fixed a real double-invoke hazard along the way: the old `receivePurchaseOrder`
+  mutated an array from inside a nested React state-updater callback; the new
+  `receivePurchaseOrderAction` does the same work (mark PO received, then for each item bump
+  nutrient stock and write a stock-intake log with a computed margin) as plain sequential
+  `await`s in one server action instead.

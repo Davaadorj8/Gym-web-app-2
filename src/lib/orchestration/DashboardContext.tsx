@@ -26,6 +26,7 @@ import {
   StaffAttendance,
   Supplier,
   PurchaseOrder,
+  POItem,
   StockIntakeLog,
   WaitlistEntry,
   MOCK_SUPPLIERS,
@@ -61,6 +62,15 @@ import {
   recordNutrientSaleAction,
   getNutrientsAction,
   getNutrientSalesAction,
+  addSupplierAction,
+  updateSupplierAction,
+  deleteSupplierAction,
+  getSuppliersAction,
+  createPurchaseOrderAction,
+  receivePurchaseOrderAction,
+  cancelPurchaseOrderAction,
+  getPurchaseOrdersAction,
+  getStockIntakesAction,
 } from '@/features/inventory';
 import { format } from 'date-fns';
 import { createAuditEntry } from '@/lib/utils/audit';
@@ -245,35 +255,36 @@ export function DashboardProvider({
     return [];
   });
 
-  const [suppliers, setSuppliers] = useState<Supplier[]>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem('arche_suppliers');
-        if (saved) return JSON.parse(saved);
-      } catch {}
-    }
-    return MOCK_SUPPLIERS;
-  });
+  const [suppliers, setSuppliers] = useState<Supplier[]>(MOCK_SUPPLIERS);
+  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>(MOCK_PURCHASE_ORDERS);
+  const [stockIntakes, setStockIntakes] = useState<StockIntakeLog[]>(MOCK_STOCK_INTAKES);
 
-  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem('arche_purchase_orders');
-        if (saved) return JSON.parse(saved);
-      } catch {}
-    }
-    return MOCK_PURCHASE_ORDERS;
-  });
-
-  const [stockIntakes, setStockIntakes] = useState<StockIntakeLog[]>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem('arche_stock_intakes');
-        if (saved) return JSON.parse(saved);
-      } catch {}
-    }
-    return MOCK_STOCK_INTAKES;
-  });
+  // Suppliers/purchase-orders/stock-intake now live in the server-side repository
+  // (src/features/inventory) instead of localStorage — fetch on mount and whenever
+  // tenant/location changes.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const [suppliersResult, poResult, intakesResult] = await Promise.all([
+        getSuppliersAction(tenantContext),
+        getPurchaseOrdersAction(tenantContext),
+        getStockIntakesAction(tenantContext),
+      ]);
+      if (cancelled) return;
+      if (suppliersResult.success && suppliersResult.data) {
+        setSuppliers(suppliersResult.data);
+      }
+      if (poResult.success && poResult.data) {
+        setPurchaseOrders(poResult.data);
+      }
+      if (intakesResult.success && intakesResult.data) {
+        setStockIntakes(intakesResult.data);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [tenantContext]);
 
   const [waitlist, setWaitlist] = useState<WaitlistEntry[]>(() => {
     if (typeof window !== 'undefined') {
@@ -885,124 +896,123 @@ export function DashboardProvider({
   }, [currentUser]);
 
   const addSupplier = useCallback((sup: Supplier) => {
-    setSuppliers((prev) => {
-      const updated = [sup, ...prev];
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('arche_suppliers', JSON.stringify(updated));
-      }
-      return updated;
+    setSuppliers((prev) => [sup, ...prev]);
+    void addSupplierAction({
+      tenantId: tenantContext.tenantId,
+      locationId: tenantContext.locationId,
+      name: sup.name,
+      contactEmail: sup.contactEmail,
+      phone: sup.phone,
+      leadTimeDays: sup.leadTimeDays,
     });
-  }, []);
+  }, [tenantContext]);
 
   const updateSupplier = useCallback((sup: Supplier) => {
-    setSuppliers((prev) => {
-      const updated = prev.map((s) => (s.id === sup.id ? sup : s));
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('arche_suppliers', JSON.stringify(updated));
-      }
-      return updated;
+    setSuppliers((prev) => prev.map((s) => (s.id === sup.id ? sup : s)));
+    void updateSupplierAction({
+      tenantId: tenantContext.tenantId,
+      locationId: tenantContext.locationId,
+      id: sup.id,
+      name: sup.name,
+      contactEmail: sup.contactEmail,
+      phone: sup.phone,
+      leadTimeDays: sup.leadTimeDays,
     });
-  }, []);
+  }, [tenantContext]);
 
   const deleteSupplier = useCallback((id: string) => {
-    setSuppliers((prev) => {
-      const updated = prev.filter((s) => s.id !== id);
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('arche_suppliers', JSON.stringify(updated));
-      }
-      return updated;
+    setSuppliers((prev) => prev.filter((s) => s.id !== id));
+    void deleteSupplierAction({
+      tenantId: tenantContext.tenantId,
+      locationId: tenantContext.locationId,
+      id,
     });
-  }, []);
+  }, [tenantContext]);
 
-  const createPurchaseOrder = useCallback((po: PurchaseOrder) => {
-    setPurchaseOrders((prev) => {
-      const updated = [po, ...prev];
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('arche_purchase_orders', JSON.stringify(updated));
+  const createPurchaseOrder = useCallback(
+    async (input: { supplierId: string; supplierName: string; items: Omit<POItem, 'id'>[] }) => {
+      const result = await createPurchaseOrderAction({
+        tenantId: tenantContext.tenantId,
+        locationId: tenantContext.locationId,
+        supplierId: input.supplierId,
+        supplierName: input.supplierName,
+        items: input.items,
+      });
+
+      if (!result.success || !result.data) {
+        return null;
       }
-      return updated;
-    });
-  }, []);
+
+      const createdPo = result.data;
+      setPurchaseOrders((prev) => [createdPo, ...prev]);
+      return createdPo;
+    },
+    [tenantContext]
+  );
 
   const receivePurchaseOrder = useCallback((poId: string) => {
-    setPurchaseOrders((prev) => {
-      let selectedPo: PurchaseOrder | undefined;
-      const updated = prev.map((po) => {
-        if (po.id === poId) {
-          selectedPo = { ...po, status: 'RECEIVED' as const, receivedAt: new Date().toISOString() };
-          return selectedPo;
-        }
-        return po;
-      });
+    // Every setState call below is a pure function of `prev` alone (no nested setState
+    // calls, no shared-array mutation) so React Strict Mode's double-invocation of state
+    // updaters is harmless. Deriving `targetPo` from the `purchaseOrders` closure variable
+    // (rather than from inside the setPurchaseOrders updater) is what makes that possible —
+    // the old implementation computed stock intakes as a side effect of the updater itself,
+    // which is what caused it to double-log entries under Strict Mode.
+    const targetPo = purchaseOrders.find((po) => po.id === poId);
+    if (!targetPo || targetPo.status !== 'ORDERED') return;
 
-      if (selectedPo && selectedPo.status === 'RECEIVED') {
-        // Log stock intakes and update inventory stock
-        const newIntakes: StockIntakeLog[] = [];
-        selectedPo.items.forEach((item) => {
-          setNutrients((prevNutr) => {
-            const updatedNutr = prevNutr.map((n) => {
-              if (n.id === item.productId) {
-                const newStock = n.stock + item.quantity;
-                const marginPercent = Number((((n.price - item.unitPurchaseCost) / n.price) * 100).toFixed(2));
-                
-                newIntakes.push({
-                  id: `intake-${Date.now()}-${item.productId}`,
-                  purchaseOrderId: poId,
-                  productId: item.productId,
-                  productName: item.productName,
-                  quantity: item.quantity,
-                  unitPurchaseCost: item.unitPurchaseCost,
-                  unitSellingPrice: n.price,
-                  marginPercent,
-                  timestamp: new Date().toISOString(),
-                });
+    const receivedAt = new Date().toISOString();
+    setPurchaseOrders((prev) =>
+      prev.map((po) => (po.id === poId ? { ...po, status: 'RECEIVED' as const, receivedAt } : po))
+    );
 
-                return { ...n, stock: newStock };
-              }
-              return n;
-            });
-            if (typeof window !== 'undefined') {
-              localStorage.setItem('arche_nutrient_products', JSON.stringify(updatedNutr));
-            }
-            return updatedNutr;
-          });
-        });
-
-        if (newIntakes.length > 0) {
-          setStockIntakes((prevIntakes) => {
-            const updatedIntakes = [...newIntakes, ...prevIntakes];
-            if (typeof window !== 'undefined') {
-              localStorage.setItem('arche_stock_intakes', JSON.stringify(updatedIntakes));
-            }
-            return updatedIntakes;
-          });
-        }
-      }
-
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('arche_purchase_orders', JSON.stringify(updated));
-      }
-      return updated;
+    const newIntakes: StockIntakeLog[] = targetPo.items.map((item) => {
+      const product = nutrients.find((n) => n.id === item.productId);
+      const sellingPrice = product?.price ?? 0;
+      const marginPercent =
+        sellingPrice > 0
+          ? Number((((sellingPrice - item.unitPurchaseCost) / sellingPrice) * 100).toFixed(2))
+          : 0;
+      return {
+        id: `intake-${Date.now()}-${item.productId}`,
+        purchaseOrderId: poId,
+        productId: item.productId,
+        productName: item.productName,
+        quantity: item.quantity,
+        unitPurchaseCost: item.unitPurchaseCost,
+        unitSellingPrice: sellingPrice,
+        marginPercent,
+        timestamp: receivedAt,
+      };
     });
-  }, []);
+
+    setNutrients((prev) =>
+      prev.map((n) => {
+        const item = targetPo.items.find((it) => it.productId === n.id);
+        return item ? { ...n, stock: n.stock + item.quantity } : n;
+      })
+    );
+
+    if (newIntakes.length > 0) {
+      setStockIntakes((prev) => [...newIntakes, ...prev]);
+    }
+
+    void receivePurchaseOrderAction({
+      tenantId: tenantContext.tenantId,
+      locationId: tenantContext.locationId,
+      poId,
+    });
+  }, [purchaseOrders, nutrients, tenantContext]);
 
   const cancelPurchaseOrder = useCallback((poId: string) => {
-    setPurchaseOrders((prev) => {
-      const updated = prev.map((po) => {
-        if (po.id === poId) {
-          return {
-            ...po,
-            status: 'CANCELLED' as const,
-          };
-        }
-        return po;
-      });
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('arche_purchase_orders', JSON.stringify(updated));
-      }
-      return updated;
+    setPurchaseOrders((prev) =>
+      prev.map((po) => (po.id === poId ? { ...po, status: 'CANCELLED' as const } : po))
+    );
+    void cancelPurchaseOrderAction({
+      tenantId: tenantContext.tenantId,
+      locationId: tenantContext.locationId,
+      poId,
     });
-  }, []);
+  }, [tenantContext]);
 
   const joinWaitlist = useCallback((resourceType: 'LOCKER' | 'GYM_FLOOR', memberId: string, memberName: string) => {
     const newEntry: WaitlistEntry = {

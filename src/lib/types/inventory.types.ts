@@ -44,6 +44,8 @@ export interface Supplier {
   contactEmail: string;
   phone: string;
   leadTimeDays: number;
+  deletedAt?: string | null;
+  deletedBy?: string | null;
 }
 
 export interface POItem {

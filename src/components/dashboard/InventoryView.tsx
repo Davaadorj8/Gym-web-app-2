@@ -153,7 +153,7 @@ export default function InventoryView({
     );
   };
 
-  const handleConfirmPO = (poData: {
+  const handleConfirmPO = async (poData: {
     supplierId: string;
     items: {
       productId: string;
@@ -165,30 +165,18 @@ export default function InventoryView({
     const supplier = dashboard.suppliers.find((s) => s.id === poData.supplierId);
     if (!supplier) return;
 
-    const uniquePoId = `po-${Math.floor(1000 + Math.random() * 9000)}`;
-    const poItems = poData.items.map((it, idx) => ({
-      id: `poi-${uniquePoId}-${idx}`,
-      productId: it.productId,
-      productName: it.productName,
-      quantity: it.quantity,
-      unitPurchaseCost: it.unitPurchaseCost,
-    }));
-
-    const totalCost = poItems.reduce((acc, x) => acc + x.quantity * x.unitPurchaseCost, 0);
-
-    const newPO = {
-      id: uniquePoId,
+    const createdPo = await dashboard.createPurchaseOrder({
       supplierId: supplier.id,
       supplierName: supplier.name,
-      status: 'ORDERED' as const,
-      items: poItems,
-      totalCost,
-      createdAt: new Date().toISOString(),
-    };
+      items: poData.items,
+    });
 
-    dashboard.createPurchaseOrder(newPO);
     setSelectedNutrientIds([]);
-    showToast(`Purchase Order ${newPO.id} successfully generated & ordered.`);
+    if (createdPo) {
+      showToast(`Purchase Order ${createdPo.id} successfully generated & ordered.`);
+    } else {
+      showToast('Failed to generate purchase order. Please try again.');
+    }
   };
 
   if (!isAdmin) {

@@ -3,8 +3,8 @@
 ## 1. Architectural Alignment
 - Layer Level: Level 3 (Business Feature / Data)
 - Zachman Framework Cell: What (Data & State) / Owner (Business Concept)
-- Domain Scope: Type definitions and validation schemas for nutrient products/sales (this
-  commit) and suppliers/purchase-orders/stock-intake (follow-up commit).
+- Domain Scope: Type definitions and validation schemas for nutrient products/sales,
+  suppliers, purchase orders, and stock intake.
 
 ## 2. Dependency Boundaries & Allowed Imports
 **Allowed Imports:**
@@ -16,4 +16,9 @@
   UpdateNutrientPriceSchema, RecordNutrientSaleSchema
 - AddNutrientInput, UpdateNutrientInput, DeleteNutrientInput, UpdateNutrientPriceInput,
   RecordNutrientSaleInput
-- NutrientProduct, NutrientSaleLog (re-exported from @/lib/types)
+- AddSupplierSchema, UpdateSupplierSchema, DeleteSupplierSchema, POItemInputSchema,
+  CreatePurchaseOrderSchema, ReceivePurchaseOrderSchema, CancelPurchaseOrderSchema
+- AddSupplierInput, UpdateSupplierInput, DeleteSupplierInput, CreatePurchaseOrderInput,
+  ReceivePurchaseOrderInput, CancelPurchaseOrderInput
+- NutrientProduct, NutrientSaleLog, Supplier, PurchaseOrder, StockIntakeLog (re-exported
+  from @/lib/types)

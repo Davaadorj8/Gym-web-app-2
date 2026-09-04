@@ -10,6 +10,9 @@ import {
   InMemoryMembershipTransactionRepository,
   InMemoryNutrientRepository,
   InMemoryNutrientSaleRepository,
+  InMemorySupplierRepository,
+  InMemoryPurchaseOrderRepository,
+  InMemoryStockIntakeRepository,
 } from './in-memory';
 
 // Singleton instances for repository access
@@ -21,6 +24,9 @@ const staffRepository = new InMemoryStaffRepository();
 const transactionRepository = new InMemoryMembershipTransactionRepository();
 const nutrientRepository = new InMemoryNutrientRepository();
 const nutrientSaleRepository = new InMemoryNutrientSaleRepository();
+const supplierRepository = new InMemorySupplierRepository();
+const purchaseOrderRepository = new InMemoryPurchaseOrderRepository();
+const stockIntakeRepository = new InMemoryStockIntakeRepository();
 
 export const getMemberRepository = () => memberRepository;
 export const getPlanRepository = () => planRepository;
@@ -30,3 +36,6 @@ export const getStaffRepository = () => staffRepository;
 export const getMembershipTransactionRepository = () => transactionRepository;
 export const getNutrientRepository = () => nutrientRepository;
 export const getNutrientSaleRepository = () => nutrientSaleRepository;
+export const getSupplierRepository = () => supplierRepository;
+export const getPurchaseOrderRepository = () => purchaseOrderRepository;
+export const getStockIntakeRepository = () => stockIntakeRepository;

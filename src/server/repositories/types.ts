@@ -9,6 +9,9 @@ import {
   MembershipTransaction,
   NutrientProduct,
   NutrientSaleLog,
+  Supplier,
+  PurchaseOrder,
+  StockIntakeLog,
 } from '@/lib/types';
 
 export interface TenantQueryContext {
@@ -77,3 +80,12 @@ export interface INutrientRepository extends CrudRepository<NutrientProduct, str
 }
 
 export type INutrientSaleRepository = CrudRepository<NutrientSaleLog, string>;
+
+export type ISupplierRepository = CrudRepository<Supplier, string>;
+
+export interface IPurchaseOrderRepository extends CrudRepository<PurchaseOrder, string> {
+  markReceived(ctx: TenantQueryContext, poId: string): Promise<PurchaseOrder | null>;
+  markCancelled(ctx: TenantQueryContext, poId: string): Promise<PurchaseOrder | null>;
+}
+
+export type IStockIntakeRepository = CrudRepository<StockIntakeLog, string>;
