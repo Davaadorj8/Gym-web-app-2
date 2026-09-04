@@ -1,6 +1,7 @@
 'use client';
 
-import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import {
   AuthUser,
   BuiltPlan,
@@ -73,12 +74,38 @@ export function DashboardProvider({
 }) {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(initialAuthenticated);
   const [currentUser, setCurrentUser] = useState<AuthUser>(initialUser);
-  const [activeTab, setActiveTab] = useState<string>('directory');
+  const [activeTab, setActiveTabState] = useState<string>('directory');
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [directoryFilter, setDirectoryFilter] = useState<string>('all');
+
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const routeTab = pathname && pathname.startsWith('/dashboard/') ? pathname.split('/')[2] : null;
+  const [prevRouteTab, setPrevRouteTab] = useState<string | null>(null);
+
+  if (routeTab && routeTab !== prevRouteTab) {
+    setPrevRouteTab(routeTab);
+    if (routeTab !== activeTab) {
+      setActiveTabState(routeTab);
+    }
+  }
+
+  const setActiveTab = useCallback(
+    (tab: string) => {
+      setActiveTabState(tab);
+      if (typeof window !== 'undefined') {
+        const targetPath = `/dashboard/${tab}`;
+        if (window.location.pathname !== targetPath) {
+          router.push(targetPath);
+        }
+      }
+    },
+    [router]
+  );
 
   // Phase 4 Multi-Tenancy & Multi-Location Scaling
   const [tenantId] = useState<string>('tenant-arche');
@@ -343,7 +370,7 @@ export function DashboardProvider({
           : undefined,
     }));
     if (newRole === 'staff') {
-      setActiveTab((prevTab) => (prevTab === 'approvals' ? 'directory' : prevTab));
+      setActiveTabState((prevTab) => (prevTab === 'approvals' ? 'directory' : prevTab));
     }
   }, []);
 
@@ -1136,6 +1163,7 @@ export function DashboardProvider({
       stockIntakes,
       waitlist,
       maxGymCapacity,
+      setActiveTab,
       setDirectoryFilter,
       toggleSidebar,
       login,

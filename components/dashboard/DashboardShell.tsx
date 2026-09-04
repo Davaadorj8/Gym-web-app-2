@@ -1,21 +1,46 @@
 'use client';
 
-import React from 'react';
+import React, { Suspense } from 'react';
+import dynamic from 'next/dynamic';
 import { useAppLocale } from '@/components/I18nProvider';
 import { Zap, Menu, X } from 'lucide-react';
 import Sidebar from '@/components/dashboard/Sidebar';
 import { useDashboard } from '@/lib/orchestration';
 import { AuthUser, UserRole } from '@/lib/types';
+import ViewSkeleton from '@/components/dashboard/ViewSkeleton';
 
-import RegistrationView from '@/components/dashboard/RegistrationView';
-import InventoryView from '@/components/dashboard/InventoryView';
-import CheckInDeskView from '@/components/dashboard/CheckInDeskView';
-import LockerUsageView from '@/components/dashboard/LockerUsageView';
-import MemberDirectoryView from '@/components/dashboard/MemberDirectoryView';
-import AnalyticsView from '@/components/dashboard/AnalyticsView';
-import StaffApprovalsView from '@/components/dashboard/StaffApprovalsView';
 import BranchSwitcherWidget from '@/components/dashboard/BranchSwitcherWidget';
 import StaffClockInOutWidget from '@/components/dashboard/StaffClockInOutWidget';
+
+// Dynamic lazy-loaded views with Suspense skeleton loaders
+const MemberDirectoryView = dynamic(
+  () => import('@/components/dashboard/MemberDirectoryView'),
+  { loading: () => <ViewSkeleton tab="directory" /> }
+);
+const LockerUsageView = dynamic(
+  () => import('@/components/dashboard/LockerUsageView'),
+  { loading: () => <ViewSkeleton tab="locker" /> }
+);
+const CheckInDeskView = dynamic(
+  () => import('@/components/dashboard/CheckInDeskView'),
+  { loading: () => <ViewSkeleton tab="checkin-desk" /> }
+);
+const InventoryView = dynamic(
+  () => import('@/components/dashboard/InventoryView'),
+  { loading: () => <ViewSkeleton tab="inventory" /> }
+);
+const AnalyticsView = dynamic(
+  () => import('@/components/dashboard/AnalyticsView'),
+  { loading: () => <ViewSkeleton tab="analytics" /> }
+);
+const StaffApprovalsView = dynamic(
+  () => import('@/components/dashboard/StaffApprovalsView'),
+  { loading: () => <ViewSkeleton tab="approvals" /> }
+);
+const RegistrationView = dynamic(
+  () => import('@/components/dashboard/RegistrationView'),
+  { loading: () => <ViewSkeleton tab="registration" /> }
+);
 
 interface DashboardShellProps {
   currentUser?: AuthUser;
@@ -27,6 +52,7 @@ interface DashboardShellProps {
   onToggleSidebar?: () => void;
   onLogout?: () => void;
   onSwitchRole?: (role: UserRole) => void;
+  children?: React.ReactNode;
 }
 
 const getTabMeta = (tab: string, locale: string) => {
@@ -55,6 +81,7 @@ export default function DashboardShell({
   onToggleSidebar: propOnToggleSidebar,
   onLogout: propOnLogout,
   onSwitchRole: propOnSwitchRole,
+  children,
 }: DashboardShellProps = {}) {
   const dashboard = useDashboard();
   const currentUser = propCurrentUser ?? dashboard.currentUser;
@@ -192,31 +219,35 @@ export default function DashboardShell({
           </div>
         </header>
 
-        {activeTab === 'directory' ? (
-          <MemberDirectoryView
-            onNavigateToRegistration={() => setActiveTab('registration')}
-            onNavigateToCheckIn={() => setActiveTab('checkin-desk')}
-          />
-        ) : activeTab === 'locker' ? (
-          <LockerUsageView
-            onNavigateToCheckIn={() => setActiveTab('checkin-desk')}
-            onNavigateToInventory={() => setActiveTab('inventory')}
-          />
-        ) : activeTab === 'checkin-desk' ? (
-          <CheckInDeskView
-            onNavigateToRegistration={() => setActiveTab('registration')}
-          />
-        ) : activeTab === 'inventory' ? (
-          <InventoryView />
-        ) : activeTab === 'analytics' || activeTab === 'dashboard' ? (
-          <AnalyticsView />
-        ) : activeTab === 'approvals' ? (
-          <StaffApprovalsView />
-        ) : (
-          <RegistrationView
-            onNavigateToInventory={() => setActiveTab('inventory')}
-          />
-        )}
+        <Suspense fallback={<ViewSkeleton tab={activeTab} />}>
+          {children ? (
+            children
+          ) : activeTab === 'directory' ? (
+            <MemberDirectoryView
+              onNavigateToRegistration={() => setActiveTab('registration')}
+              onNavigateToCheckIn={() => setActiveTab('checkin-desk')}
+            />
+          ) : activeTab === 'locker' ? (
+            <LockerUsageView
+              onNavigateToCheckIn={() => setActiveTab('checkin-desk')}
+              onNavigateToInventory={() => setActiveTab('inventory')}
+            />
+          ) : activeTab === 'checkin-desk' ? (
+            <CheckInDeskView
+              onNavigateToRegistration={() => setActiveTab('registration')}
+            />
+          ) : activeTab === 'inventory' ? (
+            <InventoryView />
+          ) : activeTab === 'analytics' || activeTab === 'dashboard' ? (
+            <AnalyticsView />
+          ) : activeTab === 'approvals' ? (
+            <StaffApprovalsView />
+          ) : (
+            <RegistrationView
+              onNavigateToInventory={() => setActiveTab('inventory')}
+            />
+          )}
+        </Suspense>
       </main>
     </div>
   );

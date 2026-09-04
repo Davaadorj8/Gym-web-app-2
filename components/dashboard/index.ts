@@ -11,3 +11,4 @@ export { default as BranchSwitcherWidget } from './BranchSwitcherWidget';
 export { default as StaffClockInOutWidget } from './StaffClockInOutWidget';
 export { StatCard } from './StatCard';
 export { DataTable } from './DataTable';
+export { ViewSkeleton } from './ViewSkeleton';
