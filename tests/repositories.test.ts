@@ -4,7 +4,7 @@ import {
   InMemoryPlanRepository,
   InMemoryLockerLogRepository,
   InMemoryStaffRepository,
-} from '@/lib/repositories/in-memory';
+} from '@/server/repositories/in-memory';
 import { GymMember, BuiltPlan, StaffAccount, LockerLog } from '@/lib/types';
 
 describe('InMemoryMemberRepository Contract', () => {
