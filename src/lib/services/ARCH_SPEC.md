@@ -22,15 +22,22 @@
 ## 3. Public API Exports (index.ts)
 - Member: `computeNewExpirationDate`, `resolveMemberCategory`, `calculateExtensionFee`,
   `filterMembers`, `MemberFilterTab`
-- Locker: `formatLockerNumber`, `generateLockerList`, `getNextAvailableLocker`,
-  `getOccupiedLockers`, `isLockerUnavailableStatus`, `calculateOccupancyMetrics`
 - Plan: `calculatePlanFee`, `findPlanForMember`, plan-tier helpers
-- Analytics: `calculateTotalMembershipValue`, `calculateWeeklyDistribution`,
-  `calculateMembersByPlanTier`, `aggregateExtensionMetrics`, `calculateHourlyTraffic`
-- Staff: `hasStaffPermission`, `DEFAULT_STAFF_PERMISSIONS`, `STAFF_SHIFTS`, `STAFF_ROLES`
+- Staff: `hasStaffPermission` (generic — operates only on `AuthUser`/permission strings,
+  no staff-entity dependency); `DEFAULT_STAFF_PERMISSIONS`, `STAFF_SHIFTS`, `STAFF_ROLES`
 - Pricing: `PricingService`
-- Inventory: `getNutrientExpiryStatus`, `calculatePOTotal`, `calculateMarginPercent`,
-  `isLowStock`, `isOutOfStock`
+
+**Moved out** (Phase B domain-isolation pass, 2026-09-05): Locker helpers
+(`formatLockerNumber`, `generateLockerList`, `getNextAvailableLocker`,
+`getOccupiedLockers`, `isLockerUnavailableStatus`, `calculateOccupancyMetrics`) →
+`src/features/lockers/service.ts`. Inventory helpers (`getNutrientExpiryStatus`,
+`calculatePOTotal`, `calculateMarginPercent`, `isLowStock`, `isOutOfStock`) →
+`src/features/inventory/service.ts`. Analytics (`calculateTotalMembershipValue`,
+`calculateWeeklyDistribution`, `calculateMembersByPlanTier`, `aggregateExtensionMetrics`,
+`calculateHourlyTraffic`) → `src/features/reporting`. Each moved because it depended on
+an entity type (`LockerCustomStatus`, `NutrientProduct`, etc.) that this pass relocated
+into its owning feature — `lib` cannot depend on `feature`, so once a helper's type
+dependency moves to a feature, the helper has to move with it.
 
 ## 4. State & Data Lifecycle
 - Pure functions or stateless logic providers that operate only on data passed in as
@@ -77,3 +84,10 @@
   title, so that fallback never matches and such members default to `over18`. This is a
   pre-existing gap in the registration domain, not something this consolidation introduced
   or fixed; flagged here for a future registration-domain pass.
+- 2026-09-05: Backend domain-isolation pass. Deleted `locker.service.ts` (moved to
+  `src/features/lockers/service.ts`), `inventory.service.ts` (moved to
+  `src/features/inventory/service.ts`), and `analytics.service.ts` (promoted to the new
+  `src/features/reporting` feature, since it structurally depends on both members' and
+  billing's data shapes — a dependency `lib` isn't allowed to have on a feature). This
+  directory now holds only helpers with no domain-entity-type dependency on a domain
+  that owns its own types.

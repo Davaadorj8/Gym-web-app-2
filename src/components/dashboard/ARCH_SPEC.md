@@ -10,10 +10,15 @@
 - @/components/ui/* (Level 1 Primitives)
 - @/lib/* (Shared Utilities, orchestration context, types)
 - @/lib/store/* (Typed Redux Hooks & UI Slice)
-- @/features/* (Domain public barrels only: @/features/registration, @/features/members, etc.)
+- @/features/* (any domain's public barrel — not an enumerated allow-list; see
+  `src/components/ARCH_SPEC.md`'s 2026-09-05 maintenance-log entry for why this widened
+  from the original four)
 
 **Forbidden Imports:**
-- Deep internal imports into feature internals (e.g. @/features/*/components/*)
+- Deep internal imports into feature internals (e.g. @/features/*/components/*,
+  @/features/*/repository)
+- Calling a feature's server actions or mutating its state from a view — reading a
+  type/pure helper from a feature's barrel is fine, orchestrating a mutation isn't
 - Direct Prisma DB instances inside client components
 
 ## 3. Public API Exports (index.ts / default exports)
@@ -62,4 +67,11 @@
 - 2026-09-04: Fixed sidebar rendering and session hydration safety: updated `hasStaffPermission` and `Sidebar` to provide safe user fallbacks during NextAuth session loading so menu items are never filtered out to empty array; added `sticky top-0 h-screen z-20` and overflow handling to persistent desktop sidebar container.
 - 2026-09-04: Simplified Sidebar navigation item visibility rule: explicit bypass for admin roles (`if (isAdmin) return true;`) so all menu navigation items and check-in controls are accessible without being erroneously gated by staff permissions.
 - 2026-09-04: Fixed dashboard view content hiding bug in `app/dashboard/[tab]/page.tsx`: removed premature `!isAuthenticated` blocking check that caused infinite `ViewSkeleton` rendering when visiting tabs directly or with demo user state. Added safe promise unwrapping for route params.
+- 2026-09-05: Backend domain-isolation pass repointed several views'/tables'/modals'
+  entity-type imports from `@/lib/types` to the owning feature's barrel:
+  `LockerUsageView`, `CheckInDeskView`, `InventoryView`, `StaffApprovalsView`, and
+  components under `checkin-desk/`, `locker-usage/`, `inventory/`, `staff-approvals/`,
+  and `analytics/` (see each of those subdirectories' own ARCH_SPEC.md). No rendering
+  logic changed — see `src/components/ARCH_SPEC.md`'s matching entry for the underlying
+  eslint-boundaries policy change this required.
 

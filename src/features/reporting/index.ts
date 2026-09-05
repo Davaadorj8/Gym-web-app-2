@@ -1,5 +1,10 @@
+// Reporting is a lightweight, read-only feature: no repository, no mutations, no
+// domain state of its own. It exists to make its real dependency on members' and
+// billing's data shapes explicit (via @/lib/types, until those domains take ownership
+// of their own entity types) rather than hiding a cross-domain dependency inside `lib`,
+// which is not allowed to depend on any feature.
 import { GymMember, BuiltPlan, CategoryTarget } from '@/lib/types';
-import { resolveMemberCategory, findPlanForMember } from './plan.service';
+import { resolveMemberCategory, findPlanForMember } from '@/lib/services';
 
 export interface WeeklyDistributionItem {
   name: string;

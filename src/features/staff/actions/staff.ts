@@ -1,7 +1,7 @@
 "use server";
 
 import { createSafeAction } from "@/server/actions/safeAction";
-import { getStaffRepository } from "@/server/repositories";
+import { getStaffRepository } from "../repository";
 import { hashPassword } from "@/server/security/password";
 import { z } from "zod";
 import {

@@ -1,7 +1,7 @@
 "use server";
 
 import { createSafeAction } from "@/server/actions/safeAction";
-import { getStaffAttendanceRepository } from "@/server/repositories";
+import { getStaffAttendanceRepository } from "../repository";
 import { z } from "zod";
 import { ClockInSchema, ClockOutSchema } from "../types";
 

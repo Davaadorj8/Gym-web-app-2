@@ -1,21 +1,5 @@
 export type CategoryTarget = 'under18' | 'over18' | 'organization';
 
-export interface GymLocation {
-  id: string;
-  tenantId: string;
-  name: string;
-  code: string;
-  address: string;
-  phone: string;
-  status: 'Active' | 'Inactive';
-}
-
-export const MOCK_LOCATIONS: GymLocation[] = [
-  { id: 'loc-downtown', tenantId: 'tenant-arche', name: 'Downtown Flagship Branch', code: 'DT-01', address: 'Sukhbaatar Sq 5, Ulaanbaatar', phone: '7711-0001', status: 'Active' },
-  { id: 'loc-uptown', tenantId: 'tenant-arche', name: 'Uptown Express Branch', code: 'UT-02', address: 'Khan-Uul District 11, Ulaanbaatar', phone: '7711-0002', status: 'Active' },
-  { id: 'loc-westside', tenantId: 'tenant-arche', name: 'Westside Performance Branch', code: 'WS-03', address: 'Bayangol District 3, Ulaanbaatar', phone: '7711-0003', status: 'Active' },
-];
-
 export interface BuiltPlan {
   id: string;
   tenantId?: string;

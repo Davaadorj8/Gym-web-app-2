@@ -7,7 +7,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
 import { StatCard } from '../StatCard';
-import { calculateWeeklyDistribution, calculateHourlyTraffic } from '@/lib/services';
+import { calculateWeeklyDistribution, calculateHourlyTraffic } from '@/features/reporting';
 
 interface OperationalTabProps {
   checkInLogs: { timestamp: string }[];

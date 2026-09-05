@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Wrench, Check } from 'lucide-react';
-import { LockerCustomStatus } from '@/lib/types';
+import { LockerCustomStatus } from '@/features/lockers';
 
 interface LockerStatusUpdateFormProps {
   totalLockers: number;

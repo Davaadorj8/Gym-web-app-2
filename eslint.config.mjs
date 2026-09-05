@@ -94,11 +94,19 @@ export default defineConfig([
               ],
             },
             {
+              // Dashboard presentation components (e.g. LockerLogsTable, MemberDirectoryTable)
+              // render domain entities and need those types for props. Now that domain
+              // entity types are owned by each feature (not centralized in `lib`), shared-ui
+              // needs read access to a feature's public barrel for types — same "barrel only,
+              // no deep import" rule as everywhere else (still enforced by no-restricted-imports
+              // below). This does not grant shared-ui license to call feature actions/mutate
+              // state; that stays the job of `orchestration` (DashboardContext) and `app`.
               from: { element: { type: "shared-ui" } },
               allow: [
                 { to: { element: { type: "shared-ui" } } },
                 { to: { element: { type: "ui-primitive" } } },
                 { to: { element: { type: "orchestration" } } },
+                { to: { element: { type: "feature" } } },
                 { to: { element: { type: "lib" } } },
               ],
             },
@@ -149,6 +157,8 @@ export default defineConfig([
                 "@/features/*/queries/*",
                 "@/features/*/schemas/*",
                 "@/features/*/types/*",
+                "@/features/*/repository",
+                "@/features/*/repository/*",
               ],
               message:
                 "Deep imports into a feature's internals are forbidden. Import from the feature's public barrel (@/features/<module>) instead.",
@@ -188,6 +198,8 @@ export default defineConfig([
                 "@/features/*/queries/*",
                 "@/features/*/schemas/*",
                 "@/features/*/types/*",
+                "@/features/*/repository",
+                "@/features/*/repository/*",
                 "@/server/*",
               ],
               message:

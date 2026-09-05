@@ -9,9 +9,12 @@
 ## 2. Dependency Boundaries & Allowed Imports
 **Allowed Imports:**
 - ../types (Local Feature Types)
+- ../repository (Local Feature Repository — getNutrientRepository,
+  getNutrientSaleRepository, getSupplierRepository, getPurchaseOrderRepository,
+  getStockIntakeRepository)
+- ../service (Local Feature Service — pure calculations: PO totals, margin, stock
+  thresholds)
 - @/server/actions/safeAction (Action Wrapper)
-- @/server/repositories (Server Data Access)
-- @/lib/services/inventory.service (pure calculations: PO totals, margin, stock thresholds)
 - zod (Validation)
 
 ## 3. Public API Exports (index.ts)
@@ -38,3 +41,11 @@
   fired from `DashboardContext` as background persistence alongside an optimistic local
   update, and a `revalidatePath` call needs a live Next.js request context that a plain
   Vitest unit test doesn't have.
+
+## 5. Maintenance Log
+- 2026-09-05: Backend domain-isolation pass. Repository access moved from
+  `getNutrientRepository`/`getPurchaseOrderRepository`/etc. imported off
+  `@/server/repositories` to the same-named functions imported from the sibling
+  `../repository` module; `calculatePOTotal`/`calculateMarginPercent` moved from
+  `@/lib/services` to the sibling `../service` module — both now that this domain owns
+  its own repository and calculation helpers.

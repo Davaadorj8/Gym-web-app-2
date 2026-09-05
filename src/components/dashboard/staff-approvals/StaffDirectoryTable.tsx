@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Eye, EyeOff, KeyRound, Trash2 } from 'lucide-react';
-import { StaffAccount } from '@/lib/types';
+import { StaffAccount } from '@/features/staff';
 import { DataTable, Column } from '../DataTable';
 
 interface StaffDirectoryTableProps {

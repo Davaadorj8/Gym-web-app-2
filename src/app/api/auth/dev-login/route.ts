@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { encode } from "next-auth/jwt";
 import { authConfig } from "@/auth.config";
 import { verifyPassword } from "@/server/security/password";
-import { getStaffRepository } from "@/server/repositories";
+import { getStaffRepository } from "@/features/staff";
 import { LoginCredentialsSchema } from "@/features/auth/schemas";
 
 export async function POST(req: NextRequest) {

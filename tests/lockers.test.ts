@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { InMemoryLockerRepository, InMemoryLockerLogRepository } from '@/server/repositories/in-memory';
+import { InMemoryLockerRepository, InMemoryLockerLogRepository } from '@/features/lockers';
 import {
   updateLockerStatusAction,
   setTotalLockersAction,

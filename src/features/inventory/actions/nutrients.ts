@@ -1,7 +1,7 @@
 "use server";
 
 import { createSafeAction } from "@/server/actions/safeAction";
-import { getNutrientRepository, getNutrientSaleRepository } from "@/server/repositories";
+import { getNutrientRepository, getNutrientSaleRepository } from "../repository";
 import { z } from "zod";
 import {
   AddNutrientSchema,

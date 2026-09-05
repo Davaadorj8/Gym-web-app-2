@@ -3,9 +3,9 @@
 import React, { useState, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { KeyRound } from 'lucide-react';
-import { GymMember, LockerLog } from '@/lib/types';
+import { GymMember } from '@/lib/types';
+import { LockerLog, calculateOccupancyMetrics } from '@/features/lockers';
 import { useDashboard } from '@/lib/orchestration';
-import { calculateOccupancyMetrics } from '@/lib/services';
 import {
   LockerOverviewCard,
   LockerFloorGrid,

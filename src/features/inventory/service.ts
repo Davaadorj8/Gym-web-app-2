@@ -1,4 +1,4 @@
-import { POItem } from '@/lib/types';
+import { POItem } from './types';
 
 export type ExpiryStatus = 'expired' | 'expiring_soon' | 'fresh' | 'none';
 

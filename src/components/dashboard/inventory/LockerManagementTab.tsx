@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useTranslations } from 'next-intl';
-import { LockerCustomStatus } from '@/lib/types';
+import { LockerCustomStatus } from '@/features/lockers';
 import { useDashboard } from '@/lib/orchestration';
 import { LockerCapacityCard } from './LockerCapacityCard';
 import { LockerStatusUpdateForm } from './LockerStatusUpdateForm';

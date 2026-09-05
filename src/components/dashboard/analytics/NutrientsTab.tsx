@@ -5,11 +5,10 @@ import { ShoppingCart, Sparkles, AlertTriangle, Layers } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
-import { NutrientProduct, NutrientSaleLog } from '@/lib/types';
+import { NutrientProduct, NutrientSaleLog, getNutrientExpiryStatus } from '@/features/inventory';
 import { StatCard } from '../StatCard';
 import { DataTable, Column } from '../DataTable';
 import { formatCurrency } from '@/lib/utils';
-import { getNutrientExpiryStatus } from '@/lib/services';
 
 interface NutrientsTabProps {
   nutrients: NutrientProduct[];

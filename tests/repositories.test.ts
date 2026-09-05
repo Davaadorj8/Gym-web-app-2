@@ -2,10 +2,8 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import {
   InMemoryMemberRepository,
   InMemoryPlanRepository,
-  InMemoryLockerLogRepository,
-  InMemoryStaffRepository,
 } from '@/server/repositories/in-memory';
-import { GymMember, BuiltPlan, StaffAccount, LockerLog } from '@/lib/types';
+import { GymMember, BuiltPlan } from '@/lib/types';
 
 describe('InMemoryMemberRepository Contract', () => {
   let memberRepo: InMemoryMemberRepository;

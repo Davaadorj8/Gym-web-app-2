@@ -5,15 +5,15 @@ import {
   getPurchaseOrderRepository,
   getStockIntakeRepository,
   getNutrientRepository,
-} from "@/server/repositories";
-import { calculatePOTotal, calculateMarginPercent } from "@/lib/services";
+} from "../repository";
+import { calculatePOTotal, calculateMarginPercent } from "../service";
 import { z } from "zod";
 import {
   CreatePurchaseOrderSchema,
   ReceivePurchaseOrderSchema,
   CancelPurchaseOrderSchema,
+  POItem,
 } from "../types";
-import type { POItem } from "@/lib/types";
 
 const TenantContextSchema = z.object({
   tenantId: z.string().min(1),

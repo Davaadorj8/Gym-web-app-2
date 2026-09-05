@@ -1,4 +1,4 @@
-import { AuthUser, StaffAccount, UserRole, STAFF_PERMISSION_OPTIONS } from '@/lib/types';
+import { AuthUser } from '@/lib/types';
 
 export const STAFF_SHIFTS = [
   { id: 'morning', labelEn: 'Morning (06:00 - 14:00)', labelMn: 'Өглөөний ээлж (06:00 - 14:00)' },

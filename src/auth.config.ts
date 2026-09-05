@@ -4,7 +4,7 @@ import GitHub from "next-auth/providers/github";
 import Credentials from "next-auth/providers/credentials";
 import { verifyPassword } from "@/server/security/password";
 import prisma from "@/server/prisma";
-import { getStaffRepository } from "@/server/repositories";
+import { getStaffRepository } from "@/features/staff";
 import { LoginCredentialsSchema } from "@/features/auth/schemas";
 
 declare module "next-auth" {

@@ -2,8 +2,8 @@
 
 import React from 'react';
 import { KeyRound, X, Check } from 'lucide-react';
-import { GymMember, LockerCustomStatus } from '@/lib/types';
-import { isLockerUnavailableStatus } from '@/lib/services';
+import { GymMember } from '@/lib/types';
+import { LockerCustomStatus, isLockerUnavailableStatus } from '@/features/lockers';
 
 interface LockerAssignmentModalProps {
   isOpen: boolean;

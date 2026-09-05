@@ -9,14 +9,15 @@
 ## 2. Dependency Boundaries & Allowed Imports
 **Allowed Imports:**
 - zod (Validation Library)
-- @/lib/types (Global Types)
 
 ## 3. Public API Exports (index.ts)
 - StaffRoleSchema, StaffStatusSchema, RegisterStaffSchema, UpdateStaffSchema,
   DeleteStaffSchema, ResetStaffPasswordSchema, ClockInSchema, ClockOutSchema
 - RegisterStaffInput, UpdateStaffInput, DeleteStaffInput, ResetStaffPasswordInput,
   ClockInInput, ClockOutInput
-- StaffAccount, StaffAttendance (re-exported from @/lib/types)
+- StaffAccount, StaffAttendance, STAFF_PERMISSION_OPTIONS, MOCK_STAFF_ACCOUNTS — owned
+  entity types (not re-exported from `@/lib/types` as of the Phase B domain-isolation
+  pass, 2026-09-05)
 
 ## 4. Notes
 - `RegisterStaffSchema` takes a plaintext `password` (min 4 chars, matching the existing
@@ -26,3 +27,11 @@
 - `UpdateStaffSchema` intentionally excludes `username` and `passwordHash` — renaming a
   username or changing a password go through dedicated flows (`resetStaffPasswordAction`
   for the latter; no rename flow exists in the UI today), not the general-purpose update.
+
+## 5. Maintenance Log
+- 2026-09-05: Backend domain-isolation pass. Moved `StaffAccount`, `StaffAttendance`,
+  `STAFF_PERMISSION_OPTIONS`, and `MOCK_STAFF_ACCOUNTS` here from
+  `@/lib/types/staff.types.ts` (deleted). `UserRole`/`AuthUser`, which used to live
+  alongside these in `staff.types.ts`, moved to the new
+  `@/lib/types/identity.types.ts` instead — they're core identity concepts other domains
+  reference too, not staff-specific.

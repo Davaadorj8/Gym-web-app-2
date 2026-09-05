@@ -1,18 +1,8 @@
 import {
   GymMember,
   BuiltPlan,
-  LockerLog,
-  LockerStatusDetail,
-  LockerCustomStatus,
-  StaffAccount,
-  StaffAttendance,
   MembershipExtensionLog,
   MembershipTransaction,
-  NutrientProduct,
-  NutrientSaleLog,
-  Supplier,
-  PurchaseOrder,
-  StockIntakeLog,
 } from '@/lib/types';
 
 export interface TenantQueryContext {
@@ -50,45 +40,6 @@ export interface IPlanRepository extends CrudRepository<BuiltPlan, string> {
   findByCategory(ctxOrCategory: TenantQueryContext | string, category?: string): Promise<BuiltPlan[]>;
 }
 
-export interface ILockerLogRepository extends CrudRepository<LockerLog, string> {
-  findRecentLogs(ctxOrLimit?: TenantQueryContext | number, limit?: number): Promise<LockerLog[]>;
-  findLogsByMember(ctxOrMemberId: TenantQueryContext | string, memberId?: string): Promise<LockerLog[]>;
-}
-
-export interface ILockerRepository extends CrudRepository<LockerStatusDetail, string> {
-  upsertStatus(
-    ctx: TenantQueryContext,
-    lockerNumber: string,
-    status: LockerCustomStatus,
-    notes?: string,
-    updatedBy?: string
-  ): Promise<LockerStatusDetail>;
-  getTotalCapacity(ctx?: TenantQueryContext): Promise<number>;
-  setTotalCapacity(ctx: TenantQueryContext, count: number): Promise<number>;
-}
-
-export interface IStaffRepository extends CrudRepository<StaffAccount, string> {
-  findByUsername(ctxOrUsername: TenantQueryContext | string, username?: string): Promise<StaffAccount | null>;
-  findActiveStaff(ctx?: TenantQueryContext): Promise<StaffAccount[]>;
-}
-
-export type IStaffAttendanceRepository = CrudRepository<StaffAttendance, string>;
-
 export interface IMembershipTransactionRepository extends CrudRepository<MembershipTransaction, string> {
   findByMemberId(ctxOrMemberId: TenantQueryContext | string, memberId?: string): Promise<MembershipTransaction[]>;
 }
-
-export interface INutrientRepository extends CrudRepository<NutrientProduct, string> {
-  adjustStock(ctx: TenantQueryContext, productId: string, delta: number): Promise<NutrientProduct | null>;
-}
-
-export type INutrientSaleRepository = CrudRepository<NutrientSaleLog, string>;
-
-export type ISupplierRepository = CrudRepository<Supplier, string>;
-
-export interface IPurchaseOrderRepository extends CrudRepository<PurchaseOrder, string> {
-  markReceived(ctx: TenantQueryContext, poId: string): Promise<PurchaseOrder | null>;
-  markCancelled(ctx: TenantQueryContext, poId: string): Promise<PurchaseOrder | null>;
-}
-
-export type IStockIntakeRepository = CrudRepository<StockIntakeLog, string>;

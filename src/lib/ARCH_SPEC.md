@@ -21,8 +21,10 @@
 
 ## 3. Public API Exports
 - Utilities: `cn`, `formatCurrency`, `CURRENCY_SYMBOL`, `CURRENCY_CODE`
-- Pure Services: `analytics.service`, `member.service`, `plan.service`, `locker.service`,
-  `staff.service`, `pricing.service` (see `src/lib/services/ARCH_SPEC.md`)
+- Pure Services: `member.service`, `plan.service`, `staff.service`, `pricing.service`
+  (see `src/lib/services/ARCH_SPEC.md`) — `locker.service`/`inventory.service` moved to
+  their owning features and `analytics.service` was promoted to `@/features/reporting`
+  in the 2026-09-05 domain-isolation pass (see that ARCH_SPEC.md's Maintenance Log)
 - Translations & Messages: `messages/` (single canonical i18n source; the former parallel
   `translations/` directory was deleted as dead code — see Maintenance Log)
 - Orchestration: `DashboardContext.tsx` (see `src/lib/orchestration/ARCH_SPEC.md` for its
@@ -47,3 +49,10 @@
   prisma.ts out to `src/server/*` (real Level 4 boundary, now enforced by
   `eslint-plugin-boundaries`); deleted the dead `translations/` directory and the
   `messages.ts`/`translations.ts` flat shim files in favor of `messages/` directly.
+- 2026-09-05: Backend domain-isolation pass. `src/lib/types` stopped being a shared
+  kernel for every domain's entities — lockers/staff/inventory's types moved into their
+  owning `src/features/*`, leaving only genuinely core types (`identity.types.ts`,
+  `tenancy.types.ts`) plus members/billing (not yet extracted). `src/lib/services` lost
+  `locker.service.ts`/`inventory.service.ts` (moved to their features) and
+  `analytics.service.ts` (promoted to `@/features/reporting`). See
+  `src/lib/types/ARCH_SPEC.md` and `src/lib/services/ARCH_SPEC.md` for the full account.

@@ -3,7 +3,7 @@
 import React from 'react';
 import { KeyRound, ShieldAlert, Wrench } from 'lucide-react';
 import { StatCard } from '../StatCard';
-import { LockerCustomStatus } from '@/lib/types';
+import { LockerCustomStatus } from '@/features/lockers';
 
 interface LockersTabProps {
   totalLockers: number;

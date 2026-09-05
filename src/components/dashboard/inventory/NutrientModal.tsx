@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { ShoppingCart, X } from 'lucide-react';
-import { NutrientProduct } from '@/lib/types';
+import { NutrientProduct } from '@/features/inventory';
 
 interface NutrientModalProps {
   isOpen: boolean;

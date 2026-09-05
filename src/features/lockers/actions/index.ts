@@ -1,7 +1,7 @@
 "use server";
 
 import { createSafeAction } from "@/server/actions/safeAction";
-import { getLockerRepository, getLockerLogRepository } from "@/server/repositories";
+import { getLockerRepository, getLockerLogRepository } from "../repository";
 import { z } from "zod";
 import {
   UpdateLockerStatusSchema,

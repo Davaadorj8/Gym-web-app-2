@@ -8,6 +8,8 @@
 **Allowed Imports:**
 - `@/components/ui/*`
 - `@/lib/*`
+- `@/features/inventory` (NutrientProduct, Supplier, PurchaseOrder, getNutrientExpiryStatus — entity types/pure helpers, not actions)
+- `@/features/lockers` (LockerCustomStatus — LockerManagementTab/LockerStatusUpdateForm render locker status)
 
 ## 3. Public API Exports (index.ts)
 - `InventoryTable`
@@ -18,3 +20,9 @@
 
 ## 4. Maintenance Log
 - [2026-09-04]: Created specification.
+- [2026-09-05]: Backend domain-isolation pass — `InventoryTable`, `NutrientModal`,
+  `NutrientSaleModal`, `PurchaseOrderModal`, `SuppliersAndPOTab` now import
+  `NutrientProduct`/`Supplier`/`PurchaseOrder`/`getNutrientExpiryStatus` from
+  `@/features/inventory` instead of `@/lib/types`/`@/lib/services`;
+  `LockerManagementTab`/`LockerStatusUpdateForm` import `LockerCustomStatus` from
+  `@/features/lockers` instead of `@/lib/types`.

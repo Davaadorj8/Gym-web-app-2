@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { LockerLog } from '@/lib/types';
+import { LockerLog } from '@/features/lockers';
 import { DataTable, Column } from '../DataTable';
 
 interface LockerLogsTableProps {

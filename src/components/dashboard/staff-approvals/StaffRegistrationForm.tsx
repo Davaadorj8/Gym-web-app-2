@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { UserPlus, Lock, Eye, EyeOff, Shield } from 'lucide-react';
-import { StaffAccount } from '@/lib/types';
+import { StaffAccount } from '@/features/staff';
 import { STAFF_SHIFTS, STAFF_ROLES, DEFAULT_STAFF_PERMISSIONS } from '@/lib/services';
 
 interface StaffRegistrationFormProps {
