@@ -24,7 +24,7 @@
   `filterMembers`, `MemberFilterTab`
 - Locker: `formatLockerNumber`, `generateLockerList`, `getNextAvailableLocker`,
   `getOccupiedLockers`, `isLockerUnavailableStatus`, `calculateOccupancyMetrics`
-- Plan: `calculatePlanFee`, plan-tier helpers
+- Plan: `calculatePlanFee`, `findPlanForMember`, plan-tier helpers
 - Analytics: `calculateTotalMembershipValue`, `calculateWeeklyDistribution`,
   `calculateMembersByPlanTier`, `aggregateExtensionMetrics`, `calculateHourlyTraffic`
 - Staff: `hasStaffPermission`, `DEFAULT_STAFF_PERMISSIONS`, `STAFF_SHIFTS`, `STAFF_ROLES`
@@ -52,3 +52,28 @@
   domain logic); `calculatePOTotal`/`calculateMarginPercent`/`isLowStock`/`isOutOfStock`
   are new, replacing calculations that were previously duplicated inline across
   `InventoryView.tsx`, `PurchaseOrderModal.tsx`, and `analytics/NutrientsTab.tsx`.
+- 2026-09-05: Rewrote `analytics.service.ts` (Phase B, Domain 5). This file already existed
+  and was already documented above as the canonical home for these functions, but nothing
+  actually imported it — every analytics tab component instead imported a parallel, drifted
+  duplicate from `src/components/dashboard/analytics/analytics.types.ts` (wrong layer: a
+  Level 2 component directory). The two copies disagreed: the component-layer duplicate had
+  its own `resolveMemberCategory` (DOB/age-based) distinct from this directory's canonical
+  one (`plan.service.ts`, used everywhere else — registration, extensions), and
+  `calculateHourlyTraffic`/`calculateWeeklyDistribution` here read `member.lastCheckInTime`
+  (one snapshot per member) instead of raw check-in event logs (used by the live version,
+  which correctly reflects every historical check-in). Consolidated on the live, working
+  implementations, moved here verbatim except for one real fix:
+  `aggregateExtensionMetrics` now reads each `MembershipExtensionLog.memberCategory` (stamped
+  at extension time via the canonical `resolveMemberCategory`) instead of recomputing a
+  member's category fresh from current state — a member's category can change between two
+  extensions, so re-deriving it discarded the historically-accurate stamped value. Also added
+  `findPlanForMember` to `plan.service.ts`, replacing three duplicated inline
+  `plans.find(p => p.id === m.planTitle)` lookups across `FinancialTab.tsx` and this file.
+  Known, deliberately out-of-scope: registration
+  (`src/features/registration/actions/index.ts`) never sets `GymMember.planCategory` for
+  individual (non-organization) members, so `resolveMemberCategory` falls back to matching
+  `planTitle` substrings against words like "under 18"/"corporate" — but `planTitle` for
+  live-registered members actually holds the plan's `id` (`selectedPlanId`), not a display
+  title, so that fallback never matches and such members default to `over18`. This is a
+  pre-existing gap in the registration domain, not something this consolidation introduced
+  or fixed; flagged here for a future registration-domain pass.

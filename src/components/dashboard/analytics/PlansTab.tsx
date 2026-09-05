@@ -6,7 +6,8 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recha
 import { BuiltPlan, GymMember } from '@/lib/types';
 import { DataTable, Column } from '../DataTable';
 import { formatCurrency } from '@/lib/utils';
-import { PLAN_TIER_COLORS, calculateMembersByPlanTier } from './analytics.types';
+import { calculateMembersByPlanTier } from '@/lib/services';
+import { PLAN_TIER_COLORS } from './analytics.types';
 
 interface PlansTabProps {
   plans: BuiltPlan[];

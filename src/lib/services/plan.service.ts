@@ -70,3 +70,16 @@ export function resolveMemberCategory(member: {
   }
   return 'over18';
 }
+
+/**
+ * Looks up the BuiltPlan a member is enrolled in. Despite its name, `GymMember.planTitle`
+ * stores the plan's `id` (set to `selectedPlanId` at registration), not a display title —
+ * this centralizes that lookup instead of repeating `plans.find(p => p.id === m.planTitle)`
+ * at each call site.
+ */
+export function findPlanForMember(
+  member: { planTitle?: string },
+  plans: BuiltPlan[]
+): BuiltPlan | undefined {
+  return plans.find((p) => p.id === member.planTitle);
+}

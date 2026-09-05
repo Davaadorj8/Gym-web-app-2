@@ -5,7 +5,7 @@ import { DollarSign, ArrowUpRight, Target, Sparkles } from 'lucide-react';
 import { StatCard } from '../StatCard';
 import { formatCurrency } from '@/lib/utils';
 import { GymMember, BuiltPlan } from '@/lib/types';
-import { aggregateExtensionMetrics, calculateTotalMembershipValue } from './analytics.types';
+import { aggregateExtensionMetrics, calculateTotalMembershipValue, findPlanForMember } from '@/lib/services';
 
 interface FinancialTabProps {
   members: GymMember[];
@@ -19,7 +19,7 @@ export function FinancialTab({ members, plans, nutrientSalesTotal }: FinancialTa
 
   // Active membership plan fees collected (estimated)
   const membershipFeesTotal = members.reduce((acc, m) => {
-    const plan = plans.find((p) => p.id === m.planTitle);
+    const plan = findPlanForMember(m, plans);
     return acc + (plan?.price || 0);
   }, 0);
 
