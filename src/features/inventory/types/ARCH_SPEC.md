@@ -9,7 +9,6 @@
 ## 2. Dependency Boundaries & Allowed Imports
 **Allowed Imports:**
 - zod (Validation Library)
-- @/lib/types (Global Types)
 
 ## 3. Public API Exports (index.ts)
 - NutrientCategorySchema, AddNutrientSchema, UpdateNutrientSchema, DeleteNutrientSchema,
@@ -20,5 +19,11 @@
   CreatePurchaseOrderSchema, ReceivePurchaseOrderSchema, CancelPurchaseOrderSchema
 - AddSupplierInput, UpdateSupplierInput, DeleteSupplierInput, CreatePurchaseOrderInput,
   ReceivePurchaseOrderInput, CancelPurchaseOrderInput
-- NutrientProduct, NutrientSaleLog, Supplier, PurchaseOrder, StockIntakeLog (re-exported
-  from @/lib/types)
+- NutrientProduct, NutrientSaleLog, Supplier, PurchaseOrder, POItem, StockIntakeLog —
+  owned entity types (not re-exported from `@/lib/types` as of the Phase B
+  domain-isolation pass, 2026-09-05)
+
+## 4. Maintenance Log
+- 2026-09-05: Backend domain-isolation pass. Moved `NutrientProduct`, `NutrientCategory`,
+  `NutrientSaleLog`, `Supplier`, `POItem`, `PurchaseOrder`, `StockIntakeLog`, and their
+  mock seed data here from `@/lib/types/inventory.types.ts` (deleted).

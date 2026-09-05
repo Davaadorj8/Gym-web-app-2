@@ -3,7 +3,16 @@
 ## 1. Architectural Alignment
 - Layer Level: Level 4 (Server Infrastructure / Data Access Layer)
 - Zachman Framework Cell: Builder (Technology Physics) / What
-- Domain Scope: Repository interfaces and mock in-memory data store implementations for members, plans, lockers, staff, and analytics.
+- Domain Scope: Generic, domain-agnostic repository core (the `CrudRepository`/
+  `TenantQueryContext` contracts and the `InMemoryRepository<T>` base class in
+  `in-memory/base.ts`) plus the repository interfaces/implementations/singletons for
+  domains that haven't been extracted into their own feature module yet: members, plans,
+  and membership transactions (billing). Lockers', staff's, and inventory's repository
+  interfaces, concrete classes, and singleton getters moved into their own
+  `src/features/<domain>/repository.ts` as of the Phase B domain-isolation pass
+  (2026-09-05) — this directory no longer holds them, and must not gain new
+  domain-specific repositories going forward; a new domain's repository belongs in that
+  domain's own feature folder from the start.
 
 ## 2. Dependency Boundaries & Allowed Imports
 **Allowed Imports:**
@@ -17,10 +26,9 @@
 
 ## 3. Public API Exports (index.ts)
 - Getters (module-level singletons): getMemberRepository, getPlanRepository,
-  getLockerLogRepository, getLockerRepository, getStaffRepository,
   getMembershipTransactionRepository
-- Types & interfaces: TenantQueryContext, CrudRepository, IMemberRepository, IPlanRepository,
-  ILockerLogRepository, ILockerRepository, IStaffRepository, IMembershipTransactionRepository
+- Types & interfaces: TenantQueryContext, CrudRepository (generic core, `types.ts`),
+  IMemberRepository, IPlanRepository, IMembershipTransactionRepository
 
 ## 4. State & Data Lifecycle
 - Server-side persistence via repository pattern.
@@ -43,3 +51,17 @@
   (`src/features/checkins`, Phase B Domain 2) — it was fully implemented but had zero
   callers before this; `CheckInDeskView` previously mutated check-in/out state through the
   generic `.update()` method instead.
+- 2026-09-05: Backend domain-isolation pass. Moved `ILockerRepository`/
+  `ILockerLogRepository` (+ `InMemoryLockerRepository`/`InMemoryLockerLogRepository` and
+  their singleton getters) to `src/features/lockers/repository.ts`; `IStaffRepository`/
+  `IStaffAttendanceRepository` (+ implementations/getters) to
+  `src/features/staff/repository.ts`; and `INutrientRepository`/`INutrientSaleRepository`/
+  `ISupplierRepository`/`IPurchaseOrderRepository`/`IStockIntakeRepository` (+
+  implementations/getters, kept together per inventory's own atomic-PO-receipt
+  rationale) to `src/features/inventory/repository.ts`. The generic
+  `InMemoryRepository<T>` base class moved to `in-memory/base.ts` so both this directory
+  and every feature's own `repository.ts` build on the same domain-agnostic core instead
+  of each domain reaching into a single shared file holding every domain's persistence.
+  `members`/`plans`/`membershipTransaction` repositories stay here for now — moving them
+  is Phase C, deferred (their feature action layers are currently dead code, bypassed by
+  `DashboardContext`, so extracting their repositories first wouldn't be meaningful).

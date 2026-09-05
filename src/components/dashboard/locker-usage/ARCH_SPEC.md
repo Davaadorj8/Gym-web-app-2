@@ -8,6 +8,8 @@
 **Allowed Imports:**
 - `@/components/ui/*`
 - `@/lib/*`
+- `@/features/lockers` (LockerLog, calculateOccupancyMetrics — entity types/pure
+  helpers, not actions)
 
 ## 3. Public API Exports (index.ts)
 - `LockerOverviewCard`
@@ -16,3 +18,7 @@
 
 ## 4. Maintenance Log
 - [2026-09-04]: Created specification.
+- [2026-09-05]: Backend domain-isolation pass — `LockerLogsTable` now imports
+  `LockerLog` from `@/features/lockers` instead of `@/lib/types`; the parent
+  `LockerUsageView` (`components/dashboard/`) imports `calculateOccupancyMetrics` from
+  the same barrel instead of `@/lib/services`.

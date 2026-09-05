@@ -13,9 +13,11 @@
 **Allowed Imports:**
 - @/components/ui/* (Level 1 Primitives)
 - @/components/* (Level 2 Shared Application Primitives)
-- @/lib/* (Shared Utilities, incl. `@/lib/services/inventory.service`)
+- @/lib/* (Shared Utilities)
 - @/server/actions/* (Safe action wrappers)
-- @/server/repositories/* (Server repository interface)
+- @/server/repositories/in-memory/base, @/server/repositories/types (generic
+  `InMemoryRepository<T>` base class and `CrudRepository`/`TenantQueryContext` contracts
+  only — this domain's own repository implementation lives in this feature, see below)
 
 **Forbidden Imports:**
 - Internal files of OTHER features
@@ -37,7 +39,19 @@
   POItemInputSchema, CreatePurchaseOrderSchema, ReceivePurchaseOrderSchema,
   CancelPurchaseOrderSchema, AddSupplierInput, UpdateSupplierInput, DeleteSupplierInput,
   CreatePurchaseOrderInput, ReceivePurchaseOrderInput, CancelPurchaseOrderInput, Supplier,
-  PurchaseOrder, StockIntakeLog
+  PurchaseOrder, StockIntakeLog, POItem — all five entities are this domain's OWN types
+  (`types/index.ts`), not re-exports from `@/lib/types` as of the Phase B
+  domain-isolation pass (2026-09-05)
+- Repository: INutrientRepository, INutrientSaleRepository, ISupplierRepository,
+  IPurchaseOrderRepository, IStockIntakeRepository, InMemoryNutrientRepository,
+  InMemoryNutrientSaleRepository, InMemorySupplierRepository,
+  InMemoryPurchaseOrderRepository, InMemoryStockIntakeRepository,
+  getNutrientRepository, getNutrientSaleRepository, getSupplierRepository,
+  getPurchaseOrderRepository, getStockIntakeRepository (`repository.ts` — all five kept
+  in one module, consistent with the PO-receipt atomic-cascade rationale in Section 1)
+- Service: getNutrientExpiryStatus, calculatePOTotal, calculateMarginPercent,
+  isLowStock, isOutOfStock, LOW_STOCK_THRESHOLD, ExpiryStatus (`service.ts` — pure
+  calculation helpers, moved from `@/lib/services/inventory.service.ts`)
 
 ## 4. State & Data Lifecycle
 - Server Data: Handled via Server Actions and repository access. Every write action
@@ -66,3 +80,14 @@
   `receivePurchaseOrderAction` does the same work (mark PO received, then for each item bump
   nutrient stock and write a stock-intake log with a computed margin) as plain sequential
   `await`s in one server action instead.
+- 2026-09-05: Backend domain-isolation pass. This feature now owns its full stack:
+  entity types (`types/index.ts`, moved from `@/lib/types/inventory.types.ts`),
+  repository (`repository.ts`, moved from `@/server/repositories`, all five entities kept
+  together), and pure calculation helpers (`service.ts`, moved from
+  `@/lib/services/inventory.service.ts`) — previously this directory only owned Zod input
+  schemas and re-exported entity types/repository access/calculations from shared modules
+  every other domain also reached into. `DashboardContext.tsx` and the dashboard
+  components that render inventory data (`InventoryView`, `InventoryTable`,
+  `NutrientModal`, `NutrientSaleModal`, `PurchaseOrderModal`, `SuppliersAndPOTab`, and the
+  analytics `NutrientsTab`) now import these types/helpers from `@/features/inventory`
+  instead of `@/lib/types`/`@/lib/services`.

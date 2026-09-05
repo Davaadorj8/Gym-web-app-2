@@ -9,8 +9,8 @@
 ## 2. Dependency Boundaries & Allowed Imports
 **Allowed Imports:**
 - ../types (Local Feature Types)
+- ../repository (Local Feature Repository — `getLockerRepository`/`getLockerLogRepository`)
 - @/server/actions/safeAction (Action Wrapper)
-- @/server/repositories (Server Data Access)
 - zod (Validation)
 
 ## 3. Public API Exports (index.ts)
@@ -21,3 +21,9 @@
 - Every action requires `tenantId` (and accepts optional `locationId`) in its input and
   passes it straight through to the repository layer — no action here bypasses tenant
   scoping the way some earlier feature actions do.
+
+## 5. Maintenance Log
+- 2026-09-05: Backend domain-isolation pass. Repository access moved from
+  `getLockerRepository`/`getLockerLogRepository` imported off `@/server/repositories` to
+  the same-named functions imported from the sibling `../repository` module, now that
+  this domain owns its own repository.

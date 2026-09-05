@@ -15,7 +15,9 @@
 - @/components/* (Level 2 Shared Application Primitives)
 - @/lib/* (Shared Utilities)
 - @/server/actions/* (Safe action wrappers)
-- @/server/repositories/* (Server repository interface)
+- @/server/repositories/in-memory/base, @/server/repositories/types (generic
+  `InMemoryRepository<T>` base class and `CrudRepository`/`TenantQueryContext` contracts
+  only — this domain's own repository implementation lives in this feature, see below)
 - @/server/security/password (server-side password hashing)
 
 **Forbidden Imports:**
@@ -29,7 +31,13 @@
 - Schemas/types: StaffRoleSchema, StaffStatusSchema, RegisterStaffSchema, UpdateStaffSchema,
   DeleteStaffSchema, ResetStaffPasswordSchema, ClockInSchema, ClockOutSchema,
   RegisterStaffInput, UpdateStaffInput, DeleteStaffInput, ResetStaffPasswordInput,
-  ClockInInput, ClockOutInput, StaffAccount, StaffAttendance
+  ClockInInput, ClockOutInput, StaffAccount, StaffAttendance, STAFF_PERMISSION_OPTIONS,
+  MOCK_STAFF_ACCOUNTS — this domain's OWN entity types (`types/index.ts`), not
+  re-exports from `@/lib/types` as of the Phase B domain-isolation pass (2026-09-05)
+- Repository: IStaffRepository, IStaffAttendanceRepository, InMemoryStaffRepository,
+  InMemoryStaffAttendanceRepository, getStaffRepository, getStaffAttendanceRepository
+  (`repository.ts`) — `getStaffRepository()` is the same singleton `auth.config.ts`'s
+  login lookup uses (see Section 4)
 
 ## 4. State & Data Lifecycle
 - Server Data: Handled via Server Actions and repository access (`IStaffRepository`, which
@@ -62,3 +70,18 @@
   constant; `IStaffRepository` existed and backed login, but nothing on the dashboard side
   ever wrote through it). This extraction is the first time staff CRUD from the dashboard UI
   and staff lookup from auth read and write the same repository.
+- 2026-09-05: Backend domain-isolation pass. This feature now owns its full stack:
+  entity types (`types/index.ts`, moved from `@/lib/types/staff.types.ts`) and repository
+  (`repository.ts`, moved from `@/server/repositories`) — previously this directory only
+  owned Zod input schemas and re-exported entity types/repository access from shared
+  modules every other domain also reached into. `auth.config.ts` and the dev-login route
+  now import `getStaffRepository` from `@/features/staff` instead of
+  `@/server/repositories` (the shared runtime data store is unchanged — same singleton,
+  just reached through this feature's own barrel now). `DashboardContext.tsx` and the
+  dashboard components that render staff data (`StaffApprovalsView`,
+  `StaffDirectoryTable`, `StaffRegistrationForm`, `PasswordResetModal`,
+  `ApprovalRequestsTab`) now import `StaffAccount` from `@/features/staff` instead of
+  `@/lib/types`. Note: `auth.config.ts`'s own `LoginCredentialsSchema` import (from the
+  separate `auth` feature) deliberately stays a deep import into
+  `@/features/auth/schemas` rather than switching to that feature's barrel — see
+  `src/features/auth/ARCH_SPEC.md`'s maintenance log for why.

@@ -8,8 +8,8 @@
 ## 2. Dependency Boundaries & Allowed Imports
 **Allowed Imports:**
 - ../types (Local Feature Types)
+- ../repository (Local Feature Repository — `getStaffRepository`/`getStaffAttendanceRepository`)
 - @/server/actions/safeAction (Action Wrapper)
-- @/server/repositories (Server Data Access)
 - @/server/security/password (bcrypt hashing — server-only)
 - zod (Validation)
 
@@ -36,3 +36,9 @@
   fired from `DashboardContext` as background persistence alongside an optimistic local
   update, and a `revalidatePath` call needs a live Next.js request context that a plain
   Vitest unit test doesn't have.
+
+## 5. Maintenance Log
+- 2026-09-05: Backend domain-isolation pass. Repository access moved from
+  `getStaffRepository`/`getStaffAttendanceRepository` imported off `@/server/repositories`
+  to the same-named functions imported from the sibling `../repository` module, now that
+  this domain owns its own repository.

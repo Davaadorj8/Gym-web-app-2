@@ -11,9 +11,12 @@
 **Allowed Imports:**
 - @/components/ui/* (Level 1 Primitives)
 - @/components/* (Level 2 Shared Application Primitives)
-- @/lib/* (Shared Utilities)
+- @/lib/* (Shared Utilities; `@/lib/types` for the core `UserRole` identity type only —
+  this domain's own entities are no longer sourced from there, see Section 3)
 - @/server/actions/* (Safe action wrappers)
-- @/server/repositories/* (Server repository interface)
+- @/server/repositories/in-memory/base, @/server/repositories/types (generic
+  `InMemoryRepository<T>` base class and `CrudRepository`/`TenantQueryContext` contracts
+  only — this domain's own repository implementation lives in this feature, see below)
 
 **Forbidden Imports:**
 - Internal files of OTHER features (e.g., features/members/actions/*)
@@ -26,7 +29,17 @@ Only items listed below are exported for external consumption:
 - Schemas: LockerCustomStatusSchema, UpdateLockerStatusSchema, SetTotalLockersSchema,
   LogLockerEventSchema
 - Types: UpdateLockerStatusInput, SetTotalLockersInput, LogLockerEventInput,
-  LockerCustomStatus, LockerLog, LockerStatusDetail
+  LockerCustomStatus, LockerLog, LockerStatusDetail, WaitlistEntry (dead subsystem,
+  moved as-is — see `checkins/ARCH_SPEC.md`), DEFAULT_LOCKER_CAPACITY, LOCKER_PREFIX,
+  MOCK_LOCKER_LOGS — this domain's OWN entity types (`repository.ts`), not re-exports
+  from `@/lib/types` as of the Phase B domain-isolation pass (2026-09-05)
+- Repository: ILockerRepository, ILockerLogRepository, InMemoryLockerRepository,
+  InMemoryLockerLogRepository, getLockerRepository, getLockerLogRepository
+  (`repository.ts`)
+- Service: formatLockerNumber, generateLockerList, getOccupiedLockers,
+  isLockerUnavailableStatus, countOutOfServiceLockers, getNextAvailableLocker,
+  calculateOccupancyMetrics, LockerOccupancyMetrics (`service.ts` — pure calculation
+  helpers, moved from `@/lib/services/locker.service.ts`)
 
 ## 4. State & Data Lifecycle
 - Server Data: Handled via Server Actions and repository access with mandatory tenant
@@ -49,3 +62,14 @@ Only items listed below are exported for external consumption:
   real tenant+location-scoped repository persistence, and gives the previously-orphaned
   `ILockerLogRepository` (built during the Foundation Phase but never consumed) its first
   writer.
+- 2026-09-05: Backend domain-isolation pass. This feature now owns its full stack:
+  entity types (`types/index.ts`, moved from `@/lib/types/lockers.types.ts`), repository
+  (`repository.ts`, moved from `@/server/repositories`), and pure calculation helpers
+  (`service.ts`, moved from `@/lib/services/locker.service.ts`) — previously this
+  directory only owned Zod input schemas and re-exported entity types/repository access
+  from shared modules every other domain also reached into. `DashboardContext.tsx` and
+  the dashboard components that render locker data (`LockerUsageView`,
+  `LockerAssignmentModal`, `LockerLogsTable`, `CheckInLogsTable`,
+  `LockerManagementTab`/`LockerStatusUpdateForm` under `components/dashboard/inventory`,
+  and the analytics `LockersTab`) now import `LockerCustomStatus`/`LockerLog`/etc. from
+  `@/features/lockers` instead of `@/lib/types`.
