@@ -7,11 +7,8 @@ import { Search, UserCheck, LogOut, Plus } from 'lucide-react';
 import { GymMember } from '@/lib/types';
 import { Toast } from '@/components/ui';
 import { useDashboard } from '@/lib/orchestration';
-import {
-  filterMembers,
-  getOccupiedLockers,
-  getNextAvailableLocker,
-} from '@/lib/services';
+import { filterMembers } from '@/lib/services';
+import { getOccupiedLockers, getNextAvailableLocker } from '@/features/lockers';
 import { CapacityWaitlistWidget, CheckInLogsTable } from './checkin-desk';
 
 // Only mounted once a check-in is confirmed, so it's split out of the always-loaded

@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { KeyRound, Eye, EyeOff, X } from 'lucide-react';
-import { StaffAccount } from '@/lib/types';
+import { StaffAccount } from '@/features/staff';
 
 interface PasswordResetModalProps {
   isOpen: boolean;

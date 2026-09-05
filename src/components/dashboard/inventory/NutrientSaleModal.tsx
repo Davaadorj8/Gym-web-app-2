@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { ShoppingCart, Check, X } from 'lucide-react';
-import { NutrientProduct } from '@/lib/types';
+import { NutrientProduct } from '@/features/inventory';
 import { formatCurrency } from '@/lib/utils';
 
 interface NutrientSaleModalProps {

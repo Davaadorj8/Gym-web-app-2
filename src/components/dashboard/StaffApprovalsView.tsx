@@ -3,7 +3,8 @@
 import React, { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Lock, UserPlus, Bell } from 'lucide-react';
-import { StaffAccount, AuthUser } from '@/lib/types';
+import { AuthUser } from '@/lib/types';
+import { StaffAccount } from '@/features/staff';
 import { Toast } from '@/components/ui';
 import { useDashboard } from '@/lib/orchestration';
 import { cn } from '@/lib/utils';

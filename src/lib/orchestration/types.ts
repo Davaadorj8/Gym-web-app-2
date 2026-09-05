@@ -3,19 +3,11 @@ import {
   BuiltPlan,
   GymMember,
   GymLocation,
-  LockerLog,
-  LockerCustomStatus,
-  NutrientProduct,
-  NutrientSaleLog,
-  StaffAccount,
   UserRole,
-  StaffAttendance,
-  Supplier,
-  PurchaseOrder,
-  POItem,
-  StockIntakeLog,
-  WaitlistEntry,
 } from '@/lib/types';
+import { LockerLog, LockerCustomStatus, WaitlistEntry } from '@/features/lockers';
+import { StaffAccount, StaffAttendance } from '@/features/staff';
+import { NutrientProduct, NutrientSaleLog, Supplier, PurchaseOrder, POItem, StockIntakeLog } from '@/features/inventory';
 import { TenantQueryContext } from '@/server/repositories/types';
 
 export interface DashboardContextValue {

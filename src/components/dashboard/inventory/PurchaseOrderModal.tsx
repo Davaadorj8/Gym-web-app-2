@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Package, Check, X } from 'lucide-react';
-import { NutrientProduct, Supplier } from '@/lib/types';
+import { NutrientProduct, Supplier } from '@/features/inventory';
 import { formatCurrency } from '@/lib/utils';
 
 interface PurchaseOrderModalProps {

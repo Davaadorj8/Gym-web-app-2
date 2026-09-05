@@ -6,7 +6,7 @@ import { GymMember } from '@/lib/types';
 import { StatCard } from '../StatCard';
 import { DataTable, Column } from '../DataTable';
 import { formatCurrency } from '@/lib/utils';
-import { aggregateExtensionMetrics } from '@/lib/services';
+import { aggregateExtensionMetrics } from '@/features/reporting';
 
 interface MembersTabProps {
   members: GymMember[];

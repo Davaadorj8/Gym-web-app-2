@@ -1,6 +1,5 @@
-import { GymMember, LockerCustomStatus, DEFAULT_LOCKER_CAPACITY, LOCKER_PREFIX } from '@/lib/types';
-
-export { DEFAULT_LOCKER_CAPACITY, LOCKER_PREFIX };
+import { GymMember } from '@/lib/types';
+import { LockerCustomStatus, DEFAULT_LOCKER_CAPACITY, LOCKER_PREFIX } from './types';
 
 /**
  * Formats a locker index (1-based) into a standard formatted string, e.g. "Locker #01".
@@ -101,7 +100,7 @@ export function calculateOccupancyMetrics(
   outOfServiceOrStatuses?: number | Record<string, LockerCustomStatus>
 ): LockerOccupancyMetrics {
   const effectiveTotal = Math.max(1, totalLockers || DEFAULT_LOCKER_CAPACITY);
-  
+
   let outOfServiceCount = 0;
   if (typeof outOfServiceOrStatuses === 'number') {
     outOfServiceCount = outOfServiceOrStatuses;
@@ -121,4 +120,3 @@ export function calculateOccupancyMetrics(
     occupancyRate,
   };
 }
-

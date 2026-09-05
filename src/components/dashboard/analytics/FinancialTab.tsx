@@ -5,7 +5,8 @@ import { DollarSign, ArrowUpRight, Target, Sparkles } from 'lucide-react';
 import { StatCard } from '../StatCard';
 import { formatCurrency } from '@/lib/utils';
 import { GymMember, BuiltPlan } from '@/lib/types';
-import { aggregateExtensionMetrics, calculateTotalMembershipValue, findPlanForMember } from '@/lib/services';
+import { aggregateExtensionMetrics, calculateTotalMembershipValue } from '@/features/reporting';
+import { findPlanForMember } from '@/lib/services';
 
 interface FinancialTabProps {
   members: GymMember[];

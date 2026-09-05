@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Check, X, Shield, Clock } from 'lucide-react';
-import { StaffAccount } from '@/lib/types';
+import { StaffAccount } from '@/features/staff';
 
 interface ApprovalRequestsTabProps {
   staffList: StaffAccount[];

@@ -5,7 +5,7 @@ import {
   calculateTotalMembershipValue,
   calculateMembersByPlanTier,
   aggregateExtensionMetrics,
-} from '@/lib/services';
+} from '@/features/reporting';
 import { findPlanForMember } from '@/lib/services';
 import { GymMember, BuiltPlan, MembershipExtensionLog } from '@/lib/types';
 

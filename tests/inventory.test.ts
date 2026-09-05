@@ -4,8 +4,9 @@ import {
   InMemoryNutrientSaleRepository,
   InMemorySupplierRepository,
   InMemoryPurchaseOrderRepository,
-} from '@/server/repositories/in-memory';
-import { NutrientProduct, PurchaseOrder } from '@/lib/types';
+  NutrientProduct,
+  PurchaseOrder,
+} from '@/features/inventory';
 import {
   addNutrientAction,
   recordNutrientSaleAction,
@@ -20,9 +21,13 @@ import {
   cancelPurchaseOrderAction,
   getPurchaseOrdersAction,
   getStockIntakesAction,
+  getNutrientRepository,
+  getSupplierRepository,
+  calculateMarginPercent,
+  calculatePOTotal,
+  isLowStock,
+  isOutOfStock,
 } from '@/features/inventory';
-import { getNutrientRepository, getSupplierRepository } from '@/server/repositories';
-import { calculateMarginPercent, calculatePOTotal, isLowStock, isOutOfStock } from '@/lib/services';
 
 function makeNutrient(id: string, stock = 10): NutrientProduct {
   return {

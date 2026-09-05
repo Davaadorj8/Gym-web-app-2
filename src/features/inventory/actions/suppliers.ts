@@ -1,7 +1,7 @@
 "use server";
 
 import { createSafeAction } from "@/server/actions/safeAction";
-import { getSupplierRepository } from "@/server/repositories";
+import { getSupplierRepository } from "../repository";
 import { z } from "zod";
 import { AddSupplierSchema, UpdateSupplierSchema, DeleteSupplierSchema } from "../types";
 

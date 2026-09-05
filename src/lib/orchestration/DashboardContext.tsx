@@ -13,34 +13,12 @@ import {
   GymLocation,
   MOCK_LOCATIONS,
   INITIAL_GYM_MEMBERS,
-  INITIAL_LOCKER_LOGS,
-  INITIAL_STAFF_ACCOUNTS,
-  LockerLog,
-  LockerCustomStatus,
   MembershipExtensionLog,
-  NutrientProduct,
-  MOCK_NUTRIENT_PRODUCTS,
-  NutrientSaleLog,
-  INITIAL_NUTRIENT_SALES,
-  StaffAccount,
   UserRole,
-  StaffAttendance,
-  Supplier,
-  PurchaseOrder,
-  POItem,
-  StockIntakeLog,
-  WaitlistEntry,
-  MOCK_SUPPLIERS,
-  MOCK_PURCHASE_ORDERS,
-  MOCK_STOCK_INTAKES,
 } from '@/lib/types';
 import { TenantQueryContext } from '@/server/repositories/types';
 import {
   computeNewExpirationDate,
-  formatLockerNumber,
-  generateLockerList,
-  getNextAvailableLocker,
-  getOccupiedLockers,
   resolveMemberCategory,
   DEFAULT_STAFF_PERMISSIONS,
   PricingService,
@@ -53,6 +31,14 @@ import {
   logLockerEventAction,
   getLockerStatusesAction,
   getTotalLockersAction,
+  LockerLog,
+  LockerCustomStatus,
+  WaitlistEntry,
+  MOCK_LOCKER_LOGS,
+  formatLockerNumber,
+  generateLockerList,
+  getNextAvailableLocker,
+  getOccupiedLockers,
 } from '@/features/lockers';
 import { checkInMemberAction, checkOutMemberAction } from '@/features/checkins';
 import {
@@ -72,6 +58,17 @@ import {
   cancelPurchaseOrderAction,
   getPurchaseOrdersAction,
   getStockIntakesAction,
+  NutrientProduct,
+  NutrientSaleLog,
+  MOCK_NUTRIENT_PRODUCTS,
+  MOCK_NUTRIENT_SALES,
+  Supplier,
+  PurchaseOrder,
+  POItem,
+  StockIntakeLog,
+  MOCK_SUPPLIERS,
+  MOCK_PURCHASE_ORDERS,
+  MOCK_STOCK_INTAKES,
 } from '@/features/inventory';
 import {
   registerStaffAction,
@@ -82,6 +79,9 @@ import {
   clockInAction,
   clockOutAction,
   getAttendancesAction,
+  StaffAccount,
+  StaffAttendance,
+  MOCK_STAFF_ACCOUNTS,
 } from '@/features/staff';
 import { format } from 'date-fns';
 import { createAuditEntry } from '@/lib/utils/audit';
@@ -95,8 +95,8 @@ export function DashboardProvider({
   children,
   initialMembers = INITIAL_GYM_MEMBERS,
   initialPlans = DEFAULT_BUILT_PLANS,
-  initialLockerLogs = INITIAL_LOCKER_LOGS,
-  initialStaff = INITIAL_STAFF_ACCOUNTS,
+  initialLockerLogs = MOCK_LOCKER_LOGS,
+  initialStaff = MOCK_STAFF_ACCOUNTS,
   initialTotalLockers = 60,
   initialUser = DEFAULT_ADMIN_USER,
   initialAuthenticated = false,
@@ -239,7 +239,7 @@ export function DashboardProvider({
   }
 
   const [nutrients, setNutrients] = useState<NutrientProduct[]>(MOCK_NUTRIENT_PRODUCTS);
-  const [nutrientSales, setNutrientSales] = useState<NutrientSaleLog[]>(INITIAL_NUTRIENT_SALES);
+  const [nutrientSales, setNutrientSales] = useState<NutrientSaleLog[]>(MOCK_NUTRIENT_SALES);
 
   // Nutrient products/sales now live in the server-side repository (src/features/inventory)
   // instead of localStorage — cached per tenant/location via React Query.

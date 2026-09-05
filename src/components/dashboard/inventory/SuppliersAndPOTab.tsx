@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { cn, formatCurrency } from '@/lib/utils';
 import { useDashboard } from '@/lib/orchestration';
-import { Supplier, PurchaseOrder } from '@/lib/types';
+import { Supplier, PurchaseOrder } from '@/features/inventory';
 
 interface SuppliersAndPOTabProps {
   showToast: (msg: string) => void;
