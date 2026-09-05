@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import { useTranslations } from 'next-intl';
 import { Lock, ShoppingCart, Plus } from 'lucide-react';
 import { BuiltPlan, AuthUser, NutrientProduct } from '@/lib/types';
@@ -14,10 +15,17 @@ import {
   MembershipPlanBuilderTab,
   LockerManagementTab,
   SuppliersAndPOTab,
-  NutrientModal,
-  NutrientSaleModal,
-  PurchaseOrderModal,
 } from './inventory';
+
+// Modals only mount once opened, so their code is split into on-demand chunks
+// instead of the always-loaded InventoryView bundle.
+const NutrientModal = dynamic(() => import('./inventory/NutrientModal').then((m) => m.NutrientModal));
+const NutrientSaleModal = dynamic(() =>
+  import('./inventory/NutrientSaleModal').then((m) => m.NutrientSaleModal)
+);
+const PurchaseOrderModal = dynamic(() =>
+  import('./inventory/PurchaseOrderModal').then((m) => m.PurchaseOrderModal)
+);
 
 interface InventoryViewProps {
   plans?: BuiltPlan[];
@@ -358,31 +366,38 @@ export default function InventoryView({
 
       {activeTab === 'purchase-orders' && <SuppliersAndPOTab showToast={showToast} />}
 
-      {/* Modals */}
-      <NutrientModal
-        isOpen={isNutrientModalOpen}
-        onClose={() => setIsNutrientModalOpen(false)}
-        onAddNutrient={handleAddNutrient}
-      />
+      {/* Modals — only mounted once opened, so the dynamic-imported chunk is
+          fetched on demand instead of alongside the rest of this view. */}
+      {isNutrientModalOpen && (
+        <NutrientModal
+          isOpen={isNutrientModalOpen}
+          onClose={() => setIsNutrientModalOpen(false)}
+          onAddNutrient={handleAddNutrient}
+        />
+      )}
 
-      <NutrientSaleModal
-        isOpen={isSaleModalOpen}
-        onClose={() => {
-          setIsSaleModalOpen(false);
-          setSaleProduct(null);
-        }}
-        product={saleProduct}
-        onConfirmSale={handleConfirmSale}
-      />
+      {isSaleModalOpen && (
+        <NutrientSaleModal
+          isOpen={isSaleModalOpen}
+          onClose={() => {
+            setIsSaleModalOpen(false);
+            setSaleProduct(null);
+          }}
+          product={saleProduct}
+          onConfirmSale={handleConfirmSale}
+        />
+      )}
 
-      <PurchaseOrderModal
-        isOpen={isPOModalOpen}
-        onClose={() => setIsPOModalOpen(false)}
-        suppliers={dashboard.suppliers}
-        nutrients={nutrients}
-        selectedNutrientIds={selectedNutrientIds}
-        onConfirmPO={handleConfirmPO}
-      />
+      {isPOModalOpen && (
+        <PurchaseOrderModal
+          isOpen={isPOModalOpen}
+          onClose={() => setIsPOModalOpen(false)}
+          suppliers={dashboard.suppliers}
+          nutrients={nutrients}
+          selectedNutrientIds={selectedNutrientIds}
+          onConfirmPO={handleConfirmPO}
+        />
+      )}
     </div>
   );
 }

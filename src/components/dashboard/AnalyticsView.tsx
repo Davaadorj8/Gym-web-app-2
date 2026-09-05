@@ -1,19 +1,35 @@
 'use client';
 
 import React, { useState } from 'react';
+import dynamic from 'next/dynamic';
 import { useTranslations } from 'next-intl';
 import { Lock } from 'lucide-react';
 import { useDashboard } from '@/lib/orchestration';
 import { cn } from '@/lib/utils';
-import {
-  AnalyticsTab,
-  FinancialTab,
-  OperationalTab,
-  PlansTab,
-  NutrientsTab,
-  LockersTab,
-  MembersTab,
-} from './analytics';
+import { AnalyticsTab } from './analytics';
+import ViewSkeleton from './ViewSkeleton';
+
+// Each sub-tab is lazy-loaded on selection instead of bundled into the initial
+// analytics chunk — three of them (Operational, Plans, Nutrients) pull in recharts,
+// which most sessions never need if they only look at the default Financial tab.
+const FinancialTab = dynamic(() => import('./analytics/FinancialTab').then((m) => m.FinancialTab), {
+  loading: () => <ViewSkeleton title="Financial Overview" />,
+});
+const OperationalTab = dynamic(() => import('./analytics/OperationalTab').then((m) => m.OperationalTab), {
+  loading: () => <ViewSkeleton title="Operational Metrics" />,
+});
+const PlansTab = dynamic(() => import('./analytics/PlansTab').then((m) => m.PlansTab), {
+  loading: () => <ViewSkeleton title="Plans & Products" />,
+});
+const NutrientsTab = dynamic(() => import('./analytics/NutrientsTab').then((m) => m.NutrientsTab), {
+  loading: () => <ViewSkeleton title="Nutrient POS" />,
+});
+const LockersTab = dynamic(() => import('./analytics/LockersTab').then((m) => m.LockersTab), {
+  loading: () => <ViewSkeleton title="Lockers" />,
+});
+const MembersTab = dynamic(() => import('./analytics/MembersTab').then((m) => m.MembersTab), {
+  loading: () => <ViewSkeleton title="Members & Renewals" />,
+});
 
 export default function AnalyticsView() {
   const dashboard = useDashboard();

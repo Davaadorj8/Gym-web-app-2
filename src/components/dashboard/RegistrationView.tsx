@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import dynamic from 'next/dynamic';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslations, useLocale } from 'next-intl';
@@ -19,11 +20,17 @@ import {
   IndividualForm,
   OrganizationForm,
   PlanSelector,
-  CameraModal,
 } from './registration';
 import {
   DURATION_OPTIONS,
 } from '@/lib/registration-utils';
+
+// Only mounted when the user opts to capture a photo, and depends on
+// navigator.mediaDevices — split out of the always-loaded RegistrationView bundle and
+// excluded from any server render.
+const CameraModal = dynamic(() => import('./registration/CameraModal').then((m) => m.CameraModal), {
+  ssr: false,
+});
 
 interface RegistrationViewProps {
   plans?: BuiltPlan[];
@@ -253,12 +260,16 @@ export default function RegistrationView({
         </form>
       </Form>
 
-      {/* ================= MODAL: CAMERA WEBCAM CAPTURE ================= */}
-      <CameraModal
-        isOpen={cameraTarget !== null}
-        onClose={() => setCameraTarget(null)}
-        onCapture={handlePhotoCaptured}
-      />
+      {/* ================= MODAL: CAMERA WEBCAM CAPTURE =================
+          Only mounted once opened, so the dynamic-imported chunk (which touches
+          navigator.mediaDevices) is fetched on demand instead of alongside the form. */}
+      {cameraTarget !== null && (
+        <CameraModal
+          isOpen={cameraTarget !== null}
+          onClose={() => setCameraTarget(null)}
+          onCapture={handlePhotoCaptured}
+        />
+      )}
 
       {/* ================= MODAL: SUCCESS CONFIRMATION ================= */}
       <Modal

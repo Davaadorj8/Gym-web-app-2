@@ -4,6 +4,7 @@ import { I18nProvider } from '@/components/I18nProvider';
 import { StoreProvider } from '@/lib/store';
 import { SessionProvider } from 'next-auth/react';
 import { DashboardProvider } from '@/lib/orchestration';
+import { QueryProvider } from '@/lib/query/QueryProvider';
 
 export const metadata: Metadata = {
   title: 'Arche Gym - Ironpulse Management Portal',
@@ -16,9 +17,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body suppressHydrationWarning>
         <StoreProvider>
           <SessionProvider>
-            <I18nProvider>
-              <DashboardProvider>{children}</DashboardProvider>
-            </I18nProvider>
+            <QueryProvider>
+              <I18nProvider>
+                <DashboardProvider>{children}</DashboardProvider>
+              </I18nProvider>
+            </QueryProvider>
           </SessionProvider>
         </StoreProvider>
       </body>

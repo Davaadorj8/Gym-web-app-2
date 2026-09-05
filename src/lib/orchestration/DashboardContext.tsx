@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useRouter, usePathname } from 'next/navigation';
 import { useSession, signOut as nextAuthSignOut, signIn as nextAuthSignIn } from 'next-auth/react';
 import {
@@ -84,6 +85,7 @@ import {
 } from '@/features/staff';
 import { format } from 'date-fns';
 import { createAuditEntry } from '@/lib/utils/audit';
+import { dashboardQueryKeys } from '@/lib/query/keys';
 
 import { DashboardContextValue, DEFAULT_ADMIN_USER } from './types';
 
@@ -208,108 +210,117 @@ export function DashboardProvider({
   const [lockerStatuses, setLockerStatuses] = useState<Record<string, LockerCustomStatus>>({});
 
   // Locker status/capacity now live in the server-side repository (src/features/lockers)
-  // instead of localStorage — fetch on mount and whenever tenant/location changes.
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
+  // instead of localStorage — cached per tenant/location via React Query so switching
+  // back to a previously visited location shows the last known data instantly while a
+  // background refetch confirms it's still fresh.
+  const lockersQuery = useQuery({
+    queryKey: dashboardQueryKeys.lockers(tenantContext),
+    queryFn: async () => {
       const [statusesResult, totalResult] = await Promise.all([
         getLockerStatusesAction(tenantContext),
         getTotalLockersAction(tenantContext),
       ]);
-      if (cancelled) return;
-      if (statusesResult.success && statusesResult.data) {
-        setLockerStatuses(statusesResult.data as Record<string, LockerCustomStatus>);
-      }
-      if (totalResult.success && typeof totalResult.data === 'number') {
-        setTotalLockers(totalResult.data);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [tenantContext]);
+      return {
+        statuses:
+          statusesResult.success && statusesResult.data
+            ? (statusesResult.data as Record<string, LockerCustomStatus>)
+            : null,
+        total:
+          totalResult.success && typeof totalResult.data === 'number' ? totalResult.data : null,
+      };
+    },
+  });
+
+  const [syncedLockersData, setSyncedLockersData] = useState(lockersQuery.data);
+  if (lockersQuery.data && lockersQuery.data !== syncedLockersData) {
+    setSyncedLockersData(lockersQuery.data);
+    if (lockersQuery.data.statuses) setLockerStatuses(lockersQuery.data.statuses);
+    if (lockersQuery.data.total !== null) setTotalLockers(lockersQuery.data.total);
+  }
 
   const [nutrients, setNutrients] = useState<NutrientProduct[]>(MOCK_NUTRIENT_PRODUCTS);
   const [nutrientSales, setNutrientSales] = useState<NutrientSaleLog[]>(INITIAL_NUTRIENT_SALES);
 
   // Nutrient products/sales now live in the server-side repository (src/features/inventory)
-  // instead of localStorage — fetch on mount and whenever tenant/location changes.
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
+  // instead of localStorage — cached per tenant/location via React Query.
+  const nutrientsQuery = useQuery({
+    queryKey: dashboardQueryKeys.nutrients(tenantContext),
+    queryFn: async () => {
       const [productsResult, salesResult] = await Promise.all([
         getNutrientsAction(tenantContext),
         getNutrientSalesAction(tenantContext),
       ]);
-      if (cancelled) return;
-      if (productsResult.success && productsResult.data) {
-        setNutrients(productsResult.data);
-      }
-      if (salesResult.success && salesResult.data) {
-        setNutrientSales(salesResult.data);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [tenantContext]);
+      return {
+        products: productsResult.success && productsResult.data ? productsResult.data : null,
+        sales: salesResult.success && salesResult.data ? salesResult.data : null,
+      };
+    },
+  });
+
+  const [syncedNutrientsData, setSyncedNutrientsData] = useState(nutrientsQuery.data);
+  if (nutrientsQuery.data && nutrientsQuery.data !== syncedNutrientsData) {
+    setSyncedNutrientsData(nutrientsQuery.data);
+    if (nutrientsQuery.data.products) setNutrients(nutrientsQuery.data.products);
+    if (nutrientsQuery.data.sales) setNutrientSales(nutrientsQuery.data.sales);
+  }
 
   // Phase 3 States
   const [attendances, setAttendances] = useState<StaffAttendance[]>([]);
 
   // Staff accounts/attendance now live in the server-side repository (src/features/staff)
-  // instead of local-only state (staffList) / localStorage (attendances) — fetch on mount
-  // and whenever tenant/location changes.
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
+  // instead of local-only state (staffList) / localStorage (attendances) — cached per
+  // tenant/location via React Query.
+  const staffQuery = useQuery({
+    queryKey: dashboardQueryKeys.staff(tenantContext),
+    queryFn: async () => {
       const [staffResult, attendancesResult] = await Promise.all([
         getStaffAction(tenantContext),
         getAttendancesAction(tenantContext),
       ]);
-      if (cancelled) return;
-      if (staffResult.success && staffResult.data) {
-        setStaffList(staffResult.data);
-      }
-      if (attendancesResult.success && attendancesResult.data) {
-        setAttendances(attendancesResult.data);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [tenantContext]);
+      return {
+        staff: staffResult.success && staffResult.data ? staffResult.data : null,
+        attendances: attendancesResult.success && attendancesResult.data ? attendancesResult.data : null,
+      };
+    },
+  });
+
+  const [syncedStaffData, setSyncedStaffData] = useState(staffQuery.data);
+  if (staffQuery.data && staffQuery.data !== syncedStaffData) {
+    setSyncedStaffData(staffQuery.data);
+    if (staffQuery.data.staff) setStaffList(staffQuery.data.staff);
+    if (staffQuery.data.attendances) setAttendances(staffQuery.data.attendances);
+  }
 
   const [suppliers, setSuppliers] = useState<Supplier[]>(MOCK_SUPPLIERS);
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>(MOCK_PURCHASE_ORDERS);
   const [stockIntakes, setStockIntakes] = useState<StockIntakeLog[]>(MOCK_STOCK_INTAKES);
 
   // Suppliers/purchase-orders/stock-intake now live in the server-side repository
-  // (src/features/inventory) instead of localStorage — fetch on mount and whenever
-  // tenant/location changes.
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
+  // (src/features/inventory) instead of localStorage — cached per tenant/location via
+  // React Query.
+  const inventoryOpsQuery = useQuery({
+    queryKey: dashboardQueryKeys.inventoryOps(tenantContext),
+    queryFn: async () => {
       const [suppliersResult, poResult, intakesResult] = await Promise.all([
         getSuppliersAction(tenantContext),
         getPurchaseOrdersAction(tenantContext),
         getStockIntakesAction(tenantContext),
       ]);
-      if (cancelled) return;
-      if (suppliersResult.success && suppliersResult.data) {
-        setSuppliers(suppliersResult.data);
-      }
-      if (poResult.success && poResult.data) {
-        setPurchaseOrders(poResult.data);
-      }
-      if (intakesResult.success && intakesResult.data) {
-        setStockIntakes(intakesResult.data);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [tenantContext]);
+      return {
+        suppliers: suppliersResult.success && suppliersResult.data ? suppliersResult.data : null,
+        purchaseOrders: poResult.success && poResult.data ? poResult.data : null,
+        stockIntakes: intakesResult.success && intakesResult.data ? intakesResult.data : null,
+      };
+    },
+  });
+
+  const [syncedInventoryOpsData, setSyncedInventoryOpsData] = useState(inventoryOpsQuery.data);
+  if (inventoryOpsQuery.data && inventoryOpsQuery.data !== syncedInventoryOpsData) {
+    setSyncedInventoryOpsData(inventoryOpsQuery.data);
+    if (inventoryOpsQuery.data.suppliers) setSuppliers(inventoryOpsQuery.data.suppliers);
+    if (inventoryOpsQuery.data.purchaseOrders) setPurchaseOrders(inventoryOpsQuery.data.purchaseOrders);
+    if (inventoryOpsQuery.data.stockIntakes) setStockIntakes(inventoryOpsQuery.data.stockIntakes);
+  }
 
   const [waitlist, setWaitlist] = useState<WaitlistEntry[]>(() => {
     if (typeof window !== 'undefined') {

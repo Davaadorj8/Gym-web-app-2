@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import { useTranslations } from 'next-intl';
 import { Search, UserCheck, LogOut, Plus } from 'lucide-react';
 import { GymMember } from '@/lib/types';
@@ -11,11 +12,13 @@ import {
   getOccupiedLockers,
   getNextAvailableLocker,
 } from '@/lib/services';
-import {
-  LockerAssignmentModal,
-  CapacityWaitlistWidget,
-  CheckInLogsTable,
-} from './checkin-desk';
+import { CapacityWaitlistWidget, CheckInLogsTable } from './checkin-desk';
+
+// Only mounted once a check-in is confirmed, so it's split out of the always-loaded
+// CheckInDeskView bundle.
+const LockerAssignmentModal = dynamic(() =>
+  import('./checkin-desk/LockerAssignmentModal').then((m) => m.LockerAssignmentModal)
+);
 
 interface CheckInDeskViewProps {
   members?: GymMember[];
@@ -267,18 +270,21 @@ export default function CheckInDeskView({
         <CheckInLogsTable logs={dashboard.lockerLogs} />
       </div>
 
-      {/* Locker Assignment Modal */}
-      <LockerAssignmentModal
-        isOpen={isLockerModalOpen}
-        onClose={() => setIsLockerModalOpen(false)}
-        activeMember={activeMember}
-        totalLockers={totalLockers}
-        occupiedLockers={occupiedLockers}
-        lockerStatuses={dashboard.lockerStatuses}
-        selectedLockerNumber={selectedLockerNumber}
-        setSelectedLockerNumber={setSelectedLockerNumber}
-        onConfirmCheckIn={confirmCheckIn}
-      />
+      {/* Locker Assignment Modal — only mounted once opened, so the dynamic-imported
+          chunk is fetched on demand instead of alongside the rest of this view. */}
+      {isLockerModalOpen && (
+        <LockerAssignmentModal
+          isOpen={isLockerModalOpen}
+          onClose={() => setIsLockerModalOpen(false)}
+          activeMember={activeMember}
+          totalLockers={totalLockers}
+          occupiedLockers={occupiedLockers}
+          lockerStatuses={dashboard.lockerStatuses}
+          selectedLockerNumber={selectedLockerNumber}
+          setSelectedLockerNumber={setSelectedLockerNumber}
+          onConfirmCheckIn={confirmCheckIn}
+        />
+      )}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import dynamic from 'next/dynamic';
 import { useTranslations } from 'next-intl';
 import { Plus, Users } from 'lucide-react';
 import { GymMember, MembershipExtensionLog } from '@/lib/types';
@@ -8,11 +9,16 @@ import { Toast } from '@/components/ui';
 import { useDashboard } from '@/lib/orchestration';
 import { filterMembers, MemberFilterTab } from '@/lib/services';
 import { cn } from '@/lib/utils';
-import {
-  MemberDirectoryTable,
-  MemberExtensionModal,
-  MemberCancellationModal,
-} from './member-directory';
+import { MemberDirectoryTable } from './member-directory';
+
+// Only mounted when a member action opens them, so they're split out of the
+// always-loaded MemberDirectoryView bundle.
+const MemberExtensionModal = dynamic(() =>
+  import('./member-directory/MemberExtensionModal').then((m) => m.MemberExtensionModal)
+);
+const MemberCancellationModal = dynamic(() =>
+  import('./member-directory/MemberCancellationModal').then((m) => m.MemberCancellationModal)
+);
 
 interface MemberDirectoryViewProps {
   members?: GymMember[];
@@ -178,23 +184,28 @@ export default function MemberDirectoryView({
         />
       </div>
 
-      {/* Extension Modal */}
-      <MemberExtensionModal
-        isOpen={!!editingMember}
-        onClose={() => setEditingMember(null)}
-        member={editingMember}
-        plans={plans}
-        onConfirmExtension={handleConfirmExtension}
-      />
+      {/* Extension Modal — only mounted once opened, so the dynamic-imported chunk is
+          fetched on demand instead of alongside the rest of this view. */}
+      {!!editingMember && (
+        <MemberExtensionModal
+          isOpen={!!editingMember}
+          onClose={() => setEditingMember(null)}
+          member={editingMember}
+          plans={plans}
+          onConfirmExtension={handleConfirmExtension}
+        />
+      )}
 
       {/* Cancellation Modal */}
-      <MemberCancellationModal
-        isOpen={!!cancellingMember}
-        onClose={() => setCancellingMember(null)}
-        member={cancellingMember}
-        plans={plans}
-        onConfirmCancellation={handleConfirmCancellation}
-      />
+      {!!cancellingMember && (
+        <MemberCancellationModal
+          isOpen={!!cancellingMember}
+          onClose={() => setCancellingMember(null)}
+          member={cancellingMember}
+          plans={plans}
+          onConfirmCancellation={handleConfirmCancellation}
+        />
+      )}
     </div>
   );
 }
