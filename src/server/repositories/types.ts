@@ -5,6 +5,7 @@ import {
   LockerStatusDetail,
   LockerCustomStatus,
   StaffAccount,
+  StaffAttendance,
   MembershipExtensionLog,
   MembershipTransaction,
   NutrientProduct,
@@ -70,6 +71,8 @@ export interface IStaffRepository extends CrudRepository<StaffAccount, string> {
   findByUsername(ctxOrUsername: TenantQueryContext | string, username?: string): Promise<StaffAccount | null>;
   findActiveStaff(ctx?: TenantQueryContext): Promise<StaffAccount[]>;
 }
+
+export type IStaffAttendanceRepository = CrudRepository<StaffAttendance, string>;
 
 export interface IMembershipTransactionRepository extends CrudRepository<MembershipTransaction, string> {
   findByMemberId(ctxOrMemberId: TenantQueryContext | string, memberId?: string): Promise<MembershipTransaction[]>;

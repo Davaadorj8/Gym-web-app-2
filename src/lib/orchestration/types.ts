@@ -99,9 +99,21 @@ export interface DashboardContextValue {
     staffRole?: UserRole;
     checkedInByStaffId?: string;
   }) => void;
-  addStaff: (staff: StaffAccount) => void;
+  addStaff: (input: {
+    username: string;
+    password: string;
+    fullName: string;
+    email?: string;
+    phoneNumber?: string;
+    role: StaffAccount['role'];
+    assignedShift?: string;
+    status: 'Active' | 'Pending';
+    notes?: string;
+    permissions?: string[];
+  }) => Promise<{ staff: StaffAccount | null; error?: string }>;
   updateStaff: (staff: StaffAccount) => void;
   deleteStaff: (id: string) => void;
+  resetStaffPassword: (id: string, newPassword: string) => Promise<boolean>;
   addNutrient: (product: NutrientProduct) => void;
   deleteNutrient: (id: string) => void;
   updateNutrient: (product: NutrientProduct) => void;

@@ -17,7 +17,18 @@ import {
 interface StaffApprovalsViewProps {
   currentUser?: AuthUser;
   staffList?: StaffAccount[];
-  onAddStaff?: (staff: StaffAccount) => void;
+  onAddStaff?: (input: {
+    username: string;
+    password: string;
+    fullName: string;
+    email?: string;
+    phoneNumber?: string;
+    role: StaffAccount['role'];
+    assignedShift?: string;
+    status: 'Active' | 'Pending';
+    notes?: string;
+    permissions?: string[];
+  }) => Promise<{ staff: StaffAccount | null; error?: string }>;
   onUpdateStaff?: (staff: StaffAccount) => void;
   onDeleteStaff?: (id: string) => void;
 }
@@ -50,9 +61,20 @@ export default function StaffApprovalsView({
     }, 3000);
   };
 
-  const handleAddStaff = (staff: StaffAccount) => {
-    if (propOnAddStaff) propOnAddStaff(staff);
-    else dashboard.addStaff(staff);
+  const handleAddStaff = (input: {
+    username: string;
+    password: string;
+    fullName: string;
+    email?: string;
+    phoneNumber?: string;
+    role: StaffAccount['role'];
+    assignedShift?: string;
+    status: 'Active' | 'Pending';
+    notes?: string;
+    permissions?: string[];
+  }) => {
+    if (propOnAddStaff) return propOnAddStaff(input);
+    return dashboard.addStaff(input);
   };
 
   const handleDeleteStaff = (id: string) => {
@@ -74,17 +96,13 @@ export default function StaffApprovalsView({
     handleDeleteStaff(id);
   };
 
-  const handleConfirmResetPassword = (id: string, newPass: string, hash: string) => {
+  const handleConfirmResetPassword = async (id: string, newPass: string): Promise<boolean> => {
     const target = staffList.find((s) => s.id === id);
-    if (!target) return;
-    const updated = {
-      ...target,
-      passwordHash: hash,
-      plainTextPasswordForDemo: newPass,
-    };
-    if (propOnUpdateStaff) propOnUpdateStaff(updated);
-    else dashboard.updateStaff(updated);
-    showToast(`Password updated for @${target.username}`);
+    const ok = await dashboard.resetStaffPassword(id, newPass);
+    if (ok && target) {
+      showToast(`Password updated for @${target.username}`);
+    }
+    return ok;
   };
 
   if (!isAdmin) {

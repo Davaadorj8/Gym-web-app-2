@@ -72,6 +72,16 @@ import {
   getPurchaseOrdersAction,
   getStockIntakesAction,
 } from '@/features/inventory';
+import {
+  registerStaffAction,
+  updateStaffAction,
+  deleteStaffAction,
+  resetStaffPasswordAction,
+  getStaffAction,
+  clockInAction,
+  clockOutAction,
+  getAttendancesAction,
+} from '@/features/staff';
 import { format } from 'date-fns';
 import { createAuditEntry } from '@/lib/utils/audit';
 
@@ -245,15 +255,30 @@ export function DashboardProvider({
   }, [tenantContext]);
 
   // Phase 3 States
-  const [attendances, setAttendances] = useState<StaffAttendance[]>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem('arche_staff_attendances');
-        if (saved) return JSON.parse(saved);
-      } catch {}
-    }
-    return [];
-  });
+  const [attendances, setAttendances] = useState<StaffAttendance[]>([]);
+
+  // Staff accounts/attendance now live in the server-side repository (src/features/staff)
+  // instead of local-only state (staffList) / localStorage (attendances) — fetch on mount
+  // and whenever tenant/location changes.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const [staffResult, attendancesResult] = await Promise.all([
+        getStaffAction(tenantContext),
+        getAttendancesAction(tenantContext),
+      ]);
+      if (cancelled) return;
+      if (staffResult.success && staffResult.data) {
+        setStaffList(staffResult.data);
+      }
+      if (attendancesResult.success && attendancesResult.data) {
+        setAttendances(attendancesResult.data);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [tenantContext]);
 
   const [suppliers, setSuppliers] = useState<Supplier[]>(MOCK_SUPPLIERS);
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>(MOCK_PURCHASE_ORDERS);
@@ -757,17 +782,91 @@ export function DashboardProvider({
   );
 
   // Staff Domain Actions
-  const addStaff = useCallback((newStaff: StaffAccount) => {
-    setStaffList((prev) => [newStaff, ...prev]);
-  }, []);
+  const addStaff = useCallback(
+    async (input: {
+      username: string;
+      password: string;
+      fullName: string;
+      email?: string;
+      phoneNumber?: string;
+      role: StaffAccount['role'];
+      assignedShift?: string;
+      status: 'Active' | 'Pending';
+      notes?: string;
+      permissions?: string[];
+    }) => {
+      const result = await registerStaffAction({
+        tenantId: tenantContext.tenantId,
+        locationId: tenantContext.locationId,
+        username: input.username,
+        password: input.password,
+        fullName: input.fullName,
+        email: input.email,
+        phoneNumber: input.phoneNumber,
+        role: input.role,
+        assignedShift: input.assignedShift,
+        status: input.status,
+        notes: input.notes,
+        permissions: input.permissions,
+        registeredBy: currentUser.name || 'Admin',
+      });
+
+      if (!result.success || !result.data) {
+        return { staff: null, error: result.error };
+      }
+
+      const createdStaff = result.data;
+      setStaffList((prev) => [createdStaff, ...prev]);
+      return { staff: createdStaff };
+    },
+    [tenantContext, currentUser]
+  );
 
   const updateStaff = useCallback((updatedStaff: StaffAccount) => {
     setStaffList((prev) => prev.map((s) => (s.id === updatedStaff.id ? updatedStaff : s)));
-  }, []);
+    void updateStaffAction({
+      tenantId: tenantContext.tenantId,
+      locationId: tenantContext.locationId,
+      id: updatedStaff.id,
+      fullName: updatedStaff.fullName,
+      email: updatedStaff.email,
+      phoneNumber: updatedStaff.phoneNumber,
+      role: updatedStaff.role,
+      assignedShift: updatedStaff.assignedShift,
+      status: updatedStaff.status,
+      notes: updatedStaff.notes,
+      permissions: updatedStaff.permissions,
+    });
+  }, [tenantContext]);
 
   const deleteStaff = useCallback((id: string) => {
     setStaffList((prev) => prev.filter((s) => s.id !== id));
-  }, []);
+    void deleteStaffAction({
+      tenantId: tenantContext.tenantId,
+      locationId: tenantContext.locationId,
+      id,
+    });
+  }, [tenantContext]);
+
+  const resetStaffPassword = useCallback(
+    async (id: string, newPassword: string) => {
+      const result = await resetStaffPasswordAction({
+        tenantId: tenantContext.tenantId,
+        locationId: tenantContext.locationId,
+        id,
+        newPassword,
+      });
+
+      if (!result.success || !result.data) {
+        return false;
+      }
+
+      const updated = result.data;
+      setStaffList((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
+      return true;
+    },
+    [tenantContext]
+  );
 
   // Nutrient Inventory Actions
   const addNutrient = useCallback((newProduct: NutrientProduct) => {
@@ -854,46 +953,45 @@ export function DashboardProvider({
   );
 
   // Phase 3 Actions implementation
-  const clockIn = useCallback((staffId: string, shiftId: string) => {
+  const clockIn = useCallback(async (staffId: string, shiftId: string) => {
     const staff = staffList.find((s) => s.id === staffId);
     const staffName = staff ? staff.fullName : 'Staff Member';
-    const newAttendance: StaffAttendance = {
-      id: `attendance-${Date.now()}`,
+
+    // Awaits the server action for the real attendance id before touching local state
+    // (rather than an optimistic update with a locally-generated id), so a later
+    // clockOut(id) call always targets the record the repository actually wrote.
+    const result = await clockInAction({
+      tenantId: tenantContext.tenantId,
+      locationId: tenantContext.locationId,
       staffId,
       staffName,
       shiftId,
-      clockInTime: new Date().toISOString(),
-      status: 'ON_DUTY',
-    };
-    setAttendances((prev) => {
-      const updated = [newAttendance, ...prev];
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('arche_staff_attendances', JSON.stringify(updated));
-      }
-      return updated;
     });
+
+    if (!result.success || !result.data) {
+      return;
+    }
+
+    const createdAttendance = result.data;
+    setAttendances((prev) => [createdAttendance, ...prev]);
     createAuditEntry('STAFF_CLOCK_IN', staffId, { shiftId, staffName }, currentUser.id);
-  }, [staffList, currentUser]);
+  }, [staffList, currentUser, tenantContext]);
 
   const clockOut = useCallback((attendanceId: string) => {
-    setAttendances((prev) => {
-      const updated = prev.map((a) => {
-        if (a.id === attendanceId) {
-          return {
-            ...a,
-            clockOutTime: new Date().toISOString(),
-            status: 'COMPLETED' as const,
-          };
-        }
-        return a;
-      });
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('arche_staff_attendances', JSON.stringify(updated));
-      }
-      return updated;
+    setAttendances((prev) =>
+      prev.map((a) =>
+        a.id === attendanceId
+          ? { ...a, clockOutTime: new Date().toISOString(), status: 'COMPLETED' as const }
+          : a
+      )
+    );
+    void clockOutAction({
+      tenantId: tenantContext.tenantId,
+      locationId: tenantContext.locationId,
+      attendanceId,
     });
     createAuditEntry('STAFF_CLOCK_OUT', attendanceId, {}, currentUser.id);
-  }, [currentUser]);
+  }, [currentUser, tenantContext]);
 
   const addSupplier = useCallback((sup: Supplier) => {
     setSuppliers((prev) => [sup, ...prev]);
@@ -1115,6 +1213,7 @@ export function DashboardProvider({
       addStaff,
       updateStaff,
       deleteStaff,
+      resetStaffPassword,
       addNutrient,
       deleteNutrient,
       updateNutrient,
@@ -1183,6 +1282,7 @@ export function DashboardProvider({
       addStaff,
       updateStaff,
       deleteStaff,
+      resetStaffPassword,
       addNutrient,
       deleteNutrient,
       updateNutrient,

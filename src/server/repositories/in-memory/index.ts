@@ -5,6 +5,7 @@ import {
   ILockerLogRepository,
   ILockerRepository,
   IStaffRepository,
+  IStaffAttendanceRepository,
   IMembershipTransactionRepository,
   INutrientRepository,
   INutrientSaleRepository,
@@ -21,6 +22,7 @@ import {
   LockerCustomStatus,
   DEFAULT_LOCKER_CAPACITY,
   StaffAccount,
+  StaffAttendance,
   MembershipExtensionLog,
   MembershipTransaction,
   NutrientProduct,
@@ -443,6 +445,15 @@ export class InMemoryStockIntakeRepository
 {
   constructor() {
     super(MOCK_STOCK_INTAKES);
+  }
+}
+
+export class InMemoryStaffAttendanceRepository
+  extends InMemoryRepository<StaffAttendance>
+  implements IStaffAttendanceRepository
+{
+  constructor() {
+    super([]);
   }
 }
 

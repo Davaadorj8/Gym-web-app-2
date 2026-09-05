@@ -3,16 +3,12 @@
 import React, { useState } from 'react';
 import { KeyRound, Eye, EyeOff, X } from 'lucide-react';
 import { StaffAccount } from '@/lib/types';
-// NOTE: pre-existing architectural debt — password hashing runs client-side because the
-// staff domain has no server action yet. Tracked for the Phase B "staff" feature extraction,
-// which will replace this with a real server action that hashes server-side.
-import { hashPassword } from '@/server/security/password';
 
 interface PasswordResetModalProps {
   isOpen: boolean;
   onClose: () => void;
   staff: StaffAccount | null;
-  onConfirmReset: (staffId: string, newPassword: string, hash: string) => void;
+  onConfirmReset: (staffId: string, newPassword: string) => Promise<boolean>;
 }
 
 export function PasswordResetModal({
@@ -23,15 +19,20 @@ export function PasswordResetModal({
 }: PasswordResetModalProps) {
   const [newPassword, setNewPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   if (!isOpen || !staff) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(null);
     if (!newPassword || newPassword.length < 4) return;
 
-    const hash = await hashPassword(newPassword);
-    onConfirmReset(staff.id, newPassword, hash);
+    const ok = await onConfirmReset(staff.id, newPassword);
+    if (!ok) {
+      setErrorMessage('Failed to update password. Please try again.');
+      return;
+    }
     onClose();
     setNewPassword('');
   };
@@ -53,6 +54,12 @@ export function PasswordResetModal({
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-3 font-mono text-xs">
+          {errorMessage && (
+            <div className="p-2.5 bg-rose-500/10 border border-rose-500/30 rounded-lg text-rose-400 text-xs font-mono">
+              {errorMessage}
+            </div>
+          )}
+
           <div className="space-y-1">
             <label className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
               New Password *

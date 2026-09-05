@@ -4,14 +4,21 @@ import React, { useState } from 'react';
 import { UserPlus, Lock, Eye, EyeOff, Shield } from 'lucide-react';
 import { StaffAccount } from '@/lib/types';
 import { STAFF_SHIFTS, STAFF_ROLES, DEFAULT_STAFF_PERMISSIONS } from '@/lib/services';
-// NOTE: pre-existing architectural debt — password hashing runs client-side because the
-// staff domain has no server action yet. Tracked for the Phase B "staff" feature extraction,
-// which will replace this with a real server action that hashes server-side.
-import { hashPassword } from '@/server/security/password';
 
 interface StaffRegistrationFormProps {
   staffList: StaffAccount[];
-  onAddStaff: (staff: StaffAccount) => void;
+  onAddStaff: (input: {
+    username: string;
+    password: string;
+    fullName: string;
+    email?: string;
+    phoneNumber?: string;
+    role: StaffAccount['role'];
+    assignedShift?: string;
+    status: 'Active' | 'Pending';
+    notes?: string;
+    permissions?: string[];
+  }) => Promise<{ staff: StaffAccount | null; error?: string }>;
   showToast: (msg: string) => void;
 }
 
@@ -70,27 +77,24 @@ export function StaffRegistrationForm({
       return;
     }
 
-    const newId = `staff-${Date.now()}`;
-    const passwordHash = await hashPassword(password);
-
-    const newStaff: StaffAccount = {
-      id: newId,
+    const result = await onAddStaff({
       username: cleanUsername,
-      passwordHash,
-      plainTextPasswordForDemo: password,
+      password,
       fullName: fullName.trim(),
       email: email.trim() || undefined,
       phoneNumber: phoneNumber.trim() || undefined,
       role,
       assignedShift,
       status: initialStatus,
-      registeredAt: new Date().toISOString(),
-      registeredBy: 'usr-admin',
       notes: notes.trim() || undefined,
       permissions,
-    };
+    });
 
-    onAddStaff(newStaff);
+    if (!result.staff) {
+      setErrorMessage(result.error || 'Failed to register staff account.');
+      return;
+    }
+
     showToast(`Staff member "${fullName.trim()}" registered successfully!`);
 
     // Reset Form

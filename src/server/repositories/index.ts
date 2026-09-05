@@ -7,6 +7,7 @@ import {
   InMemoryLockerLogRepository,
   InMemoryLockerRepository,
   InMemoryStaffRepository,
+  InMemoryStaffAttendanceRepository,
   InMemoryMembershipTransactionRepository,
   InMemoryNutrientRepository,
   InMemoryNutrientSaleRepository,
@@ -21,6 +22,7 @@ const planRepository = new InMemoryPlanRepository();
 const lockerLogRepository = new InMemoryLockerLogRepository();
 const lockerRepository = new InMemoryLockerRepository();
 const staffRepository = new InMemoryStaffRepository();
+const staffAttendanceRepository = new InMemoryStaffAttendanceRepository();
 const transactionRepository = new InMemoryMembershipTransactionRepository();
 const nutrientRepository = new InMemoryNutrientRepository();
 const nutrientSaleRepository = new InMemoryNutrientSaleRepository();
@@ -33,6 +35,7 @@ export const getPlanRepository = () => planRepository;
 export const getLockerLogRepository = () => lockerLogRepository;
 export const getLockerRepository = () => lockerRepository;
 export const getStaffRepository = () => staffRepository;
+export const getStaffAttendanceRepository = () => staffAttendanceRepository;
 export const getMembershipTransactionRepository = () => transactionRepository;
 export const getNutrientRepository = () => nutrientRepository;
 export const getNutrientSaleRepository = () => nutrientSaleRepository;
